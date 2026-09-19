@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>和聲本</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E6E3DE; --surface:#F2F0EC; --ink:#2D3033; --muted:#686B69; --line:#CFCAC2;
+  --v1:#4F7D7A; --v2:#B27D74; --rec:#A3404F; --onrec:#FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#1C1F21; --surface:#25292B; --ink:#E5E2DC; --muted:#9A9C97; --line:#3A3F41;
+    --v1:#7FB0AB; --v2:#D19E94; --rec:#D06A7B; --onrec:#1C1F21; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#1C1F21; --surface:#25292B; --ink:#E5E2DC; --muted:#9A9C97; --line:#3A3F41;
+  --v1:#7FB0AB; --v2:#D19E94; --rec:#D06A7B; --onrec:#1C1F21; color-scheme: dark;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"LXGW WenKai TC","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  font-size:17px;line-height:1.65;-webkit-text-size-adjust:100%}
+main{max-width:720px;margin:0 auto;padding:28px 18px 190px}
+h1{font-size:clamp(2.6rem,11vw,3.6rem);line-height:1.05;margin:0;font-weight:700;letter-spacing:.06em;
+  color:var(--v1);text-shadow:.07em .06em 0 var(--v2)}
+.lede{color:var(--muted);margin:.7em 0 1.4em;max-width:34em}
+button,input{font:inherit;color:inherit}
+.btn{display:inline-flex;align-items:center;gap:.45em;min-height:44px;padding:.45em 1.05em;border-radius:999px;
+  border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn svg{width:1.15em;height:1.15em;flex:none}
+:focus-visible{outline:2px solid var(--v1);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+details{margin-top:14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px 0}
+summary{cursor:pointer;min-height:44px;display:flex;align-items:center;gap:.5em;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"";width:.5em;height:.5em;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+details[open] summary::before{transform:rotate(45deg)}
+summary .val{margin-left:auto;color:var(--muted)}
+.cal p{margin:.2em 0 .8em;color:var(--muted);font-size:.95rem}
+.cal label{display:block;margin-top:12px;font-size:.95rem}
+input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
+#tracks{list-style:none;margin:22px 0 0;padding:0}
+.track{padding:14px 0 16px;border-bottom:1px solid var(--line)}
+.track-head{display:flex;align-items:center;gap:8px}
+.swatch{width:14px;height:14px;border-radius:50%;background:var(--tc);flex:none}
+.name{flex:1;min-width:0;border:none;background:transparent;font-size:1.1rem;font-weight:700;padding:6px 4px;border-radius:6px}
+.name:hover,.name:focus{background:var(--surface)}
+.icon{width:44px;height:44px;border-radius:50%;border:1px solid transparent;background:transparent;cursor:pointer;display:grid;place-items:center;color:var(--muted)}
+.icon:hover{border-color:var(--line)}
+.icon svg{width:22px;height:22px}
+.icon[aria-pressed="true"]{color:var(--rec)}
+.del.confirm{width:auto;padding:0 12px;border-radius:999px;border-color:var(--rec);color:var(--rec);font-size:.9rem}
+.wave{position:relative;height:66px;margin:8px 0 10px;background:var(--surface);border-radius:8px;overflow:hidden;cursor:pointer;touch-action:manipulation}
+.wave canvas{width:100%;height:100%;display:block}
+.track.muted .wave canvas{opacity:.3}
+.ph{position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--ink);opacity:.75;pointer-events:none}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:4px 18px;font-size:.9rem;color:var(--muted)}
+.controls label{display:block}
+.controls output{float:right;color:var(--ink)}
+.empty{margin-top:26px;padding:22px;border:1.5px dashed var(--line);border-radius:12px;color:var(--muted)}
+.empty strong{color:var(--ink)}
+.hint{color:var(--muted);font-size:.9rem;margin-top:12px}
+.transport{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);
+  padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px));z-index:5}
+.transport-inner{max-width:720px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px}
+.clock{font-size:1.35rem;font-variant-numeric:tabular-nums;min-width:4.6em}
+.meter{flex:1;min-width:80px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.meter span{display:block;height:100%;width:0;background:var(--v1);transition:width .05s linear}
+.meter.hot span{background:var(--rec)}
+.buttons{display:flex;gap:8px;width:100%;justify-content:space-between}
+.buttons .btn{white-space:nowrap;justify-content:center;padding:.45em .9em}
+.buttons .btn.rec{flex:1;max-width:220px}
+@media (max-width:440px){.buttons .lbl{display:none}.buttons .btn:not(.rec){width:48px;padding:0}}
+.btn.rec{background:var(--rec);color:var(--onrec);border-color:transparent;font-weight:700}
+.btn.rec.on{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.7}}
+@media (prefers-reduced-motion:reduce){.btn.rec.on{animation:none}summary::before{transition:none}}
+@media (min-width:600px){.buttons{width:auto;margin-left:auto}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));
+  max-width:min(90vw,480px);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;
+  font-size:.95rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:6}
+.toast.show{opacity:1}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<main>
+  <h1>和聲本</h1>
+  <p class="lede">先錄主唱，再戴著耳機一邊聽、一邊把合音疊上去。要疊幾軌都可以。</p>
+
+  <div class="row">
+    <label class="btn" for="backingFile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+      <span id="backingLabel">匯入伴奏</span>
+    </label>
+    <input id="backingFile" class="sr" type="file" accept="audio/*">
+  </div>
+
+  <details class="cal">
+    <summary>延遲補償<span class="val" id="latVal">0 ms</span></summary>
+    <p>手機從播放到收音之間有一段延遲，沒補償的話，合音會整條慢半拍。拔掉耳機、把音量開大，按下「量測延遲」後會發出六聲嗶，量完再把耳機戴回去。有線耳機適用這個數值，藍牙耳機延遲太大，不建議用來錄音。</p>
+    <button class="btn" id="calBtn" type="button">量測延遲</button>
+    <label>手動調整 <output id="latOut">0 ms</output>
+      <input type="range" id="latRange" min="-100" max="500" step="5" value="0">
+    </label>
+  </details>
+
+  <ul id="tracks"></ul>
+  <div class="empty" id="empty">
+    <strong>還沒有任何音軌。</strong><br>
+    可以先匯入伴奏，或直接按「錄新的一軌」清唱。錄合音時請戴有線耳機，免得麥克風收到前一軌的聲音。
+  </div>
+  <p class="hint" id="hint" hidden>點波形可以移動開始位置，播放和錄音都從那裡開始。</p>
+</main>
+
+<div class="transport">
+  <div class="transport-inner">
+    <span class="clock" id="clock">0:00.0</span>
+    <div class="meter" id="meter" aria-hidden="true"><span></span></div>
+    <div class="buttons">
+      <button class="btn" id="homeBtn" type="button" aria-label="回到開頭">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
+      </button>
+      <button class="btn" id="playBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M7 4v16l13-8z"/></svg>
+        <span id="playText" class="lbl">播放</span>
+      </button>
+      <button class="btn rec" id="recBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="7"/></svg>
+        <span id="recText">錄新的一軌</span>
+      </button>
+      <button class="btn" id="exportBtn" type="button" aria-label="匯出混音">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16"/></svg>
+        <span class="lbl">匯出</span>
+      </button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
+const BACKING_COLOR = '#8A8D84';
+const state = { tracks: [], latencyMs: 0, pos: 0 };
+let ctx = null, micStream = null, playing = null;
+
+function ac(){
+  if(!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  if(ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const uid = () => 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const fmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60); const r = s - m * 60; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(1); };
+
+let toastTimer;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3200); }
+
+/* ---------- 本機儲存（IndexedDB） ---------- */
+const DB = 'harmony-notebook', STORE = 'kv';
+function idb(){ return new Promise((res, rej) => { const r = indexedDB.open(DB, 1); r.onupgradeneeded = () => r.result.createObjectStore(STORE); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function kv(mode, fn){
+  try{ const db = await idb(); return await new Promise((res, rej) => { const tx = db.transaction(STORE, mode); const req = fn(tx.objectStore(STORE)); tx.oncomplete = () => res(req && req.result); tx.onerror = () => rej(tx.error); }); }
+  catch(e){ console.warn('storage', e); return undefined; }
+}
+const kvGet = k => kv('readonly', s => s.get(k));
+const kvSet = (k, v) => kv('readwrite', s => s.put(v, k));
+const kvDel = k => kv('readwrite', s => s.delete(k));
+
+let metaTimer;
+function saveMeta(){
+  clearTimeout(metaTimer);
+  metaTimer = setTimeout(() => kvSet('meta', {
+    latencyMs: state.latencyMs,
+    tracks: state.tracks.map(({ id, kind, name, color, vol, pan, mute, offset, nudgeMs }) => ({ id, kind, name, color, vol, pan, mute, offset, nudgeMs }))
+  }), 300);
+}
+function saveAudio(t){
+  const b = t.buffer; const ch = [];
+  for(let i = 0; i < b.numberOfChannels; i++) ch.push(b.getChannelData(i));
+  return kvSet('audio:' + t.id, { sr: b.sampleRate, ch });
+}
+async function loadProject(){
+  const meta = await kvGet('meta'); if(!meta) return;
+  state.latencyMs = meta.latencyMs || 0;
+  for(const m of meta.tracks || []){
+    const a = await kvGet('audio:' + m.id); if(!a || !a.ch || !a.ch.length) continue;
+    const buf = new AudioBuffer({ length: a.ch[0].length, numberOfChannels: a.ch.length, sampleRate: a.sr });
+    a.ch.forEach((d, i) => buf.copyToChannel(d, i));
+    state.tracks.push({ ...m, buffer: buf });
+  }
+}
+
+/* ---------- 時間軸 ---------- */
+function projectEnd(){ return state.tracks.reduce((m, t) => Math.max(m, trackStart(t) + t.buffer.duration), 0); }
+function trackStart(t){ return t.offset + t.nudgeMs / 1000; }
+function viewSpan(){ return Math.max(10, projectEnd() + 1); }
+
+/* ---------- 播放 ---------- */
+function startSources(when, pos){
+  const c = ac();
+  return state.tracks.map(t => {
+    const s = c.createBufferSource(); s.buffer = t.buffer;
+    const g = c.createGain(); g.gain.value = t.mute ? 0 : t.vol;
+    s.connect(g);
+    let p = null;
+    if(c.createStereoPanner){ p = c.createStereoPanner(); p.pan.value = t.pan; g.connect(p); p.connect(c.destination); }
+    else g.connect(c.destination);
+    const rel = trackStart(t) - pos;
+    if(rel >= 0) s.start(when + rel);
+    else if(-rel < t.buffer.duration) s.start(when, -rel);
+    else return null;
+    return { id: t.id, s, g, p };
+  }).filter(Boolean);
+}
+function liveNode(id){ return playing && playing.nodes.find(n => n.id === id); }
+
+function play(){
+  if(playing){ stop(); return; }
+  if(!state.tracks.length){ toast('還沒有音軌可以播放'); return; }
+  const c = ac(); const startAt = c.currentTime + 0.08;
+  if(state.pos >= projectEnd()) state.pos = 0;
+  playing = { mode: 'play', startAt, pos0: state.pos, nodes: startSources(startAt, state.pos) };
+  updateTransport(); loop();
+}
+
+/* ---------- 收音 ---------- */
+async function getMic(){
+  if(micStream && micStream.active) return micStream;
+  micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  return micStream;
+}
+function startCapture(c, stream){
+  const src = c.createMediaStreamSource(stream);
+  const proc = c.createScriptProcessor(2048, 1, 1);
+  const sink = c.createGain(); sink.gain.value = 0;
+  const cap = { chunks: [], firstTime: null, level: 0 };
+  proc.onaudioprocess = e => {
+    const d = e.inputBuffer.getChannelData(0);
+    if(cap.firstTime === null) cap.firstTime = e.playbackTime;
+    cap.chunks.push(new Float32Array(d));
+    let m = 0; for(let i = 0; i < d.length; i += 4){ const v = Math.abs(d[i]); if(v > m) m = v; }
+    cap.level = m;
+  };
+  src.connect(proc); proc.connect(sink); sink.connect(c.destination);
+  cap.stop = () => {
+    proc.onaudioprocess = null;
+    try{ src.disconnect(); proc.disconnect(); sink.disconnect(); }catch(e){}
+    const n = cap.chunks.reduce((a, b) => a + b.length, 0);
+    const out = new Float32Array(n); let o = 0;
+    for(const ch of cap.chunks){ out.set(ch, o); o += ch.length; }
+    return out;
+  };
+  return cap;
+}
+function micError(e){
+  if(e && e.name === 'NotAllowedError') toast('沒有取得麥克風權限，請在瀏覽器設定裡允許後再試');
+  else if(e && e.name === 'NotFoundError') toast('找不到麥克風');
+  else toast('無法開啟麥克風：' + (e && e.message || e));
+}
+
+async function record(){
+  if(playing && playing.mode === 'rec'){ stop(); return; }
+  if(playing) stop();
+  const c = ac();
+  let stream; try{ stream = await getMic(); }catch(e){ micError(e); return; }
+  const cap = startCapture(c, stream);
+  const startAt = c.currentTime + 0.25;
+  playing = { mode: 'rec', startAt, pos0: state.pos, nodes: startSources(startAt, state.pos), cap };
+  updateTransport(); loop();
+}
+
+function stop(){
+  if(!playing) return;
+  const p = playing; playing = null;
+  p.nodes.forEach(n => { try{ n.s.stop(); n.s.disconnect(); }catch(e){} });
+  if(p.mode === 'rec') finishRecording(p);
+  state.pos = p.pos0;
+  meter(0); updateTransport(); updatePlayheads(); updateClock();
+}
+
+function finishRecording(p){
+  let data = p.cap.stop();
+  const sr = ctx.sampleRate;
+  if(p.cap.firstTime === null || data.length < sr * 0.3){ toast('錄音太短，沒有保留'); return; }
+  let offset = p.pos0 + (p.cap.firstTime - p.startAt) - state.latencyMs / 1000;
+  if(offset < 0){ const cut = Math.ceil(-offset * sr); data = data.subarray(cut); offset += cut / sr; }
+  const buf = new AudioBuffer({ length: data.length, numberOfChannels: 1, sampleRate: sr });
+  buf.copyToChannel(data, 0);
+  const voices = state.tracks.filter(t => t.kind === 'voice');
+  const t = {
+    id: uid(), kind: 'voice', name: voices.length ? '合音 ' + voices.length : '主唱',
+    color: PALETTE[voices.length % PALETTE.length], vol: 1, pan: 0, mute: false, offset, nudgeMs: 0, buffer: buf
+  };
+  state.tracks.push(t); saveAudio(t); saveMeta(); render();
+  toast('已加入「' + t.name + '」');
+}
+
+/* ---------- 延遲量測 ---------- */
+async function calibrate(){
+  if(playing) stop();
+  const c = ac(); const btn = $('#calBtn');
+  let stream; try{ stream = await getMic(); }catch(e){ micError(e); return; }
+  btn.disabled = true; btn.textContent = '量測中…';
+  const cap = startCapture(c, stream);
+  const startAt = c.currentTime + 0.4;
+  const clicks = [0, 0.6, 1.2, 1.8, 2.4, 3.0];
+  clicks.forEach(t => {
+    const o = c.createOscillator(); const g = c.createGain(); const at = startAt + t;
+    o.frequency.value = 1500;
+    g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.9, at + 0.002); g.gain.exponentialRampToValueAtTime(0.001, at + 0.05);
+    o.connect(g); g.connect(c.destination); o.start(at); o.stop(at + 0.06);
+  });
+  await sleep((0.4 + 3.0 + 0.8) * 1000);
+  const data = cap.stop(); const sr = c.sampleRate; const t0 = cap.firstTime;
+  btn.disabled = false; btn.textContent = '量測延遲';
+  let peak = 0; for(let i = 0; i < data.length; i++){ const v = Math.abs(data[i]); if(v > peak) peak = v; }
+  if(t0 === null || peak < 0.02){ toast('沒有收到嗶聲，請拔掉耳機、把音量開大再試一次'); return; }
+  const thr = peak * 0.35, found = [];
+  clicks.forEach(t => {
+    const from = Math.max(0, Math.floor((startAt + t - t0) * sr)), to = Math.min(data.length, from + Math.floor(0.55 * sr));
+    for(let i = from; i < to; i++) if(Math.abs(data[i]) > thr){ found.push(t0 + i / sr - startAt - t); break; }
+  });
+  if(found.length < 3){ toast('量測不穩定，請在安靜的地方再試一次'); return; }
+  found.sort((a, b) => a - b);
+  const ms = Math.round(found[Math.floor(found.length / 2)] * 1000 / 5) * 5;
+  setLatency(ms);
+  toast('延遲約 ' + ms + ' ms，已套用到之後的錄音');
+}
+function setLatency(ms){
+  state.latencyMs = ms;
+  $('#latRange').value = ms; $('#latOut').textContent = ms + ' ms'; $('#latVal').textContent = ms + ' ms';
+  saveMeta();
+}
+
+/* ---------- 伴奏 ---------- */
+async function importBacking(file){
+  if(!file) return;
+  const c = ac();
+  try{
+    const buf = await c.decodeAudioData(await file.arrayBuffer());
+    const old = state.tracks.find(t => t.kind === 'backing');
+    if(old){ state.tracks = state.tracks.filter(t => t !== old); kvDel('audio:' + old.id); }
+    const t = { id: uid(), kind: 'backing', name: file.name.replace(/\.[^.]+$/, '') || '伴奏', color: BACKING_COLOR, vol: 0.8, pan: 0, mute: false, offset: 0, nudgeMs: 0, buffer: buf };
+    state.tracks.unshift(t); saveAudio(t); saveMeta(); render();
+  }catch(e){ toast('這個檔案無法讀取，請換成 mp3、m4a 或 wav'); }
+}
+
+/* ---------- 畫面 ---------- */
+function drawWave(canvas, t){
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  if(!w) return;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const g = canvas.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
+  const span = viewSpan();
+  const x0 = trackStart(t) / span * w, len = t.buffer.duration / span * w;
+  const d = t.buffer.getChannelData(0);
+  const cols = Math.max(1, Math.floor(len)), step = d.length / cols;
+  g.fillStyle = t.color;
+  for(let x = 0; x < cols; x++){
+    const a = Math.floor(x * step), b = Math.min(d.length, Math.floor((x + 1) * step));
+    const inc = Math.max(1, ((b - a) / 48) | 0);
+    let m = 0; for(let i = a; i < b; i += inc){ const v = Math.abs(d[i]); if(v > m) m = v; }
+    const bh = Math.max(1, Math.min(1, m * 1.4) * h * 0.86);
+    g.fillRect(x0 + x, (h - bh) / 2, 1, bh);
+  }
+}
+function drawAll(){ document.querySelectorAll('.track').forEach(li => { const t = state.tracks.find(x => x.id === li.dataset.id); if(t) drawWave(li.querySelector('canvas'), t); }); }
+
+const ICON_MUTE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg>';
+const ICON_MUTE_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+
+function render(){
+  const ul = $('#tracks'); ul.innerHTML = '';
+  $('#empty').hidden = state.tracks.length > 0;
+  $('#hint').hidden = state.tracks.length === 0;
+  const backing = state.tracks.find(t => t.kind === 'backing');
+  $('#backingLabel').textContent = backing ? '更換伴奏' : '匯入伴奏';
+  for(const t of state.tracks){
+    const li = document.createElement('li');
+    li.className = 'track' + (t.mute ? ' muted' : ''); li.dataset.id = t.id; li.style.setProperty('--tc', t.color);
+    li.innerHTML = `
+      <div class="track-head">
+        <span class="swatch"></span>
+        <input class="name" aria-label="音軌名稱">
+        <button class="icon mute" type="button" aria-label="靜音" aria-pressed="${t.mute}">${t.mute ? ICON_MUTE_ON : ICON_MUTE_OFF}</button>
+        <button class="icon del" type="button" aria-label="刪除這一軌">${ICON_TRASH}</button>
+      </div>
+      <div class="wave"><canvas></canvas><div class="ph"></div></div>
+      <div class="controls">
+        <label>音量 <output class="o-vol"></output><input type="range" class="r-vol" min="0" max="1.5" step="0.01"></label>
+        <label>左右 <output class="o-pan"></output><input type="range" class="r-pan" min="-1" max="1" step="0.05"></label>
+        <label>對齊微調 <output class="o-nudge"></output><input type="range" class="r-nudge" min="-300" max="300" step="5"></label>
+      </div>`;
+    const q = s => li.querySelector(s);
+    q('.name').value = t.name;
+    q('.name').addEventListener('change', e => { t.name = e.target.value.trim() || t.name; saveMeta(); });
+    const showVol = () => q('.o-vol').textContent = Math.round(t.vol * 100) + '%';
+    const showPan = () => q('.o-pan').textContent = Math.abs(t.pan) < 0.03 ? '置中' : (t.pan < 0 ? '左 ' : '右 ') + Math.round(Math.abs(t.pan) * 100);
+    const showNudge = () => q('.o-nudge').textContent = (t.nudgeMs > 0 ? '+' : '') + t.nudgeMs + ' ms';
+    q('.r-vol').value = t.vol; q('.r-pan').value = t.pan; q('.r-nudge').value = t.nudgeMs;
+    showVol(); showPan(); showNudge();
+    q('.r-vol').addEventListener('input', e => { t.vol = +e.target.value; showVol(); const n = liveNode(t.id); if(n && !t.mute) n.g.gain.value = t.vol; saveMeta(); });
+    q('.r-pan').addEventListener('input', e => { t.pan = +e.target.value; showPan(); const n = liveNode(t.id); if(n && n.p) n.p.pan.value = t.pan; saveMeta(); });
+    q('.r-nudge').addEventListener('input', e => { t.nudgeMs = +e.target.value; showNudge(); drawWave(q('canvas'), t); saveMeta(); });
+    q('.mute').addEventListener('click', e => {
+      t.mute = !t.mute; li.classList.toggle('muted', t.mute);
+      e.currentTarget.setAttribute('aria-pressed', t.mute); e.currentTarget.innerHTML = t.mute ? ICON_MUTE_ON : ICON_MUTE_OFF;
+      const n = liveNode(t.id); if(n) n.g.gain.value = t.mute ? 0 : t.vol; saveMeta();
+    });
+    const del = q('.del'); let armed = null;
+    del.addEventListener('click', () => {
+      if(!armed){ del.classList.add('confirm'); del.textContent = '確定刪除'; armed = setTimeout(() => { armed = null; del.classList.remove('confirm'); del.innerHTML = ICON_TRASH; }, 3000); return; }
+      clearTimeout(armed); if(playing) stop();
+      state.tracks = state.tracks.filter(x => x !== t); kvDel('audio:' + t.id); saveMeta(); render();
+    });
+    q('.wave').addEventListener('click', e => {
+      if(playing) return;
+      const r = e.currentTarget.getBoundingClientRect();
+      state.pos = Math.max(0, (e.clientX - r.left) / r.width * viewSpan());
+      updatePlayheads(); updateClock();
+    });
+    ul.appendChild(li);
+  }
+  requestAnimationFrame(() => { drawAll(); updatePlayheads(); });
+}
+
+function updatePlayheads(){
+  const pct = Math.min(100, state.pos / viewSpan() * 100);
+  document.querySelectorAll('.ph').forEach(el => el.style.left = pct + '%');
+}
+function updateClock(){ $('#clock').textContent = fmt(state.pos); }
+function meter(level){
+  const m = $('#meter'); m.firstElementChild.style.width = Math.min(100, level * 100) + '%';
+  m.classList.toggle('hot', level > 0.95);
+}
+function updateTransport(){
+  const mode = playing && playing.mode;
+  $('#playText').textContent = mode === 'play' ? '停止' : '播放';
+  $('#playIcon').innerHTML = mode === 'play' ? '<rect x="6" y="6" width="12" height="12" rx="1"/>' : '<path d="M7 4v16l13-8z"/>';
+  $('#playBtn').disabled = mode === 'rec'; $('#playBtn').setAttribute('aria-label', mode === 'play' ? '停止' : '播放');
+  $('#recText').textContent = mode === 'rec' ? '停止錄音' : '錄新的一軌';
+  $('#recBtn').classList.toggle('on', mode === 'rec');
+  $('#homeBtn').disabled = !!mode; $('#exportBtn').disabled = !!mode; $('#calBtn').disabled = !!mode;
+}
+function loop(){
+  if(!playing) return;
+  state.pos = playing.pos0 + Math.max(0, ctx.currentTime - playing.startAt);
+  updateClock(); updatePlayheads();
+  if(playing.mode === 'rec') meter(playing.cap.level);
+  else if(state.pos > projectEnd() + 0.1){ state.pos = playing.pos0; stop(); state.pos = 0; updatePlayheads(); updateClock(); return; }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 匯出 ---------- */
+function encodeWav(buf){
+  const ch = buf.numberOfChannels, sr = buf.sampleRate, n = buf.length;
+  const chans = []; let peak = 0;
+  for(let c = 0; c < ch; c++){ const d = buf.getChannelData(c); chans.push(d); for(let i = 0; i < n; i++){ const v = Math.abs(d[i]); if(v > peak) peak = v; } }
+  const gain = peak > 0.98 ? 0.98 / peak : 1;
+  const size = 44 + n * ch * 2, ab = new ArrayBuffer(size), v = new DataView(ab); let o = 0;
+  const ws = s => { for(const c of s) v.setUint8(o++, c.charCodeAt(0)); };
+  ws('RIFF'); v.setUint32(o, size - 8, true); o += 4; ws('WAVE'); ws('fmt ');
+  v.setUint32(o, 16, true); o += 4; v.setUint16(o, 1, true); o += 2; v.setUint16(o, ch, true); o += 2;
+  v.setUint32(o, sr, true); o += 4; v.setUint32(o, sr * ch * 2, true); o += 4; v.setUint16(o, ch * 2, true); o += 2; v.setUint16(o, 16, true); o += 2;
+  ws('data'); v.setUint32(o, n * ch * 2, true); o += 4;
+  for(let i = 0; i < n; i++) for(let c = 0; c < ch; c++){ const s = Math.max(-1, Math.min(1, chans[c][i] * gain)); v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2; }
+  return new Uint8Array(ab);
+}
+const CRC_T = (() => { const t = new Uint32Array(256); for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8){ let c = 0xFFFFFFFF; for(let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(name, data){
+  const nb = new TextEncoder().encode(name), crc = crc32(data);
+  const lh = new DataView(new ArrayBuffer(30));
+  lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(12, 0x21, true);
+  lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, nb.length, true);
+  const cd = new DataView(new ArrayBuffer(46));
+  cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true); cd.setUint16(14, 0x21, true);
+  cd.setUint32(16, crc, true); cd.setUint32(20, data.length, true); cd.setUint32(24, data.length, true); cd.setUint16(28, nb.length, true);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, 1, true); e.setUint16(10, 1, true);
+  e.setUint32(12, 46 + nb.length, true); e.setUint32(16, 30 + nb.length + data.length, true);
+  return new Blob([lh, nb, data, cd, nb, e]);
+}
+const dlPromise = (window.claude && typeof window.claude.use === 'function') ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+
+async function exportMix(){
+  if(!state.tracks.length){ toast('還沒有音軌可以匯出'); return; }
+  const btn = $('#exportBtn'); btn.disabled = true;
+  try{
+    const sr = 44100, end = projectEnd();
+    const oc = new OfflineAudioContext(2, Math.ceil(end * sr), sr);
+    for(const t of state.tracks){
+      if(t.mute) continue;
+      const s = oc.createBufferSource(); s.buffer = t.buffer;
+      const g = oc.createGain(); g.gain.value = t.vol; const p = oc.createStereoPanner(); p.pan.value = t.pan;
+      s.connect(g); g.connect(p); p.connect(oc.destination);
+      const st = trackStart(t); if(st >= 0) s.start(st); else s.start(0, -st);
+    }
+    const wav = encodeWav(await oc.startRendering());
+    const dl = await dlPromise;
+    if(dl){
+      try{ await dl.save({ filename: 'harmony-mix.zip', data: makeZip('harmony-mix.wav', wav) }); toast('已匯出混音（WAV 包在 zip 裡）'); }
+      catch(e){ if(e && e.code !== 'declined') toast('匯出失敗：' + (e.message || e.code)); }
+    } else {
+      const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+      const a = document.createElement('a'); a.href = url; a.download = 'harmony-mix.wav';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 8000);
+      toast('已匯出混音');
+    }
+  }catch(e){ toast('匯出失敗：' + (e.message || e)); }
+  finally{ btn.disabled = false; }
+}
+
+/* ---------- 綁定 ---------- */
+$('#playBtn').addEventListener('click', play);
+$('#recBtn').addEventListener('click', record);
+$('#homeBtn').addEventListener('click', () => { state.pos = 0; updatePlayheads(); updateClock(); });
+$('#exportBtn').addEventListener('click', exportMix);
+$('#calBtn').addEventListener('click', calibrate);
+$('#latRange').addEventListener('input', e => setLatency(+e.target.value));
+$('#backingFile').addEventListener('change', e => { importBacking(e.target.files[0]); e.target.value = ''; });
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(drawAll, 150); });
+
+(async () => { await loadProject(); setLatency(state.latencyMs); render(); updateClock(); })();
+</script>
+</body>
+</html>
