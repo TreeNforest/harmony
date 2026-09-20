@@ -84,6 +84,26 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
 @media (max-width:440px){.buttons .lbl{display:none}.buttons .btn:not(.rec){width:48px;padding:0}}
 @media (min-width:600px){.buttons{width:auto;margin-left:auto}}
 body[data-view="library"] .transport{display:none}
+.editor{position:fixed;inset:0;z-index:12;display:flex;flex-direction:column;background:var(--paper);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.editor[hidden]{display:none}
+.ed-top{display:grid;grid-template-columns:48px 1fr auto;align-items:center;padding:4px 10px}
+.ed-top strong{text-align:center;font-size:1.05rem}
+.ed-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:4px 10px 8px}
+.btn.sm{min-height:40px;padding:.3em .8em;font-size:.9rem}
+.btn.sm[aria-pressed="true"]{background:var(--v1);color:var(--paper);border-color:transparent}
+.btn.danger-sm{color:var(--rec);border-color:var(--rec)}
+.chip2{border:1px solid var(--line);background:var(--surface);border-radius:999px;min-height:36px;padding:0 12px;font-size:.85rem;cursor:pointer;color:var(--ink)}
+.chip2[aria-pressed="true"]{background:var(--v1);color:var(--paper);border-color:transparent}
+.grow{flex:1}
+.ed-canvas{flex:1;min-height:0;position:relative;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden}
+.ed-canvas canvas{display:block;touch-action:none}
+.ed-status{position:absolute;right:10px;top:32px;font-size:.8rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:6px}
+.ed-status:empty{display:none}
+.ed-bottom{padding:8px 12px 10px}
+.ed-sel{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ed-sel[hidden]{display:none}
+.ed-sel #edName{flex:1;text-align:center;font-weight:700;font-size:.95rem}
+.ed-hint{font-size:.8rem;color:var(--muted);margin:6px 0 0}
 .sec{font-size:1.05rem;margin:36px 0 4px;color:var(--muted);font-weight:700;letter-spacing:.1em}
 #songList{list-style:none;margin:18px 0 0;padding:0}
 .song{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 4px;border:none;border-bottom:1px solid var(--line);background:none;cursor:pointer;min-height:64px}
@@ -244,6 +264,10 @@ body[data-view="library"] .transport{display:none}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>
       <span id="lyricsLabel">加入歌詞</span>
     </button>
+    <button class="btn" id="noteEditBtn" type="button" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>
+      <span>編輯音符</span>
+    </button>
   </div>
 
   <p class="hint" id="guideHint">音高條和評分需要「只有人聲」的原唱檔。可以先在電腦上用 Ultimate Vocal Remover 之類的工具，把原曲分離成人聲和伴奏兩個檔案。</p>
@@ -363,6 +387,40 @@ body[data-view="library"] .transport{display:none}
   </div>
 </div>
 
+<section class="editor" id="editor" hidden aria-label="音符編輯">
+  <div class="ed-top">
+    <button class="icon" id="edClose" type="button" aria-label="完成並關閉">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <strong>音符編輯</strong>
+    <button class="btn sm" id="edUndo" type="button">復原</button>
+  </div>
+  <div class="ed-tools">
+    <button class="btn sm" id="edPlay" type="button">▶ 播放</button>
+    <span style="font-size:.85rem;color:var(--muted)">聽：</span>
+    <button class="chip2" type="button" data-l="guide" aria-pressed="true">原唱</button>
+    <button class="chip2" type="button" data-l="backing" aria-pressed="false">伴奏</button>
+    <button class="chip2" type="button" data-l="synth" aria-pressed="false">音符</button>
+    <span class="grow"></span>
+    <button class="btn sm" id="edZoomOut" type="button" aria-label="縮小">−</button>
+    <button class="btn sm" id="edZoomIn" type="button" aria-label="放大">＋</button>
+  </div>
+  <div class="ed-canvas"><canvas id="edCanvas"></canvas><div class="ed-status" id="edStatus"></div></div>
+  <div class="ed-bottom">
+    <div class="ed-sel" id="edSel" hidden>
+      <button class="btn sm" id="edDown" type="button">▼ 降半音</button>
+      <span id="edName"></span>
+      <button class="btn sm" id="edUp" type="button">▲ 升半音</button>
+      <button class="btn sm danger-sm" id="edDel" type="button">刪除</button>
+    </div>
+    <div class="row" style="gap:8px">
+      <button class="btn sm" id="edAdd" type="button" aria-pressed="false">＋ 新增音符</button>
+      <button class="btn sm" id="edRedetect" type="button">重新偵測</button>
+    </div>
+    <p class="ed-hint" id="edHint">點音符選取；拖曳移動，拖兩端改長短。空白處拖曳可以捲動，點上方時間尺設定播放位置，點左邊音名可以聽那個音。</p>
+  </div>
+</section>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -443,7 +501,7 @@ async function initStore(){
 }
 async function loadSong(id){
   const sg = (await kvGet('song:' + id)) || {};
-  songId = id; state.tracks = []; state.pos = 0; pitchRange = null;
+  songId = id; state.tracks = []; state.pos = 0; pitchRange = null; state.guideContour = null;
   state.title = sg.title || '新歌曲';
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.guideNotes = Array.isArray(sg.guideNotes) ? sg.guideNotes : [];
@@ -497,6 +555,223 @@ function stopNodes(nodes){ nodes.forEach(n => { try{ n.s.stop(); n.s.disconnect(
 function liveNode(id){ return playing && playing.nodes.find(n => n.id === id); }
 function liveReverb(){ if(playing) playing.nodes.forEach(n => { if(n.send) n.send.gain.value = state.reverb; }); }
 
+/* ---------- 音符編輯器 ---------- */
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const noteName = m => NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+const isBlack = m => [1, 3, 6, 8, 10].includes(((m % 12) + 12) % 12);
+const ed = { notes: [], sel: -1, pps: 110, rowH: 20, sx: 0, sy: 0, lo: 36, hi: 88, head: 0, add: false, undo: [], listen: { guide: true, backing: false, synth: false }, play: null, off: 0 };
+const RULER = 26, GUT = 46;
+let edCv = null, edG = null, edW = 0, edHh = 0, edDrag = null, redetectArmed = null;
+const edX = t => GUT + t * ed.pps - ed.sx;
+const edT = x => (x - GUT + ed.sx) / ed.pps;
+const edY = m => RULER + (ed.hi - m) * ed.rowH - ed.sy;
+const edM = y => Math.max(ed.lo, Math.min(ed.hi, ed.hi - Math.floor((y - RULER + ed.sy) / ed.rowH)));
+function edDur(){ return Math.max(10, songLength(), ...ed.notes.map(n => n.t1)); }
+function clampSx(v){ return Math.max(0, Math.min(v, edDur() * ed.pps - (edW - GUT) + 60)); }
+function clampSy(v){ return Math.max(0, Math.min(v, (ed.hi - ed.lo + 1) * ed.rowH - (edHh - RULER))); }
+function edStatus(t){ $('#edStatus').textContent = t; }
+function edCur(){ return ed.play ? ed.play.pos0 + Math.max(0, ctx.currentTime - ed.play.startAt) : ed.head; }
+
+function edOpen(){
+  const g = guide(); if(!g){ toast('先匯入原唱人聲'); return; }
+  if(playing) haltPlayback();
+  ed.off = trackStart(g);
+  ed.notes = state.guideNotes.map(n => ({ t0: n[0] + ed.off, t1: n[1] + ed.off, m: n[2] }));
+  ed.sel = -1; ed.undo = []; ed.add = false; ed.head = 0;
+  $('#edAdd').setAttribute('aria-pressed', 'false');
+  $('#editor').hidden = false; document.body.style.overflow = 'hidden';
+  edSize();
+  const ms = ed.notes.map(n => n.m).sort((a, b) => a - b), med = ms.length ? ms[ms.length >> 1] : 60;
+  ed.sx = 0; ed.sy = clampSy((ed.hi - med) * ed.rowH - (edHh - RULER) / 2);
+  edUpdateSel(); edDraw();
+  if(!state.guideContour) edContour();
+}
+function edClose(){
+  edStop(); $('#editor').hidden = true; document.body.style.overflow = '';
+  render(); toast('音符已儲存');
+}
+async function edContour(){
+  const g = guide(); if(!g) return;
+  edStatus('分析音高曲線中…');
+  try{ await analyzeGuide(g.buffer, p => edStatus('分析音高曲線中… ' + Math.round(p * 100) + '%')); state.guideContour = analyzeGuide.lastContour; }catch(e){}
+  edStatus(''); edDraw();
+}
+function edSize(){
+  edCv = $('#edCanvas'); const box = edCv.parentElement, dpr = window.devicePixelRatio || 1;
+  edW = box.clientWidth; edHh = box.clientHeight;
+  edCv.width = edW * dpr; edCv.height = edHh * dpr; edCv.style.width = edW + 'px'; edCv.style.height = edHh + 'px';
+  edG = edCv.getContext('2d'); edG.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function rrect(g, x, y, w, h, r){ r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function edDraw(){
+  if(!edG) return;
+  const g = edG, w = edW, h = edHh, cs = getComputedStyle(document.documentElement), C = k => cs.getPropertyValue(k).trim();
+  g.clearRect(0, 0, w, h); g.fillStyle = C('--paper'); g.fillRect(0, 0, w, h);
+  for(let m = ed.hi; m >= ed.lo; m--){
+    const y = edY(m); if(y + ed.rowH < RULER || y > h) continue;
+    if(isBlack(m)){ g.fillStyle = C('--surface'); g.fillRect(GUT, y, w - GUT, ed.rowH); }
+    if(((m % 12) + 12) % 12 === 0){ g.fillStyle = C('--line'); g.fillRect(GUT, y + ed.rowH - 1, w - GUT, 1); }
+  }
+  const t0 = edT(GUT), t1 = edT(w), step = ed.pps >= 80 ? 1 : ed.pps >= 30 ? 2 : 5;
+  g.fillStyle = C('--line');
+  for(let s = Math.max(0, Math.floor(t0 / step) * step); s <= t1; s += step){ const x = edX(s); if(x >= GUT) g.fillRect(x, RULER, 1, h - RULER); }
+  const ct = state.guideContour;
+  if(ct){
+    g.fillStyle = C('--v2'); g.globalAlpha = 0.6;
+    const i0 = Math.max(0, Math.floor((t0 - ed.off) / ct.hop)), i1 = Math.min(ct.m.length, Math.ceil((t1 - ed.off) / ct.hop));
+    for(let i = i0; i < i1; i++){ const v = ct.m[i]; if(isNaN(v)) continue; const x = edX(ed.off + i * ct.hop), y = RULER + (ed.hi - v + 0.5) * ed.rowH - ed.sy; g.fillRect(x - 1, y - 1, 2.5, 2.5); }
+    g.globalAlpha = 1;
+  }
+  ed.notes.forEach((n, i) => {
+    if(n.t1 < t0 || n.t0 > t1) return;
+    const x0 = edX(n.t0), x1 = edX(n.t1), y = edY(n.m) + 2, hh = ed.rowH - 4, ww = Math.max(3, x1 - x0);
+    g.fillStyle = i === ed.sel ? C('--v2') : C('--v1'); rrect(g, x0, y, ww, hh, 4); g.fill();
+    if(i === ed.sel){ g.fillStyle = C('--ink'); g.fillRect(x0, y - 3, 3, hh + 6); g.fillRect(x0 + ww - 3, y - 3, 3, hh + 6); }
+  });
+  const px = edX(edCur());
+  if(px >= GUT && px <= w){ g.fillStyle = C('--rec'); g.fillRect(px - 1, RULER, 2, h - RULER); }
+  g.fillStyle = C('--surface'); g.fillRect(0, RULER, GUT, h - RULER);
+  g.font = '11px system-ui, sans-serif'; g.textBaseline = 'middle';
+  for(let m = ed.hi; m >= ed.lo; m--){
+    const y = edY(m); if(y + ed.rowH < RULER || y > h || isBlack(m)) continue;
+    g.fillStyle = ((m % 12) + 12) % 12 === 0 ? C('--ink') : C('--muted'); g.fillText(noteName(m), 6, y + ed.rowH / 2);
+  }
+  g.fillStyle = C('--surface'); g.fillRect(0, 0, w, RULER);
+  g.fillStyle = C('--muted');
+  for(let s = Math.max(0, Math.floor(t0 / step) * step); s <= t1; s += step){ const x = edX(s); if(x < GUT) continue; g.fillRect(x, RULER - 6, 1, 6); g.fillText(fmtShort(s), x + 3, RULER / 2); }
+  if(px >= GUT && px <= w){ g.fillStyle = C('--rec'); g.beginPath(); g.moveTo(px - 6, 0); g.lineTo(px + 6, 0); g.lineTo(px, 9); g.fill(); }
+  g.fillStyle = C('--line'); g.fillRect(0, RULER - 1, w, 1); g.fillRect(GUT - 1, RULER, 1, h - RULER);
+}
+function edUpdateSel(){
+  const n = ed.notes[ed.sel];
+  $('#edSel').hidden = !n;
+  if(n) $('#edName').textContent = noteName(n.m) + ' · ' + (n.t1 - n.t0).toFixed(2) + ' 秒';
+}
+function edPushUndo(){ ed.undo.push(ed.notes.map(n => ({ ...n }))); if(ed.undo.length > 60) ed.undo.shift(); }
+function edCommit(){
+  const selN = ed.notes[ed.sel];
+  ed.notes.sort((a, b) => a.t0 - b.t0);
+  ed.sel = selN ? ed.notes.indexOf(selN) : -1;
+  state.guideNotes = ed.notes.map(n => [+(n.t0 - ed.off).toFixed(3), +(n.t1 - ed.off).toFixed(3), n.m]);
+  pitchRange = null; saveMeta();
+}
+function edTone(m){
+  const c = ac(), o = c.createOscillator(), g = c.createGain(), t = c.currentTime;
+  o.type = 'triangle'; o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.25, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.42);
+}
+function edHit(x, y){
+  const m = edM(y);
+  for(let i = ed.notes.length - 1; i >= 0; i--){
+    const n = ed.notes[i]; if(n.m !== m) continue;
+    const x0 = edX(n.t0), x1 = edX(n.t1);
+    if(x >= x0 - 8 && x <= x1 + 8){
+      const edge = (x1 - x0) > 30 ? 12 : 7;
+      return { i, part: x < x0 + edge ? 'l' : x > x1 - edge ? 'r' : 'move' };
+    }
+  }
+  return null;
+}
+function edPoint(e){ const r = edCv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function edDown(e){
+  e.preventDefault(); edCv.setPointerCapture(e.pointerId);
+  const { x, y } = edPoint(e);
+  if(y < RULER){ edSeek(edT(x)); edDrag = { mode: 'seek', x, y, moved: true }; return; }
+  if(x < GUT){ edTone(edM(y)); edDrag = { mode: 'pan', x, y, sx: ed.sx, sy: ed.sy, moved: false }; return; }
+  if(ed.add && !edHit(x, y)){
+    const t = Math.max(0, edT(x)), m = edM(y);
+    edPushUndo(); ed.notes.push({ t0: t, t1: t + 0.4, m }); ed.sel = ed.notes.length - 1; edTone(m);
+    edDrag = { mode: 'r', i: ed.sel, x, y, o: { ...ed.notes[ed.sel] }, moved: true, undone: true };
+    edUpdateSel(); edDraw(); return;
+  }
+  const hit = edHit(x, y);
+  if(hit){ ed.sel = hit.i; edUpdateSel(); edTone(ed.notes[hit.i].m); edDrag = { mode: hit.part, i: hit.i, x, y, o: { ...ed.notes[hit.i] }, moved: false, undone: false }; edDraw(); return; }
+  edDrag = { mode: 'pan', x, y, sx: ed.sx, sy: ed.sy, moved: false, clear: true };
+}
+function edMove(e){
+  if(!edDrag) return;
+  const { x, y } = edPoint(e), dx = x - edDrag.x, dy = y - edDrag.y;
+  if(!edDrag.moved && Math.hypot(dx, dy) < 6) return;
+  edDrag.moved = true;
+  const mode = edDrag.mode;
+  if(mode === 'seek'){ ed.head = Math.max(0, edT(x)); edDraw(); return; }
+  if(mode === 'pan'){ ed.sx = clampSx(edDrag.sx - dx); ed.sy = clampSy(edDrag.sy - dy); edDraw(); return; }
+  if(!edDrag.undone){ edPushUndo(); edDrag.undone = true; }
+  const n = ed.notes[edDrag.i], o = edDrag.o, dt = dx / ed.pps;
+  if(mode === 'move'){
+    const d = Math.max(-o.t0, dt); n.t0 = o.t0 + d; n.t1 = o.t1 + d;
+    const nm = Math.max(ed.lo, Math.min(ed.hi, o.m + Math.round(-dy / ed.rowH)));
+    if(nm !== n.m){ n.m = nm; edTone(nm); }
+  } else if(mode === 'l') n.t0 = Math.max(0, Math.min(o.t0 + dt, n.t1 - 0.05));
+  else if(mode === 'r') n.t1 = Math.max(n.t0 + 0.05, o.t1 + dt);
+  edUpdateSel(); edDraw();
+}
+function edUp(){
+  if(!edDrag) return;
+  const d = edDrag; edDrag = null;
+  if(d.mode === 'seek' && ed.play){ const t = ed.head; edStop(); ed.head = t; edPlayToggle(); }
+  if(d.mode === 'pan' && !d.moved && d.clear){ ed.sel = -1; edUpdateSel(); }
+  if(['move', 'l', 'r'].includes(d.mode) && d.moved) edCommit();
+  edDraw();
+}
+function edSeek(t){ const was = !!ed.play; if(was) edStop(); ed.head = Math.max(0, t); edDraw(); if(was) edPlayToggle(); }
+function edPlayToggle(){
+  if(ed.play){ edStop(); return; }
+  const c = ac(), startAt = c.currentTime + 0.08, pos = ed.head, nodes = [];
+  const addBuf = t => {
+    const rel = trackStart(t) - pos; if(rel < 0 && -rel >= t.buffer.duration) return;
+    const s = c.createBufferSource(); s.buffer = t.buffer; const g = c.createGain(); g.gain.value = t.kind === 'backing' ? 0.6 : 1;
+    s.connect(g); g.connect(c.destination); if(rel >= 0) s.start(startAt + rel); else s.start(startAt, -rel); nodes.push(s);
+  };
+  if(ed.listen.guide && guide()) addBuf(guide());
+  if(ed.listen.backing && backing()) addBuf(backing());
+  if(ed.listen.synth){
+    const mg = c.createGain(); mg.gain.value = 0.16; mg.connect(c.destination);
+    ed.notes.forEach(n => {
+      if(n.t1 <= pos) return;
+      const a = Math.max(n.t0, pos) - pos + startAt, b = n.t1 - pos + startAt;
+      const o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = 440 * Math.pow(2, (n.m - 69) / 12);
+      g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(1, a + 0.015); g.gain.setValueAtTime(1, Math.max(a + 0.015, b - 0.03)); g.gain.linearRampToValueAtTime(0, b);
+      o.connect(g); g.connect(mg); o.start(a); o.stop(b + 0.01); nodes.push(o);
+    });
+  }
+  if(!nodes.length){ toast('選一個要聽的：原唱、伴奏或音符'); return; }
+  ed.play = { startAt, pos0: pos, nodes }; $('#edPlay').textContent = '■ 停止'; edLoop();
+}
+function edStop(){
+  if(!ed.play) return;
+  ed.head = edCur(); ed.play.nodes.forEach(n => { try{ n.stop(); }catch(e){} }); ed.play = null;
+  $('#edPlay').textContent = '▶ 播放'; edDraw();
+}
+function edLoop(){
+  if(!ed.play) return;
+  const t = edCur(), x = edX(t);
+  if(x > edW - 40 || x < GUT) ed.sx = clampSx(t * ed.pps - (edW - GUT) * 0.2);
+  if(t > edDur() + 0.5){ edStop(); return; }
+  edDraw(); requestAnimationFrame(edLoop);
+}
+function edZoom(f){
+  const tc = edT(GUT + (edW - GUT) / 2);
+  ed.pps = Math.max(20, Math.min(500, ed.pps * f));
+  ed.sx = clampSx(tc * ed.pps - (edW - GUT) / 2); edDraw();
+}
+async function edRedetect(){
+  const btn = $('#edRedetect');
+  if(!redetectArmed){ btn.textContent = '會取代全部音符，再按一次'; redetectArmed = setTimeout(() => { redetectArmed = null; btn.textContent = '重新偵測'; }, 3000); return; }
+  clearTimeout(redetectArmed); redetectArmed = null; btn.textContent = '重新偵測';
+  const g = guide(); if(!g) return;
+  edStop(); edStatus('重新偵測中…');
+  const notes = await analyzeGuide(g.buffer, p => edStatus('重新偵測中… ' + Math.round(p * 100) + '%'));
+  state.guideContour = analyzeGuide.lastContour;
+  edPushUndo(); ed.notes = notes.map(n => ({ t0: n[0] + ed.off, t1: n[1] + ed.off, m: n[2] })); ed.sel = -1;
+  edCommit(); edUpdateSel(); edStatus(''); edDraw(); toast('已重新偵測，可以按「復原」回到之前的版本');
+}
+function edNudgeSel(dm){
+  const n = ed.notes[ed.sel]; if(!n) return;
+  edPushUndo(); n.m = Math.max(ed.lo, Math.min(ed.hi, n.m + dm)); edTone(n.m); edCommit(); edUpdateSel(); edDraw();
+}
+
 /* ---------- 歌曲庫 ---------- */
 function showView(v){
   document.body.dataset.view = v;
@@ -530,7 +805,7 @@ async function openSong(id){
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.tracks = []; state.lyrics = []; state.guideNotes = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; pitchRange = null;
+  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; pitchRange = null;
   saveMeta();
   $('#songTitle').value = state.title;
   showView('studio'); render(); updateClock();
@@ -725,7 +1000,7 @@ async function importGuide(file){
   const t = { id: uid(), kind: 'guide', name: '原唱人聲', color: GUIDE_COLOR, vol: 0.8, pan: 0, mute: true, offset: 0, nudgeMs: 0, buffer: buf };
   const bi = state.tracks.findIndex(x => x.kind === 'backing');
   state.tracks.splice(bi + 1, 0, t);
-  state.guideNotes = notes; pitchRange = null;
+  state.guideNotes = notes; state.guideContour = analyzeGuide.lastContour; pitchRange = null;
   saveAudio(t); saveMeta(); render();
   toast('抓到 ' + notes.length + ' 個音，錄主唱時會出現音高條和分數');
   if(backing() && backing().key) applyKey();
@@ -1030,6 +1305,7 @@ async function analyzeGuide(buf, onProgress){
   close();
   const merged = [];
   for(const n of notes){ const p = merged[merged.length - 1]; if(p && p[2] === n[2] && n[0] - p[1] < 0.08) p[1] = n[1]; else merged.push(n); }
+  analyzeGuide.lastContour = { hop, m: Float32Array.from(med, v => v === null ? NaN : v) };
   return merged;
 }
 function refNotes(){
@@ -1264,6 +1540,7 @@ function updateStudioLabels(){
   $('#backingLabel').textContent = backing() ? '更換伴奏' : '匯入伴奏';
   $('#guideLabel').textContent = guide() ? '更換原唱人聲' : '匯入原唱人聲';
   $('#guideHint').hidden = !!guide();
+  $('#noteEditBtn').hidden = !guide();
   const n = state.lyrics.length;
   $('#lyricsLabel').textContent = n ? '歌詞（' + n + ' 句' + (timed() ? '' : '，未對時') + '）' : '加入歌詞';
 }
@@ -1308,7 +1585,7 @@ function render(){
     del.addEventListener('click', () => {
       if(!armed){ del.classList.add('confirm'); del.textContent = '確定刪除'; armed = setTimeout(() => { armed = null; del.classList.remove('confirm'); del.innerHTML = ICON_TRASH; }, 3000); return; }
       clearTimeout(armed); if(playing) haltPlayback();
-      state.tracks = state.tracks.filter(x => x !== t); kvDel('audio:' + t.id); if(t.kind === 'guide'){ state.guideNotes = []; pitchRange = null; } saveMeta(); render();
+      state.tracks = state.tracks.filter(x => x !== t); kvDel('audio:' + t.id); if(t.kind === 'guide'){ state.guideNotes = []; state.guideContour = null; pitchRange = null; } saveMeta(); render();
     });
     q('.wave').addEventListener('click', e => {
       if(playing) return;
@@ -1413,6 +1690,22 @@ $('#playBtn').addEventListener('click', play);
 $('#homeBtn').addEventListener('click', () => { if(playing) return; state.pos = 0; updatePlayheads(); updateClock(); });
 $('#stageBtn').addEventListener('click', openStage);
 $('#newSong').addEventListener('click', newSong);
+$('#noteEditBtn').addEventListener('click', edOpen);
+$('#edClose').addEventListener('click', edClose);
+$('#edPlay').addEventListener('click', edPlayToggle);
+$('#edZoomIn').addEventListener('click', () => edZoom(1.4));
+$('#edZoomOut').addEventListener('click', () => edZoom(1 / 1.4));
+$('#edUp').addEventListener('click', () => edNudgeSel(1));
+$('#edDown').addEventListener('click', () => edNudgeSel(-1));
+$('#edDel').addEventListener('click', () => { if(ed.sel < 0) return; edPushUndo(); ed.notes.splice(ed.sel, 1); ed.sel = -1; edCommit(); edUpdateSel(); edDraw(); });
+$('#edUndo').addEventListener('click', () => { const snap = ed.undo.pop(); if(!snap){ toast('沒有可以復原的步驟'); return; } ed.notes = snap; ed.sel = -1; edCommit(); edUpdateSel(); edDraw(); });
+$('#edAdd').addEventListener('click', e => { ed.add = !ed.add; e.currentTarget.setAttribute('aria-pressed', ed.add); $('#edHint').textContent = ed.add ? '新增模式：點空白處放一個音符，按住往右拖可以拉長。再按一次「新增音符」結束。' : '點音符選取；拖曳移動，拖兩端改長短。空白處拖曳可以捲動，點上方時間尺設定播放位置，點左邊音名可以聽那個音。'; });
+$('#edRedetect').addEventListener('click', edRedetect);
+document.querySelectorAll('.chip2').forEach(b => b.addEventListener('click', () => { const k = b.dataset.l; ed.listen[k] = !ed.listen[k]; b.setAttribute('aria-pressed', ed.listen[k]); if(ed.play){ const t = edCur(); edStop(); ed.head = t; edPlayToggle(); } }));
+{ const cv = $('#edCanvas');
+  cv.addEventListener('pointerdown', edDown); cv.addEventListener('pointermove', edMove);
+  cv.addEventListener('pointerup', edUp); cv.addEventListener('pointercancel', edUp);
+  cv.addEventListener('wheel', e => { e.preventDefault(); if(e.ctrlKey){ edZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); return; } ed.sx = clampSx(ed.sx + (e.shiftKey ? e.deltaY : e.deltaX)); if(!e.shiftKey) ed.sy = clampSy(ed.sy + e.deltaY); edDraw(); }, { passive: false }); }
 $('#toLibrary').addEventListener('click', backToLibrary);
 $('#delSong').addEventListener('click', deleteSong);
 $('#songTitle').addEventListener('change', e => { state.title = e.target.value.trim() || '未命名歌曲'; e.target.value = state.title; saveMeta(); });
@@ -1454,7 +1747,7 @@ $('#syncEnd').addEventListener('click', () => endSync(false));
 $('#doneHarmony').addEventListener('click', () => { closeSheet('#doneSheet'); setStageMode('idle'); updateStage(true); beginRec(); });
 $('#doneStudio').addEventListener('click', () => { closeSheet('#doneSheet'); closeStage(); });
 
-let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawAll(); if(stageOpen()){ sizeRibbon(); updateStage(true); } }, 150); });
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawAll(); if(!$('#editor').hidden){ edSize(); ed.sy = clampSy(ed.sy); edDraw(); } if(stageOpen()){ sizeRibbon(); updateStage(true); } }, 150); });
 
 (async () => { await initStore(); setLatency(state.latencyMs); document.querySelectorAll('input[name=micMode]').forEach(r => r.checked = r.value === state.micMode); renderLibrary(); showView('library'); })();
 </script>
