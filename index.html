@@ -101,7 +101,16 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
 .st-title svg{width:1.2em;height:1.2em;flex:none;opacity:.8}
 .ribbon{position:relative;height:104px;background:rgba(0,0,0,.2)}
 .ribbon canvas{width:100%;height:100%;display:block}
-.ribbon .note{position:absolute;right:12px;bottom:8px;font-size:.78rem;color:var(--s-dim)}
+.ribbon .note{position:absolute;right:12px;bottom:6px;font-size:.78rem;color:var(--s-dim)}
+.grade{position:absolute;left:14px;right:14px;top:8px;height:22px;border-radius:11px;background:rgba(255,255,255,.12);overflow:hidden;font-size:.75rem;font-weight:700}
+.grade[hidden]{display:none}
+.grade .gfill{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,rgba(231,150,140,.55),#E7968C);transition:width .3s}
+.grade .gpts{position:absolute;left:10px;top:0;line-height:22px;color:#fff}
+.grade .mk{position:absolute;top:0;line-height:22px;transform:translateX(-50%);color:rgba(255,255,255,.55);padding-left:6px;border-left:1px solid rgba(255,255,255,.25)}
+.grade .mk.on{color:#fff}
+.badge{font-size:.8rem;padding:2px 9px;border-radius:999px;background:var(--paper);color:var(--muted);white-space:nowrap}
+.mix-row .t .mm{margin-left:auto;min-height:36px;padding:.2em .9em;font-size:.85rem}
+.mix-row .t .mm[aria-pressed="true"]{color:var(--rec);border-color:var(--rec)}
 .st-prog{height:3px;background:rgba(255,255,255,.12)}
 .st-prog i{display:block;height:100%;width:0;background:var(--hl)}
 .st-info{display:flex;align-items:center;gap:8px;padding:8px 18px 0;font-variant-numeric:tabular-nums;font-size:.95rem}
@@ -177,11 +186,32 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
       <span id="backingLabel">匯入伴奏</span>
     </label>
     <input id="backingFile" class="sr" type="file" accept="audio/*">
+    <label class="btn" for="guideFile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17h4M8 12h5M14 7h7"/></svg>
+      <span id="guideLabel">匯入原唱人聲</span>
+    </label>
+    <input id="guideFile" class="sr" type="file" accept="audio/*">
     <button class="btn" id="lyricsBtn" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>
       <span id="lyricsLabel">加入歌詞</span>
     </button>
   </div>
+
+  <p class="hint" id="guideHint">音高條和評分需要「只有人聲」的原唱檔。可以先在電腦上用 Ultimate Vocal Remover 之類的工具，把原曲分離成人聲和伴奏兩個檔案。</p>
+
+  <details class="cal" id="micBox">
+    <summary>收音設定</summary>
+    <p>如果錄起來聲音悶、像離很遠：戴有線耳機時，手機常會改用耳機線上的小麥克風。可以在這裡改選手機本身的麥克風，或換一副沒有麥克風的耳機。</p>
+    <label>麥克風
+      <select id="micSel" style="width:100%;min-height:44px;margin-top:4px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;padding:0 10px"></select>
+    </label>
+    <p id="micNote" style="margin-top:6px"></p>
+    <div class="row" style="margin:6px 0 10px" role="radiogroup" aria-label="收音模式">
+      <label><input type="radio" name="micMode" value="raw"> 原音（不處理，適合安靜的房間）</label>
+      <label><input type="radio" name="micMode" value="phone"> 手機處理（自動音量＋降噪）</label>
+    </div>
+    <button class="btn" id="micTest" type="button">試錄 4 秒</button>
+  </details>
 
   <details class="cal">
     <summary>延遲補償<span class="val" id="latVal">0 ms</span></summary>
@@ -233,7 +263,10 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>
     </button>
   </div>
-  <div class="ribbon"><canvas id="ribbon"></canvas><span class="note">音高條將在下一階段加入</span></div>
+  <div class="ribbon"><canvas id="ribbon"></canvas>
+    <div class="grade" id="grade" hidden><div class="gfill" id="gfill"></div><span class="gpts" id="gpts">0</span>
+      <span class="mk" style="left:40%">C</span><span class="mk" style="left:60%">B</span><span class="mk" style="left:75%">A</span><span class="mk" style="left:85%">A+</span><span class="mk" style="left:93%">A++</span></div>
+    <span class="note" id="ribbonNote"></span></div>
   <div class="st-prog"><i id="stProg"></i></div>
   <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><span class="take" id="stTake"></span></div>
   <div class="st-body">
@@ -308,7 +341,8 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
 const $ = s => document.querySelector(s);
 const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
 const BACKING_COLOR = '#8A8D84';
-const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0.2, monitor: false };
+const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw' };
+const GUIDE_COLOR = '#8E86AE';
 let ctx = null, micStream = null, playing = null;
 
 function ac(){
@@ -339,8 +373,8 @@ let metaTimer;
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => kvSet('meta', {
-    latencyMs: state.latencyMs, lyrics: state.lyrics, reverb: state.reverb, monitor: state.monitor,
-    tracks: state.tracks.map(({ id, kind, name, color, vol, pan, mute, offset, nudgeMs, key }) => ({ id, kind, name, color, vol, pan, mute, offset, nudgeMs, key: key || 0 }))
+    latencyMs: state.latencyMs, lyrics: state.lyrics, reverb: state.reverb, reverbV2: true, micId: state.micId, micMode: state.micMode, monitor: state.monitor, guideNotes: state.guideNotes,
+    tracks: state.tracks.map(({ id, kind, name, color, vol, pan, mute, offset, nudgeMs, key, score }) => ({ id, kind, name, color, vol, pan, mute, offset, nudgeMs, key: key || 0, score: score || null }))
   }), 300);
 }
 function saveAudio(t){
@@ -352,8 +386,10 @@ async function loadProject(){
   const meta = await kvGet('meta'); if(!meta) return;
   state.latencyMs = meta.latencyMs || 0;
   state.lyrics = Array.isArray(meta.lyrics) ? meta.lyrics : [];
-  if(typeof meta.reverb === 'number') state.reverb = meta.reverb;
+  if(meta.reverbV2 && typeof meta.reverb === 'number') state.reverb = meta.reverb;
+  state.micId = meta.micId || ''; state.micMode = meta.micMode || 'raw';
   state.monitor = !!meta.monitor;
+  state.guideNotes = Array.isArray(meta.guideNotes) ? meta.guideNotes : [];
   for(const m of meta.tracks || []){
     const a = await kvGet('audio:' + m.id); if(!a || !a.ch || !a.ch.length) continue;
     const buf = new AudioBuffer({ length: a.ch[0].length, numberOfChannels: a.ch.length, sampleRate: a.sr });
@@ -367,6 +403,7 @@ function trackStart(t){ return t.offset + t.nudgeMs / 1000; }
 function projectEnd(){ return state.tracks.reduce((m, t) => Math.max(m, trackStart(t) + t.buffer.duration), 0); }
 function viewSpan(){ return Math.max(10, projectEnd() + 1); }
 function backing(){ return state.tracks.find(t => t.kind === 'backing'); }
+function guide(){ return state.tracks.find(t => t.kind === 'guide'); }
 function songLength(){ const b = backing(); return b ? trackStart(b) + b.buffer.duration : projectEnd(); }
 function nextVoiceName(){ const n = state.tracks.filter(t => t.kind === 'voice').length; return n ? '合音 ' + n : '主唱'; }
 
@@ -374,8 +411,9 @@ function nextVoiceName(){ const n = state.tracks.filter(t => t.kind === 'voice')
 const impulses = {};
 function impulse(c){
   const sr = c.sampleRate; if(impulses[sr]) return impulses[sr];
-  const n = Math.floor(sr * 2.2), b = new AudioBuffer({ length: n, numberOfChannels: 2, sampleRate: sr });
-  for(let ch = 0; ch < 2; ch++){ const d = b.getChannelData(ch); for(let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2) * 0.5; }
+  const n = Math.floor(sr * 1.4), pre = Math.floor(sr * 0.02), b = new AudioBuffer({ length: n, numberOfChannels: 2, sampleRate: sr });
+  for(let ch = 0; ch < 2; ch++){ const d = b.getChannelData(ch); let lp = 0;
+    for(let i = pre; i < n; i++){ const k = (i - pre) / (n - pre); lp += ((Math.random() * 2 - 1) - lp) * (0.5 - 0.35 * k); d[i] = lp * Math.pow(1 - k, 4); } }
   return impulses[sr] = b;
 }
 function buildGraph(c, when, pos){
@@ -387,7 +425,9 @@ function buildGraph(c, when, pos){
     const s = c.createBufferSource(); s.buffer = t.pbuf || t.buffer;
     const g = c.createGain(); g.gain.value = t.mute ? 0 : t.vol;
     const p = c.createStereoPanner(); p.pan.value = t.pan;
-    s.connect(g); g.connect(p); p.connect(c.destination);
+    if(t.kind === 'voice'){ const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 80; s.connect(hp); hp.connect(g); }
+    else s.connect(g);
+    g.connect(p); p.connect(c.destination);
     let send = null;
     if(t.kind === 'voice'){ send = c.createGain(); send.gain.value = state.reverb; p.connect(send); send.connect(verb); }
     if(rel >= 0) s.start(when + rel); else s.start(when, -rel);
@@ -415,10 +455,49 @@ function haltPlayback(){
 }
 
 /* ---------- 收音 ---------- */
+let micKey = '';
 async function getMic(){
-  if(micStream && micStream.active) return micStream;
-  micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  const key = state.micId + '|' + state.micMode;
+  if(micStream && micStream.active && micKey === key) return micStream;
+  if(micStream) micStream.getTracks().forEach(t => t.stop());
+  const proc = state.micMode === 'phone';
+  const audio = { echoCancellation: false, noiseSuppression: proc, autoGainControl: proc, channelCount: 1 };
+  if(state.micId) audio.deviceId = { exact: state.micId };
+  try{ micStream = await navigator.mediaDevices.getUserMedia({ audio }); }
+  catch(e){
+    if(!state.micId) throw e;
+    state.micId = ''; delete audio.deviceId; saveMeta();
+    micStream = await navigator.mediaDevices.getUserMedia({ audio });
+  }
+  micKey = state.micId + '|' + state.micMode;
+  refreshMics();
   return micStream;
+}
+async function refreshMics(){
+  const sel = $('#micSel'); if(!sel || !navigator.mediaDevices.enumerateDevices) return;
+  let list = [];
+  try{ list = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput'); }catch(e){}
+  sel.innerHTML = '';
+  const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+  add('', '自動（系統預設）');
+  list.forEach((d, i) => { if(d.deviceId && d.deviceId !== 'default') add(d.deviceId, d.label || ('麥克風 ' + (i + 1))); });
+  sel.value = state.micId;
+  if(sel.value !== state.micId) sel.value = '';
+  $('#micNote').textContent = list.some(d => d.label) ? '' : '按一次「試錄 4 秒」並允許麥克風後，這裡會列出所有麥克風。';
+}
+async function testMic(){
+  if(playing) return;
+  const c = ac(), btn = $('#micTest');
+  let stream; try{ stream = await getMic(); }catch(e){ micError(e); return; }
+  btn.disabled = true; btn.textContent = '錄音中… 說幾句話';
+  const cap = startCapture(c, stream, false);
+  await sleep(4000);
+  const data = cap.stop(); let peak = 0; for(let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]));
+  btn.textContent = '播放中…';
+  const b = new AudioBuffer({ length: data.length, numberOfChannels: 1, sampleRate: c.sampleRate }); b.copyToChannel(data, 0);
+  const src = c.createBufferSource(); src.buffer = b; src.connect(c.destination); src.start();
+  toast('收音音量：' + (peak < 0.05 ? '很小，聲音會顯得遠' : peak < 0.3 ? '偏小，可以靠近一點' : peak > 0.98 ? '太大，有破音' : '剛好'));
+  src.onended = () => { btn.disabled = false; btn.textContent = '試錄 4 秒'; };
 }
 function startCapture(c, stream, monitor){
   const src = c.createMediaStreamSource(stream);
@@ -435,6 +514,7 @@ function startCapture(c, stream, monitor){
     const d = e.inputBuffer.getChannelData(0);
     if(cap.firstTime === null) cap.firstTime = e.playbackTime;
     cap.chunks.push(new Float32Array(d));
+    if(cap.onFrame) cap.onFrame(d, e.playbackTime);
     let m = 0; for(let i = 0; i < d.length; i += 4){ const v = Math.abs(d[i]); if(v > m) m = v; }
     cap.level = m;
   };
@@ -507,6 +587,26 @@ async function importBacking(file){
   }catch(e){ toast('這個檔案無法讀取，請換成 mp3、m4a 或 wav'); }
 }
 
+async function importGuide(file){
+  if(!file) return;
+  const c = ac(); let buf;
+  try{ buf = await c.decodeAudioData(await file.arrayBuffer()); }catch(e){ toast('這個檔案無法讀取，請換成 mp3、m4a 或 wav'); return; }
+  toast('分析音高中…');
+  let notes;
+  try{ notes = await analyzeGuide(buf, p => toast('分析音高中… ' + Math.round(p * 100) + '%')); }
+  catch(e){ toast('分析失敗：' + (e.message || e)); return; }
+  if(!notes.length){ toast('找不到清楚的人聲音高，請確認是分離後的人聲檔'); return; }
+  const old = guide();
+  if(old){ state.tracks = state.tracks.filter(t => t !== old); kvDel('audio:' + old.id); }
+  const t = { id: uid(), kind: 'guide', name: '原唱人聲', color: GUIDE_COLOR, vol: 0.8, pan: 0, mute: true, offset: 0, nudgeMs: 0, buffer: buf };
+  const bi = state.tracks.findIndex(x => x.kind === 'backing');
+  state.tracks.splice(bi + 1, 0, t);
+  state.guideNotes = notes; pitchRange = null;
+  saveAudio(t); saveMeta(); render();
+  toast('抓到 ' + notes.length + ' 個音，錄主唱時會出現音高條和分數');
+  if(backing() && backing().key) applyKey();
+}
+
 /* ---------- 歌詞 ---------- */
 function parseLyrics(text){
   const re = /\[(\d{1,2}):(\d{1,2}(?:\.\d{1,3})?)\]/g, out = [];
@@ -577,6 +677,7 @@ function setStageMode(m){
   $('#retakeBtn').disabled = !hasTake; $('#doneBtn').disabled = !hasTake;
   $('#stLyrics').disabled = m === 'rec';
   $('#stTake').textContent = m === 'sync' ? '對時中' : '正在錄：' + nextVoiceName();
+  updateRibbonNote(); updateGrade();
 }
 function updateStage(force){
   const len = Math.max(songLength(), state.pos);
@@ -610,7 +711,7 @@ function renderLyrics(){
   });
 }
 
-let counting = false, countTimer = null;
+let counting = false, countTimer = null, gradeTick = 0;
 function recToggle(){
   if(stageMode === 'sync') return;
   if(counting){ cancelCountdown(); return; }
@@ -639,10 +740,14 @@ function cancelCountdown(){
 async function startRec(){
   const c = ac();
   let stream; try{ stream = await getMic(); }catch(e){ micError(e); return; }
-  if(!take) take = { startPos: state.pos, segs: [] };
+  if(!take) take = { startPos: state.pos, segs: [], trail: [], stats: {}, notes: refNotes(), scoring: scoringActive() };
+  const from = state.pos;
+  take.trail = take.trail.filter(q => q.t < from);
+  take.notes.forEach((n, i) => { if(n.t0 >= from - 0.05) delete take.stats[i]; });
   const cap = startCapture(c, stream, state.monitor);
   const startAt = c.currentTime + 0.3;
   playing = { mode: 'rec', startAt, pos0: state.pos, nodes: buildGraph(c, startAt, state.pos), cap };
+  const pl = playing; cap.onFrame = (d, pt) => onLiveFrame(pl, d, pt);
   holdWake(); setStageMode('rec'); loop();
 }
 function segmentFrom(p){
@@ -665,7 +770,7 @@ function pauseRec(){
 function retake(){
   if(playing && playing.mode === 'rec'){ const p = playing; playing = null; stopNodes(p.nodes); p.cap.stop(); releaseWake(); }
   const back = take ? take.startPos : 0;
-  take = null; levels = []; state.pos = back; stageMeter(0);
+  take = null; levels = []; state.pos = back; stageMeter(0); updateGrade();
   setStageMode('idle'); updateStage(true); toast('這一次的錄音已清除');
 }
 function mergeTake(segs, sr){
@@ -679,13 +784,18 @@ function finishTake(){
   if(playing && playing.mode === 'rec') pauseRec();
   if(!take || !take.segs.length){ toast('還沒有錄到聲音'); return; }
   const sr = ctx.sampleRate, m = mergeTake(take.segs, sr);
+  let pk = 0; for(let i = 0; i < m.data.length; i++){ const v = Math.abs(m.data[i]); if(v > pk) pk = v; }
+  if(pk > 0.001 && pk < 0.89){ const gn = Math.min(10, 0.89 / pk); for(let i = 0; i < m.data.length; i++) m.data[i] *= gn; }
   const buf = new AudioBuffer({ length: m.data.length, numberOfChannels: 1, sampleRate: sr });
   buf.copyToChannel(m.data, 0);
   const voices = state.tracks.filter(t => t.kind === 'voice').length;
-  const t = { id: uid(), kind: 'voice', name: nextVoiceName(), color: PALETTE[voices % PALETTE.length], vol: 1, pan: 0, mute: false, offset: m.offset, nudgeMs: 0, buffer: buf };
+  const scored = take.scoring ? takeScore(take) : null;
+  const t = { id: uid(), kind: 'voice', name: nextVoiceName(), color: PALETTE[voices % PALETTE.length], vol: 1, pan: 0, mute: false, offset: m.offset, nudgeMs: 0, buffer: buf,
+    score: scored === null ? null : { pts: Math.round(scored * 100), grade: gradeOf(scored) } };
   state.tracks.push(t); saveAudio(t); saveMeta();
   take = null; levels = []; state.pos = 0;
   setStageMode('idle'); updateStage(true);
+  $('#doneTitle').textContent = t.score ? '這次 ' + t.score.pts + ' 分（' + t.score.grade + '）' : '錄好了';
   $('#doneText').textContent = '「' + t.name + '」已經存進工作室。要接著疊下一軌合音，還是先回去聽聽看？';
   openSheet('#doneSheet');
 }
@@ -724,6 +834,112 @@ function endSync(done){
   toast(done ? '對時完成，歌詞會跟著捲動了' : '已結束對時，對好的 ' + stamped + ' 句會保留');
 }
 
+/* ---------- 音高偵測（YIN） ---------- */
+const toMidi = f => 69 + 12 * Math.log2(f / 440);
+function yin(x, W, tauMin, tauMax, sr, thresh){
+  const d = new Float32Array(tauMax + 2);
+  for(let tau = 1; tau <= tauMax + 1; tau++){ let s = 0; for(let j = 0; j < W; j++){ const v = x[j] - x[j + tau]; s += v * v; } d[tau] = s; }
+  let run = 0; d[0] = 1;
+  for(let tau = 1; tau <= tauMax + 1; tau++){ run += d[tau]; d[tau] = run ? d[tau] * tau / run : 1; }
+  let tau = tauMin;
+  for(; tau <= tauMax; tau++){ if(d[tau] < thresh){ while(tau + 1 <= tauMax && d[tau + 1] < d[tau]) tau++; break; } }
+  if(tau > tauMax) return null;
+  const a = d[tau - 1], b = d[tau], c = d[tau + 1], den = a + c - 2 * b;
+  const t = den ? tau + (a - c) / (2 * den) : tau;
+  const f = sr / t;
+  return (f >= 70 && f <= 1100) ? f : null;
+}
+const liveBuf = new Float32Array(1024);
+function detectLive(d, sr){
+  const F = Math.max(1, Math.round(sr / 12000)), n = Math.min(liveBuf.length, Math.floor(d.length / F)), sr2 = sr / F;
+  let e = 0;
+  for(let i = 0; i < n; i++){ let v = 0; for(let k = 0; k < F; k++) v += d[i * F + k]; v /= F; liveBuf[i] = v; e += v * v; }
+  if(Math.sqrt(e / n) < 0.012) return null;
+  const tauMax = Math.ceil(sr2 / 70), W = n - tauMax - 2;
+  if(W < 128) return null;
+  const f = yin(liveBuf, W, Math.floor(sr2 / 1100), tauMax, sr2, 0.2);
+  return f ? toMidi(f) : null;
+}
+async function analyzeGuide(buf, onProgress){
+  const SR = 8000, len = Math.ceil(buf.duration * SR);
+  const oc = new OfflineAudioContext(1, len, SR);
+  const src = oc.createBufferSource(); src.buffer = buf; src.connect(oc.destination); src.start();
+  const x = (await oc.startRendering()).getChannelData(0);
+  const W = 400, HOP = 160, tauMax = Math.ceil(SR / 70), tauMin = Math.floor(SR / 1100), hop = HOP / SR;
+  const count = Math.max(0, Math.floor((len - W - tauMax - 2) / HOP));
+  const rms = new Float32Array(count); let peak = 0;
+  for(let k = 0; k < count; k++){ let e = 0; const o = k * HOP; for(let j = 0; j < W; j++) e += x[o + j] * x[o + j]; rms[k] = Math.sqrt(e / W); if(rms[k] > peak) peak = rms[k]; }
+  const gate = Math.max(0.004, peak * 0.06), raw = new Array(count).fill(null);
+  for(let k = 0; k < count; k++){
+    if(rms[k] >= gate){ const f = yin(x.subarray(k * HOP), W, tauMin, tauMax, SR, 0.15); if(f) raw[k] = toMidi(f); }
+    if(k % 300 === 0){ if(onProgress) onProgress(k / count); await sleep(0); }
+  }
+  const med = raw.map((v, i) => { if(v === null) return null; const w = []; for(let q = -2; q <= 2; q++){ const u = raw[i + q]; if(u != null) w.push(u); } w.sort((a, b) => a - b); return w[w.length >> 1]; });
+  const notes = []; let cur = null;
+  const close = () => {
+    if(!cur) return;
+    const t0 = cur.s * hop, t1 = (cur.e + 1) * hop;
+    if(t1 - t0 >= 0.1){ const v = cur.v.slice().sort((a, b) => a - b); notes.push([+t0.toFixed(3), +t1.toFixed(3), Math.round(v[v.length >> 1])]); }
+    cur = null;
+  };
+  for(let i = 0; i < med.length; i++){
+    const v = med[i];
+    if(v === null){ if(cur && ++cur.gap > 2) close(); continue; }
+    if(cur && Math.abs(v - cur.avg) < 1){ cur.v.push(v); cur.e = i; cur.gap = 0; cur.avg += (v - cur.avg) * 0.15; }
+    else { close(); cur = { s: i, e: i, v: [v], avg: v, gap: 0 }; }
+  }
+  close();
+  const merged = [];
+  for(const n of notes){ const p = merged[merged.length - 1]; if(p && p[2] === n[2] && n[0] - p[1] < 0.08) p[1] = n[1]; else merged.push(n); }
+  return merged;
+}
+function refNotes(){
+  const g = guide(); if(!g || !state.guideNotes.length) return [];
+  const off = trackStart(g), key = (backing() && backing().key) || 0;
+  return state.guideNotes.map(n => ({ t0: n[0] + off, t1: n[1] + off, m: n[2] + key }));
+}
+const circ = (a, b) => { const d = (((a - b) % 12) + 12) % 12; return Math.min(d, 12 - d); };
+const circSigned = (a, b) => { const d = (((a - b) % 12) + 12) % 12; return d > 6 ? d - 12 : d; };
+function findNote(notes, t){
+  let lo = 0, hi = notes.length - 1, ans = -1;
+  while(lo <= hi){ const mid = (lo + hi) >> 1; if(notes[mid].t0 <= t){ ans = mid; lo = mid + 1; } else hi = mid - 1; }
+  return (ans >= 0 && t < notes[ans].t1) ? ans : -1;
+}
+const scoringActive = () => state.guideNotes.length > 0 && !!guide() && !state.tracks.some(t => t.kind === 'voice');
+function takeScore(tk){
+  let num = 0, den = 0;
+  for(const i in tk.stats){ const st = tk.stats[i]; if(st.total < 2) continue; const n = tk.notes[i], dur = n.t1 - n.t0; num += st.hit / st.total * dur; den += dur; }
+  return den ? num / den : 0;
+}
+const gradeOf = p => p >= 0.93 ? 'A++' : p >= 0.85 ? 'A+' : p >= 0.75 ? 'A' : p >= 0.6 ? 'B' : p >= 0.4 ? 'C' : 'D';
+function updateGrade(){
+  const on = !!(take && take.scoring) || (!take && scoringActive());
+  $('#grade').hidden = !on;
+  if(!on) return;
+  const p = take ? takeScore(take) : 0;
+  $('#gfill').style.width = (p * 100) + '%';
+  $('#gpts').textContent = Math.round(p * 100);
+  const g = gradeOf(p);
+  document.querySelectorAll('#grade .mk').forEach(m => m.classList.toggle('on', m.textContent === g));
+}
+function updateRibbonNote(){
+  let t = '';
+  if(!state.guideNotes.length || !guide()) t = '匯入原唱人聲後，這裡會出現音高條';
+  else if(!scoringActive()) t = '合音不評分，灰色條是主旋律';
+  $('#ribbonNote').textContent = t;
+}
+function onLiveFrame(p, d, pt){
+  const sr = ctx.sampleRate;
+  const t = p.pos0 + (pt + d.length / 2 / sr - p.startAt) - state.latencyMs / 1000;
+  if(t < p.pos0 || !take) return;
+  const m = detectLive(d, sr);
+  if(m !== null){ take.trail.push({ t, m }); if(take.trail.length > 20000) take.trail.splice(0, 5000); }
+  if(take.scoring){
+    const i = findNote(take.notes, t);
+    if(i >= 0){ const st = take.stats[i] || (take.stats[i] = { hit: 0, total: 0 }); st.total++; if(m !== null && circ(m, take.notes[i].m) <= 1) st.hit++; }
+  }
+}
+
 /* ---------- 音量帶 ---------- */
 function sizeRibbon(){ const cv = $('#ribbon'), dpr = window.devicePixelRatio || 1; cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; }
 function drawRibbon(){
@@ -735,11 +951,50 @@ function drawRibbon(){
   const nowX = Math.round(w * 0.22);
   const grd = g.createLinearGradient(0, 0, nowX, 0); grd.addColorStop(0, 'rgba(224,96,122,0)'); grd.addColorStop(1, 'rgba(224,96,122,.35)');
   g.fillStyle = grd; g.fillRect(0, 0, nowX, h);
+  const notes = take ? take.notes : refNotes();
+  if(notes.length){ drawPitch(g, w, h, nowX, notes); return; }
   g.fillStyle = '#E7968C';
   for(let i = 0; i < levels.length; i++){
     const x = nowX - (levels.length - i) * 2; if(x < 0) continue;
     const bh = Math.max(1, Math.min(1, levels[i] * 1.3) * h * 0.8);
     g.fillRect(x, (h - bh) / 2, 1.4, bh);
+  }
+  g.fillStyle = '#EEE9E4'; g.fillRect(nowX, 0, 2, h);
+}
+let pitchRange = null;
+function drawPitch(g, w, h, nowX, notes){
+  if(!pitchRange || pitchRange.n !== notes || pitchRange.h !== h){
+    let lo = Infinity, hi = -Infinity; notes.forEach(n => { lo = Math.min(lo, n.m); hi = Math.max(hi, n.m); });
+    lo -= 2; hi += 2; if(hi - lo < 12){ const c = (hi + lo) / 2; lo = c - 6; hi = c + 6; }
+    pitchRange = { n: notes, h, lo, hi };
+  }
+  const { lo, hi } = pitchRange, top = take && take.scoring ? 34 : 10, bot = 14;
+  const y = m => h - bot - (m - lo) / (hi - lo) * (h - top - bot);
+  const AHEAD = 4, pps = (w - nowX) / AHEAD, pos = state.pos, from = pos - nowX / pps, to = pos + AHEAD;
+  const bh = Math.max(5, (h - top - bot) / (hi - lo) * 0.9);
+  for(let i = 0; i < notes.length; i++){
+    const n = notes[i]; if(n.t1 < from || n.t0 > to) continue;
+    const x0 = nowX + (n.t0 - pos) * pps, x1 = nowX + (n.t1 - pos) * pps;
+    const st = take && take.stats[i];
+    let col = 'rgba(255,255,255,.42)';
+    if(take && take.scoring && st && st.total >= 2) col = st.hit / st.total >= 0.5 ? '#E7968C' : 'rgba(255,255,255,.18)';
+    else if(n.t1 < pos) col = 'rgba(255,255,255,.22)';
+    g.fillStyle = col;
+    const yy = y(n.m) - bh / 2, ww = Math.max(2, x1 - x0 - 1), r = Math.min(bh / 2, ww / 2);
+    g.beginPath(); g.moveTo(x0 + r, yy); g.arcTo(x0 + ww, yy, x0 + ww, yy + bh, r); g.arcTo(x0 + ww, yy + bh, x0, yy + bh, r); g.arcTo(x0, yy + bh, x0, yy, r); g.arcTo(x0, yy, x0 + ww, yy, r); g.fill();
+  }
+  if(take && take.trail.length){
+    g.fillStyle = '#FFD9D2';
+    let last = null;
+    for(let k = take.trail.length - 1; k >= 0; k--){
+      const q = take.trail[k]; if(q.t < from) break; if(q.t > pos + 0.1) continue;
+      const i = findNote(notes, q.t); let m = q.m;
+      if(i >= 0) m = notes[i].m + circSigned(q.m, notes[i].m);
+      else if(last !== null) m = last + circSigned(q.m, last);
+      while(m > hi) m -= 12; while(m < lo) m += 12;
+      last = m;
+      g.beginPath(); g.arc(nowX + (q.t - pos) * pps, y(m), 2.2, 0, Math.PI * 2); g.fill();
+    }
   }
   g.fillStyle = '#EEE9E4'; g.fillRect(nowX, 0, 2, h);
 }
@@ -784,16 +1039,21 @@ async function pitchShift(buf, semis, onProgress, cancelled){
 let keyJob = 0, keyTimer = null;
 const keyLabel = k => k ? (k > 0 ? '+' + k : '−' + (-k)) : '原調';
 function keyStatus(text){ const el = document.querySelector('.keyrow .ks'); if(el) el.textContent = text; }
-function scheduleKey(t){ clearTimeout(keyTimer); keyTimer = setTimeout(() => applyKey(t), 450); }
-async function applyKey(t){
-  const job = ++keyJob, want = t.key || 0;
-  saveMeta();
-  if(!want){ t.pbuf = null; keyStatus(''); toast('伴奏回到原調'); return; }
-  keyStatus('處理中…');
-  const b = await pitchShift(t.buffer, want, p => { if(job === keyJob) keyStatus('處理中 ' + Math.round(p * 100) + '%'); }, () => job !== keyJob);
-  if(!b || job !== keyJob) return;
-  t.pbuf = b; keyStatus('');
-  toast('伴奏已調到 ' + keyLabel(want) + (playing ? '，下次播放時生效' : ''));
+function scheduleKey(){ clearTimeout(keyTimer); keyTimer = setTimeout(applyKey, 450); }
+async function applyKey(){
+  const b0 = backing(); if(!b0) return;
+  const job = ++keyJob, want = b0.key || 0, list = [b0, guide()].filter(Boolean);
+  saveMeta(); pitchRange = null;
+  if(!want){ list.forEach(t => t.pbuf = null); keyStatus(''); toast('伴奏回到原調'); return; }
+  for(let i = 0; i < list.length; i++){
+    const t = list[i], label = list.length > 1 ? (i ? '人聲 ' : '伴奏 ') : '';
+    keyStatus('處理中…');
+    const b = await pitchShift(t.buffer, want, p => { if(job === keyJob) keyStatus(label + Math.round(p * 100) + '%'); }, () => job !== keyJob);
+    if(!b || job !== keyJob) return;
+    t.pbuf = b;
+  }
+  keyStatus('');
+  toast('已調到 ' + keyLabel(want) + (playing ? '，下次播放時生效' : ''));
 }
 
 /* ---------- 調音台 ---------- */
@@ -802,18 +1062,22 @@ function openMixer(){
   if(!state.tracks.length){ box.innerHTML = '<p>還沒有音軌。</p>'; }
   state.tracks.forEach(t => {
     const d = document.createElement('div'); d.className = 'mix-row'; d.style.setProperty('--tc', t.color);
-    d.innerHTML = `<div class="t"><span class="swatch"></span><span class="n"></span></div>
+    d.innerHTML = `<div class="t"><span class="swatch"></span><span class="n"></span><button type="button" class="btn mm"></button></div>
       <div class="g"><label>音量 <output class="ov"></output><input type="range" class="rv" min="0" max="1.5" step="0.01"></label>
       <label>左右 <output class="op"></output><input type="range" class="rp" min="-1" max="1" step="0.05"></label></div>`;
     d.querySelector('.n').textContent = t.name;
+    const mm = d.querySelector('.mm');
+    const showM = () => { mm.textContent = t.mute ? '已靜音' : '播放中'; mm.setAttribute('aria-pressed', t.mute); };
+    showM();
+    mm.addEventListener('click', () => { t.mute = !t.mute; showM(); const n = liveNode(t.id); if(n) n.g.gain.value = t.mute ? 0 : t.vol; saveMeta(); });
     if(t.kind === 'backing'){
       const kr = document.createElement('div'); kr.className = 'keyrow';
       kr.innerHTML = '<span>升降 Key</span><button type="button" class="km" aria-label="降半音">−</button><output class="kv"></output><button type="button" class="kp" aria-label="升半音">＋</button><span class="ks"></span>';
       const show = () => kr.querySelector('.kv').textContent = keyLabel(t.key || 0);
       const lock = playing && playing.mode === 'rec';
       kr.querySelectorAll('button').forEach(b => b.disabled = lock);
-      kr.querySelector('.km').addEventListener('click', () => { t.key = Math.max(-6, (t.key || 0) - 1); show(); scheduleKey(t); });
-      kr.querySelector('.kp').addEventListener('click', () => { t.key = Math.min(6, (t.key || 0) + 1); show(); scheduleKey(t); });
+      kr.querySelector('.km').addEventListener('click', () => { t.key = Math.max(-6, (t.key || 0) - 1); show(); scheduleKey(); });
+      kr.querySelector('.kp').addEventListener('click', () => { t.key = Math.min(6, (t.key || 0) + 1); show(); scheduleKey(); });
       show(); d._kr = kr;
     }
     const sv = () => d.querySelector('.ov').textContent = Math.round(t.vol * 100) + '%';
@@ -855,6 +1119,8 @@ const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 
 function updateStudioLabels(){
   $('#backingLabel').textContent = backing() ? '更換伴奏' : '匯入伴奏';
+  $('#guideLabel').textContent = guide() ? '更換原唱人聲' : '匯入原唱人聲';
+  $('#guideHint').hidden = !!guide();
   const n = state.lyrics.length;
   $('#lyricsLabel').textContent = n ? '歌詞（' + n + ' 句' + (timed() ? '' : '，未對時') + '）' : '加入歌詞';
 }
@@ -869,7 +1135,7 @@ function render(){
     li.innerHTML = `
       <div class="track-head">
         <span class="swatch"></span>
-        <input class="name" aria-label="音軌名稱">
+        <input class="name" aria-label="音軌名稱">${t.score ? '<span class="badge">' + t.score.grade + ' · ' + t.score.pts + '</span>' : ''}
         <button class="icon mute" type="button" aria-label="靜音" aria-pressed="${t.mute}">${t.mute ? ICON_MUTE_ON : ICON_MUTE_OFF}</button>
         <button class="icon del" type="button" aria-label="刪除這一軌">${ICON_TRASH}</button>
       </div>
@@ -889,7 +1155,7 @@ function render(){
     showVol(); showPan(); showNudge();
     q('.r-vol').addEventListener('input', e => { t.vol = +e.target.value; showVol(); const n = liveNode(t.id); if(n && !t.mute) n.g.gain.value = t.vol; saveMeta(); });
     q('.r-pan').addEventListener('input', e => { t.pan = +e.target.value; showPan(); const n = liveNode(t.id); if(n) n.p.pan.value = t.pan; saveMeta(); });
-    q('.r-nudge').addEventListener('input', e => { t.nudgeMs = +e.target.value; showNudge(); drawWave(q('canvas'), t); saveMeta(); });
+    q('.r-nudge').addEventListener('input', e => { t.nudgeMs = +e.target.value; pitchRange = null; showNudge(); drawWave(q('canvas'), t); saveMeta(); });
     q('.mute').addEventListener('click', e => {
       t.mute = !t.mute; li.classList.toggle('muted', t.mute);
       e.currentTarget.setAttribute('aria-pressed', t.mute); e.currentTarget.innerHTML = t.mute ? ICON_MUTE_ON : ICON_MUTE_OFF;
@@ -899,7 +1165,7 @@ function render(){
     del.addEventListener('click', () => {
       if(!armed){ del.classList.add('confirm'); del.textContent = '確定刪除'; armed = setTimeout(() => { armed = null; del.classList.remove('confirm'); del.innerHTML = ICON_TRASH; }, 3000); return; }
       clearTimeout(armed); if(playing) haltPlayback();
-      state.tracks = state.tracks.filter(x => x !== t); kvDel('audio:' + t.id); saveMeta(); render();
+      state.tracks = state.tracks.filter(x => x !== t); kvDel('audio:' + t.id); if(t.kind === 'guide'){ state.guideNotes = []; pitchRange = null; } saveMeta(); render();
     });
     q('.wave').addEventListener('click', e => {
       if(playing) return;
@@ -935,6 +1201,7 @@ function loop(){
     if(mode === 'rec'){
       levels.push(playing.cap.level); if(levels.length > 600) levels.shift();
       stageMeter(playing.cap.level);
+      if(take && take.scoring && (++gradeTick % 10 === 0)) updateGrade();
       if(backing() && state.pos > songLength() + 0.8){ pauseRec(); toast('歌曲結束了，可以按「完成」'); return; }
     }
     if(mode === 'sync' && state.pos > songLength() + 0.3){ endSync(false); return; }
@@ -1007,6 +1274,11 @@ $('#calBtn').addEventListener('click', calibrate);
 $('#latRange').addEventListener('input', e => setLatency(+e.target.value));
 $('#backingFile').addEventListener('change', e => { importBacking(e.target.files[0]); e.target.value = ''; });
 $('#lyricsBtn').addEventListener('click', openLyricsSheet);
+$('#micSel').addEventListener('change', e => { state.micId = e.target.value; saveMeta(); toast('下次錄音會使用這個麥克風'); });
+document.querySelectorAll('input[name=micMode]').forEach(r => r.addEventListener('change', e => { state.micMode = e.target.value; saveMeta(); }));
+$('#micTest').addEventListener('click', testMic);
+$('#micBox').addEventListener('toggle', e => { if(e.target.open) refreshMics(); });
+$('#guideFile').addEventListener('change', e => { importGuide(e.target.files[0]); e.target.value = ''; });
 
 $('#stClose').addEventListener('click', closeStage);
 $('#stLyrics').addEventListener('click', () => { if(stageMode === 'sync' || stageMode === 'rec') return; openLyricsSheet(); });
@@ -1036,7 +1308,7 @@ $('#doneStudio').addEventListener('click', () => { closeSheet('#doneSheet'); clo
 
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawAll(); if(stageOpen()){ sizeRibbon(); updateStage(true); } }, 150); });
 
-(async () => { await loadProject(); setLatency(state.latencyMs); render(); updateClock(); const b = backing(); if(b && b.key) applyKey(b); })();
+(async () => { await loadProject(); setLatency(state.latencyMs); document.querySelectorAll('input[name=micMode]').forEach(r => r.checked = r.value === state.micMode); render(); updateClock(); const b = backing(); if(b && b.key) applyKey(); })();
 </script>
 </body>
 </html>
