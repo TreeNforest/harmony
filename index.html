@@ -83,6 +83,21 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
 .btn.rec{background:var(--rec);color:var(--onrec);border-color:transparent;font-weight:700;flex:1;max-width:220px}
 @media (max-width:440px){.buttons .lbl{display:none}.buttons .btn:not(.rec){width:48px;padding:0}}
 @media (min-width:600px){.buttons{width:auto;margin-left:auto}}
+body[data-view="library"] .transport{display:none}
+.sec{font-size:1.05rem;margin:36px 0 4px;color:var(--muted);font-weight:700;letter-spacing:.1em}
+#songList{list-style:none;margin:18px 0 0;padding:0}
+.song{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 4px;border:none;border-bottom:1px solid var(--line);background:none;cursor:pointer;min-height:64px}
+.song:hover .st{color:var(--v1)}
+.song .st{font-size:1.15rem;font-weight:700;display:block}
+.song .ss{font-size:.85rem;color:var(--muted);display:block}
+.song .badge{margin-left:auto}
+.back-link{display:inline-flex;align-items:center;gap:4px;border:none;background:none;color:var(--muted);min-height:44px;padding:0 6px 0 0;cursor:pointer}
+.back-link svg{width:20px;height:20px}
+.song-title{display:block;width:100%;border:none;background:transparent;font-size:1.9rem;font-weight:700;padding:4px 6px;margin:2px 0 14px;border-radius:8px}
+.song-title:hover,.song-title:focus{background:var(--surface)}
+.btn.danger{margin-top:40px;color:var(--rec);border-color:var(--rec);background:transparent}
+.chip{border:1px solid rgba(255,255,255,.25);background:none;color:var(--s-dim);border-radius:999px;font-size:.8rem;padding:2px 10px;min-height:30px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--hl);color:var(--hl)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));
   max-width:min(90vw,480px);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;
   font-size:.95rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
@@ -177,28 +192,14 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
 </head>
 <body>
 <main>
+<section id="libraryView">
   <h1><span class="en">Harmonia</span><span class="zh">和聲本</span></h1>
   <p class="lede">先錄主唱，再戴著耳機一邊聽、一邊把合音疊上去。要疊幾軌都可以。</p>
-
-  <div class="row">
-    <label class="btn" for="backingFile">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
-      <span id="backingLabel">匯入伴奏</span>
-    </label>
-    <input id="backingFile" class="sr" type="file" accept="audio/*">
-    <label class="btn" for="guideFile">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17h4M8 12h5M14 7h7"/></svg>
-      <span id="guideLabel">匯入原唱人聲</span>
-    </label>
-    <input id="guideFile" class="sr" type="file" accept="audio/*">
-    <button class="btn" id="lyricsBtn" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>
-      <span id="lyricsLabel">加入歌詞</span>
-    </button>
-  </div>
-
-  <p class="hint" id="guideHint">音高條和評分需要「只有人聲」的原唱檔。可以先在電腦上用 Ultimate Vocal Remover 之類的工具，把原曲分離成人聲和伴奏兩個檔案。</p>
-
+  <button class="btn primary" id="newSong" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>新增歌曲</button>
+  <ul id="songList"></ul>
+  <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。</p>
+  <h2 class="sec">設定</h2>
   <details class="cal" id="micBox">
     <summary>收音設定</summary>
     <p>如果錄起來聲音悶、像離很遠：戴有線耳機時，手機常會改用耳機線上的小麥克風。可以在這裡改選手機本身的麥克風，或換一副沒有麥克風的耳機。</p>
@@ -222,12 +223,39 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
     </label>
   </details>
 
+</section>
+
+<section id="studioView" hidden>
+  <button class="back-link" id="toLibrary" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>歌曲庫</button>
+  <input id="songTitle" class="song-title" aria-label="歌名" maxlength="60">
+  <div class="row">
+    <label class="btn" for="backingFile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+      <span id="backingLabel">匯入伴奏</span>
+    </label>
+    <input id="backingFile" class="sr" type="file" accept="audio/*">
+    <label class="btn" for="guideFile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17h4M8 12h5M14 7h7"/></svg>
+      <span id="guideLabel">匯入原唱人聲</span>
+    </label>
+    <input id="guideFile" class="sr" type="file" accept="audio/*">
+    <button class="btn" id="lyricsBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>
+      <span id="lyricsLabel">加入歌詞</span>
+    </button>
+  </div>
+
+  <p class="hint" id="guideHint">音高條和評分需要「只有人聲」的原唱檔。可以先在電腦上用 Ultimate Vocal Remover 之類的工具，把原曲分離成人聲和伴奏兩個檔案。</p>
+
   <ul id="tracks"></ul>
   <div class="empty" id="empty">
     <strong>還沒有任何音軌。</strong><br>
-    可以先匯入伴奏和歌詞，再按「進入錄音」。錄合音時請戴有線耳機，免得麥克風收到前一軌的聲音。
+    先匯入伴奏和歌詞，再按「進入錄音」。錄合音時請戴耳機，免得麥克風收到前一軌的聲音。
   </div>
   <p class="hint" id="hint" hidden>點波形可以移動播放的開始位置。</p>
+  <button class="btn danger" id="delSong" type="button">刪除這首歌</button>
+</section>
 </main>
 
 <div class="transport">
@@ -265,10 +293,10 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
   </div>
   <div class="ribbon"><canvas id="ribbon"></canvas>
     <div class="grade" id="grade" hidden><div class="gfill" id="gfill"></div><span class="gpts" id="gpts">0</span>
-      <span class="mk" style="left:40%">C</span><span class="mk" style="left:60%">B</span><span class="mk" style="left:75%">A</span><span class="mk" style="left:85%">A+</span><span class="mk" style="left:93%">A++</span></div>
+      <span class="mk" style="left:30%">C</span><span class="mk" style="left:50%">B</span><span class="mk" style="left:70%">A</span><span class="mk" style="left:80%">A+</span><span class="mk" style="left:90%">A++</span></div>
     <span class="note" id="ribbonNote"></span></div>
   <div class="st-prog"><i id="stProg"></i></div>
-  <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><span class="take" id="stTake"></span></div>
+  <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><span class="take" id="stTake"></span></div>
   <div class="st-body">
     <div class="st-meter"><div class="bar" id="stMeter"><i></i></div>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0M12 17v4"/></svg></div>
@@ -341,7 +369,8 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
 const $ = s => document.querySelector(s);
 const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
 const BACKING_COLOR = '#8A8D84';
-const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw' };
+const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲' };
+let songId = null, songs = [];
 const GUIDE_COLOR = '#8E86AE';
 let ctx = null, micStream = null, playing = null;
 
@@ -370,27 +399,56 @@ const kvSet = (k, v) => kv('readwrite', s => s.put(v, k));
 const kvDel = k => kv('readwrite', s => s.delete(k));
 
 let metaTimer;
+const trackMeta = t => { const { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key, score } = t; return { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key: key || 0, score: score || null }; };
+function songSummary(id, title, tracks){
+  const voices = tracks.filter(t => t.kind === 'voice');
+  const best = voices.reduce((b, t) => (t.score && (!b || t.score.pts > b.pts)) ? t.score : b, null);
+  return { id, title, updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length, best };
+}
 function saveMeta(){
   clearTimeout(metaTimer);
-  metaTimer = setTimeout(() => kvSet('meta', {
-    latencyMs: state.latencyMs, lyrics: state.lyrics, reverb: state.reverb, reverbV2: true, micId: state.micId, micMode: state.micMode, monitor: state.monitor, guideNotes: state.guideNotes,
-    tracks: state.tracks.map(({ id, kind, name, color, vol, pan, mute, offset, nudgeMs, key, score }) => ({ id, kind, name, color, vol, pan, mute, offset, nudgeMs, key: key || 0, score: score || null }))
-  }), 300);
+  metaTimer = setTimeout(() => {
+    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro });
+    if(!songId) return;
+    kvSet('song:' + songId, { title: state.title, lyrics: state.lyrics, guideNotes: state.guideNotes, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    const sum = songSummary(songId, state.title, state.tracks);
+    songs = [sum, ...songs.filter(x => x.id !== songId)];
+    kvSet('songs', songs);
+  }, 300);
 }
 function saveAudio(t){
   const b = t.buffer; const ch = [];
   for(let i = 0; i < b.numberOfChannels; i++) ch.push(b.getChannelData(i));
   return kvSet('audio:' + t.id, { sr: b.sampleRate, ch });
 }
-async function loadProject(){
-  const meta = await kvGet('meta'); if(!meta) return;
-  state.latencyMs = meta.latencyMs || 0;
-  state.lyrics = Array.isArray(meta.lyrics) ? meta.lyrics : [];
-  if(meta.reverbV2 && typeof meta.reverb === 'number') state.reverb = meta.reverb;
-  state.micId = meta.micId || ''; state.micMode = meta.micMode || 'raw';
-  state.monitor = !!meta.monitor;
-  state.guideNotes = Array.isArray(meta.guideNotes) ? meta.guideNotes : [];
-  for(const m of meta.tracks || []){
+function applySettings(st){
+  if(!st) return;
+  state.latencyMs = st.latencyMs || 0; state.micId = st.micId || ''; state.micMode = st.micMode || 'raw'; state.monitor = !!st.monitor;
+  if(typeof st.skipIntro === 'boolean') state.skipIntro = st.skipIntro;
+}
+async function initStore(){
+  const st = await kvGet('settings'); applySettings(st);
+  songs = (await kvGet('songs')) || [];
+  if(!songs.length){
+    const meta = await kvGet('meta');
+    if(meta && meta.tracks && meta.tracks.length){
+      const id = uid(), b = meta.tracks.find(t => t.kind === 'backing'), title = b ? b.name : '我的第一首';
+      await kvSet('song:' + id, { title, lyrics: meta.lyrics || [], guideNotes: meta.guideNotes || [], reverb: meta.reverbV2 ? (meta.reverb || 0) : 0, tracks: meta.tracks });
+      songs = [songSummary(id, title, meta.tracks)];
+      await kvSet('songs', songs);
+      if(!st) applySettings(meta);
+      await kvDel('meta');
+    }
+  }
+}
+async function loadSong(id){
+  const sg = (await kvGet('song:' + id)) || {};
+  songId = id; state.tracks = []; state.pos = 0; pitchRange = null;
+  state.title = sg.title || '新歌曲';
+  state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
+  state.guideNotes = Array.isArray(sg.guideNotes) ? sg.guideNotes : [];
+  state.reverb = typeof sg.reverb === 'number' ? sg.reverb : 0;
+  for(const m of sg.tracks || []){
     const a = await kvGet('audio:' + m.id); if(!a || !a.ch || !a.ch.length) continue;
     const buf = new AudioBuffer({ length: a.ch[0].length, numberOfChannels: a.ch.length, sampleRate: a.sr });
     a.ch.forEach((d, i) => buf.copyToChannel(d, i));
@@ -438,6 +496,70 @@ function buildGraph(c, when, pos){
 function stopNodes(nodes){ nodes.forEach(n => { try{ n.s.stop(); n.s.disconnect(); }catch(e){} }); }
 function liveNode(id){ return playing && playing.nodes.find(n => n.id === id); }
 function liveReverb(){ if(playing) playing.nodes.forEach(n => { if(n.send) n.send.gain.value = state.reverb; }); }
+
+/* ---------- 歌曲庫 ---------- */
+function showView(v){
+  document.body.dataset.view = v;
+  $('#libraryView').hidden = v !== 'library';
+  $('#studioView').hidden = v !== 'studio';
+  window.scrollTo(0, 0);
+}
+function renderLibrary(){
+  const ul = $('#songList'); ul.innerHTML = '';
+  $('#libEmpty').hidden = songs.length > 0;
+  songs.slice().sort((a, b) => b.updated - a.updated).forEach(sg => {
+    const li = document.createElement('li');
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'song';
+    const parts = [sg.backing ? '伴奏' : '還沒有伴奏'];
+    if(sg.guide) parts.push('原唱人聲');
+    if(sg.voices) parts.push(sg.voices + ' 軌人聲');
+    b.innerHTML = '<span><span class="st"></span><span class="ss"></span></span>' + (sg.best ? '<span class="badge">' + sg.best.grade + ' · ' + sg.best.pts + '</span>' : '');
+    b.querySelector('.st').textContent = sg.title || '未命名歌曲';
+    b.querySelector('.ss').textContent = parts.join(' · ');
+    b.addEventListener('click', () => openSong(sg.id));
+    li.appendChild(b); ul.appendChild(li);
+  });
+}
+async function openSong(id){
+  if(playing) haltPlayback();
+  toast('載入中…');
+  await loadSong(id);
+  $('#songTitle').value = state.title;
+  showView('studio'); render(); updateClock();
+  const b = backing(); if(b && b.key) applyKey();
+}
+function newSong(){
+  if(playing) haltPlayback();
+  songId = uid(); state.tracks = []; state.lyrics = []; state.guideNotes = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; pitchRange = null;
+  saveMeta();
+  $('#songTitle').value = state.title;
+  showView('studio'); render(); updateClock();
+  $('#songTitle').select();
+}
+let delSongArmed = null;
+async function deleteSong(){
+  const btn = $('#delSong');
+  if(!delSongArmed){ btn.textContent = '再按一次，永久刪除'; delSongArmed = setTimeout(() => { delSongArmed = null; btn.textContent = '刪除這首歌'; }, 3000); return; }
+  clearTimeout(delSongArmed); delSongArmed = null; btn.textContent = '刪除這首歌';
+  if(playing) haltPlayback();
+  clearTimeout(metaTimer);
+  for(const t of state.tracks) await kvDel('audio:' + t.id);
+  await kvDel('song:' + songId);
+  songs = songs.filter(x => x.id !== songId); await kvSet('songs', songs);
+  songId = null; state.tracks = [];
+  renderLibrary(); showView('library'); toast('已刪除');
+}
+function backToLibrary(){
+  if(playing) haltPlayback();
+  clearTimeout(metaTimer);
+  if(songId){
+    kvSet('song:' + songId, { title: state.title, lyrics: state.lyrics, guideNotes: state.guideNotes, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    songs = [songSummary(songId, state.title, state.tracks), ...songs.filter(x => x.id !== songId)];
+    kvSet('songs', songs);
+  }
+  songId = null; state.tracks = [];
+  renderLibrary(); showView('library');
+}
 
 /* ---------- 工作室播放 ---------- */
 function play(){
@@ -583,7 +705,9 @@ async function importBacking(file){
     const old = backing();
     if(old){ state.tracks = state.tracks.filter(t => t !== old); kvDel('audio:' + old.id); }
     const t = { id: uid(), kind: 'backing', name: file.name.replace(/\.[^.]+$/, '') || '伴奏', color: BACKING_COLOR, vol: 0.8, pan: 0, mute: false, offset: 0, nudgeMs: 0, buffer: buf };
-    state.tracks.unshift(t); saveAudio(t); saveMeta(); render();
+    state.tracks.unshift(t);
+    if(!state.title || state.title === '新歌曲'){ state.title = t.name; $('#songTitle').value = state.title; }
+    saveAudio(t); saveMeta(); render();
   }catch(e){ toast('這個檔案無法讀取，請換成 mp3、m4a 或 wav'); }
 }
 
@@ -645,8 +769,9 @@ function openStage(){
   if(playing) haltPlayback();
   $('#stage').hidden = false; document.body.style.overflow = 'hidden';
   state.pos = 0; take = null; levels = [];
-  $('#stTitle').textContent = backing() ? backing().name : '未命名歌曲';
+  $('#stTitle').textContent = state.title || '未命名歌曲';
   $('#monBtn').setAttribute('aria-pressed', state.monitor);
+  $('#skipBtn').setAttribute('aria-pressed', state.skipIntro);
   renderLyrics(); setStageMode('idle'); sizeRibbon(); updateStage(true);
   beginRec();
 }
@@ -724,6 +849,7 @@ async function beginRec(){
   ac();
   try{ await getMic(); }catch(e){ micError(e); return; }
   if(!stageOpen() || counting || playing) return;
+  if(!take) applySkip();
   let n = 3; const el = $('#count'); el.textContent = n; el.hidden = false;
   counting = true; setStageMode(stageMode);
   countTimer = setInterval(() => {
@@ -731,6 +857,18 @@ async function beginRec(){
     if(n > 0){ el.textContent = n; return; }
     cancelCountdown(); startRec();
   }, 800);
+}
+function introStart(){
+  const l = state.lyrics.find(x => x.t !== null);
+  let t = l ? l.t : null;
+  if(t === null){ const n = refNotes()[0]; if(n) t = n.t0; }
+  return (t !== null && t > 3.5) ? t - 3 : 0;
+}
+function applySkip(){
+  if(take || playing) return;
+  if(state.skipIntro && state.pos < 0.05) state.pos = introStart();
+  else if(!state.skipIntro && Math.abs(state.pos - introStart()) < 0.01) state.pos = 0;
+  updateStage(true);
 }
 function cancelCountdown(){
   clearInterval(countTimer); countTimer = null;
@@ -742,6 +880,7 @@ async function startRec(){
   let stream; try{ stream = await getMic(); }catch(e){ micError(e); return; }
   if(!take) take = { startPos: state.pos, segs: [], trail: [], stats: {}, notes: refNotes(), scoring: scoringActive() };
   const from = state.pos;
+  take.startPos = Math.min(take.startPos, from);
   take.trail = take.trail.filter(q => q.t < from);
   take.notes.forEach((n, i) => { if(n.t0 >= from - 0.05) delete take.stats[i]; });
   const cap = startCapture(c, stream, state.monitor);
@@ -908,10 +1047,14 @@ function findNote(notes, t){
 const scoringActive = () => state.guideNotes.length > 0 && !!guide() && !state.tracks.some(t => t.kind === 'voice');
 function takeScore(tk){
   let num = 0, den = 0;
-  for(const i in tk.stats){ const st = tk.stats[i]; if(st.total < 2) continue; const n = tk.notes[i], dur = n.t1 - n.t0; num += st.hit / st.total * dur; den += dur; }
+  tk.notes.forEach((n, i) => {
+    if(n.t0 < tk.startPos - 0.05) return;
+    const dur = n.t1 - n.t0; den += dur;
+    const st = tk.stats[i]; if(st && st.total) num += st.hit / st.total * dur;
+  });
   return den ? num / den : 0;
 }
-const gradeOf = p => p >= 0.93 ? 'A++' : p >= 0.85 ? 'A+' : p >= 0.75 ? 'A' : p >= 0.6 ? 'B' : p >= 0.4 ? 'C' : 'D';
+const gradeOf = p => p >= 0.9 ? 'A++' : p >= 0.8 ? 'A+' : p >= 0.7 ? 'A' : p >= 0.5 ? 'B' : p >= 0.3 ? 'C' : 'D';
 function updateGrade(){
   const on = !!(take && take.scoring) || (!take && scoringActive());
   $('#grade').hidden = !on;
@@ -936,7 +1079,7 @@ function onLiveFrame(p, d, pt){
   if(m !== null){ take.trail.push({ t, m }); if(take.trail.length > 20000) take.trail.splice(0, 5000); }
   if(take.scoring){
     const i = findNote(take.notes, t);
-    if(i >= 0){ const st = take.stats[i] || (take.stats[i] = { hit: 0, total: 0 }); st.total++; if(m !== null && circ(m, take.notes[i].m) <= 1) st.hit++; }
+    if(i >= 0){ const st = take.stats[i] || (take.stats[i] = { hit: 0, total: 0 }); st.total++; if(m !== null){ const dv = circ(m, take.notes[i].m); st.hit += dv <= 0.5 ? 1 : dv < 1 ? 1 - (dv - 0.5) / 0.5 : 0; } }
   }
 }
 
@@ -1269,6 +1412,11 @@ async function exportMix(){
 $('#playBtn').addEventListener('click', play);
 $('#homeBtn').addEventListener('click', () => { if(playing) return; state.pos = 0; updatePlayheads(); updateClock(); });
 $('#stageBtn').addEventListener('click', openStage);
+$('#newSong').addEventListener('click', newSong);
+$('#toLibrary').addEventListener('click', backToLibrary);
+$('#delSong').addEventListener('click', deleteSong);
+$('#songTitle').addEventListener('change', e => { state.title = e.target.value.trim() || '未命名歌曲'; e.target.value = state.title; saveMeta(); });
+$('#skipBtn').addEventListener('click', e => { state.skipIntro = !state.skipIntro; e.currentTarget.setAttribute('aria-pressed', state.skipIntro); saveMeta(); applySkip(); toast(state.skipIntro ? '會從第一句前 3 秒開始' : '會從頭開始'); });
 $('#exportBtn').addEventListener('click', exportMix);
 $('#calBtn').addEventListener('click', calibrate);
 $('#latRange').addEventListener('input', e => setLatency(+e.target.value));
@@ -1308,7 +1456,7 @@ $('#doneStudio').addEventListener('click', () => { closeSheet('#doneSheet'); clo
 
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawAll(); if(stageOpen()){ sizeRibbon(); updateStage(true); } }, 150); });
 
-(async () => { await loadProject(); setLatency(state.latencyMs); document.querySelectorAll('input[name=micMode]').forEach(r => r.checked = r.value === state.micMode); render(); updateClock(); const b = backing(); if(b && b.key) applyKey(); })();
+(async () => { await initStore(); setLatency(state.latencyMs); document.querySelectorAll('input[name=micMode]').forEach(r => r.checked = r.value === state.micMode); renderLibrary(); showView('library'); })();
 </script>
 </body>
 </html>
