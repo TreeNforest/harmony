@@ -84,11 +84,14 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
 .transport{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);
   padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px));z-index:5}
 .transport-inner{max-width:720px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px}
-.clock{font-size:1.35rem;font-variant-numeric:tabular-nums;min-width:4.6em}
+.seekrow{display:flex;align-items:center;gap:10px;width:100%}
+.seekrow input{flex:1;min-width:0;accent-color:var(--v1)}
+.clock{font-size:.95rem;font-variant-numeric:tabular-nums;min-width:2.8em;color:var(--muted)}
+.clock.dur{text-align:right}
 .buttons{display:flex;gap:8px;width:100%;justify-content:space-between}
 .buttons .btn{padding:.45em .9em}
 .btn.rec{background:var(--rec);color:var(--onrec);border-color:transparent;font-weight:700;flex:1;max-width:220px}
-@media (max-width:440px){.buttons .lbl{display:none}.buttons .btn:not(.rec){width:48px;padding:0}}
+@media (max-width:440px){.buttons .lbl{display:none}.buttons .btn:not(.rec){width:46px;padding:0}.btn.rec svg{display:none}}
 @media (min-width:600px){.buttons{width:auto;margin-left:auto}}
 body[data-view="library"] .transport{display:none}
 .editor{position:fixed;inset:0;z-index:12;display:flex;flex-direction:column;background:var(--paper);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -298,14 +301,21 @@ body[data-view="library"] .transport{display:none}
 
 <div class="transport">
   <div class="transport-inner">
-    <span class="clock" id="clock">0:00.0</span>
+    <div class="seekrow">
+      <span class="clock" id="clock">0:00</span>
+      <input type="range" id="seek" min="0" max="10" step="0.1" value="0" aria-label="播放位置">
+      <span class="clock dur" id="dur">0:00</span>
+    </div>
     <div class="buttons">
-      <button class="btn" id="homeBtn" type="button" aria-label="回到開頭">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
+      <button class="btn" id="backBtn" type="button" aria-label="倒轉 5 秒">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/><text x="12" y="15.5" font-size="8" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none">5</text></svg>
       </button>
       <button class="btn" id="playBtn" type="button" aria-label="播放">
         <svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M7 4v16l13-8z"/></svg>
         <span id="playText" class="lbl">播放</span>
+      </button>
+      <button class="btn" id="fwdBtn" type="button" aria-label="快轉 5 秒">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/><text x="12" y="15.5" font-size="8" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none">5</text></svg>
       </button>
       <button class="btn rec" id="stageBtn" type="button">
         <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="7"/></svg>
@@ -868,7 +878,16 @@ function play(){
 function haltPlayback(){
   if(!playing || playing.mode !== 'play') return;
   const p = playing; playing = null; stopNodes(p.nodes);
-  state.pos = p.pos0; updateTransport(); updatePlayheads(); updateClock();
+  state.pos = Math.min(projectEnd(), p.pos0 + Math.max(0, ctx.currentTime - p.startAt));
+  updateTransport(); updatePlayheads(); updateClock();
+}
+function seekTo(t){
+  const end = projectEnd();
+  const was = !!(playing && playing.mode === 'play');
+  if(was) haltPlayback();
+  state.pos = Math.max(0, Math.min(end, t));
+  updatePlayheads(); updateClock();
+  if(was && state.pos < end) play();
 }
 
 /* ---------- 收音 ---------- */
@@ -1724,25 +1743,32 @@ function render(){
       state.tracks = state.tracks.filter(x => x !== t); kvDel('audio:' + t.id); if(t.kind === 'guide'){ state.guideNotes = []; state.guideContour = null; pitchRange = null; } saveMeta(); render();
     });
     q('.wave').addEventListener('click', e => {
-      if(playing) return;
+      if(playing && playing.mode !== 'play') return;
       const r = e.currentTarget.getBoundingClientRect();
-      state.pos = Math.max(0, (e.clientX - r.left) / r.width * viewSpan());
-      updatePlayheads(); updateClock();
+      seekTo((e.clientX - r.left) / r.width * viewSpan());
     });
     ul.appendChild(li);
   }
   requestAnimationFrame(() => { drawAll(); updatePlayheads(); });
+  updateClock();
 }
 function updatePlayheads(){
   const pct = Math.min(100, state.pos / viewSpan() * 100);
   document.querySelectorAll('.ph').forEach(el => el.style.left = pct + '%');
 }
-function updateClock(){ $('#clock').textContent = fmt(state.pos); }
+let seeking = false;
+function updateClock(){
+  $('#clock').textContent = fmtShort(state.pos);
+  const end = projectEnd(), sk = $('#seek');
+  $('#dur').textContent = fmtShort(end);
+  sk.max = Math.max(0.1, end).toFixed(1);
+  if(!seeking) sk.value = Math.min(end, state.pos);
+}
 function updateTransport(){
   const on = playing && playing.mode === 'play';
-  $('#playText').textContent = on ? '停止' : '播放';
-  $('#playBtn').setAttribute('aria-label', on ? '停止' : '播放');
-  $('#playIcon').innerHTML = on ? '<rect x="6" y="6" width="12" height="12" rx="1"/>' : '<path d="M7 4v16l13-8z"/>';
+  $('#playText').textContent = on ? '暫停' : '播放';
+  $('#playBtn').setAttribute('aria-label', on ? '暫停' : '播放');
+  $('#playIcon').innerHTML = on ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>' : '<path d="M7 4v16l13-8z"/>';
 }
 
 /* ---------- 主迴圈 ---------- */
@@ -1824,7 +1850,15 @@ async function exportMix(){
 
 /* ---------- 綁定 ---------- */
 $('#playBtn').addEventListener('click', play);
-$('#homeBtn').addEventListener('click', () => { if(playing) return; state.pos = 0; updatePlayheads(); updateClock(); });
+$('#backBtn').addEventListener('click', () => seekTo(state.pos - 5));
+$('#fwdBtn').addEventListener('click', () => seekTo(state.pos + 5));
+$('#seek').addEventListener('input', e => {
+  seeking = true;
+  const t = +e.target.value;
+  $('#clock').textContent = fmtShort(t);
+  if(!(playing && playing.mode === 'play')){ state.pos = t; updatePlayheads(); }
+});
+$('#seek').addEventListener('change', e => { seeking = false; seekTo(+e.target.value); });
 $('#stageBtn').addEventListener('click', openStage);
 $('#newSong').addEventListener('click', newSong);
 $('#songSearch').addEventListener('input', renderLibrary);
