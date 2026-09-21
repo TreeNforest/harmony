@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Harmonia 和聲本</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#2F4B49">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Harmonia">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600&family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
@@ -1881,6 +1888,7 @@ $('#doneStudio').addEventListener('click', () => { closeSheet('#doneSheet'); clo
 
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawAll(); if(!$('#editor').hidden){ edSize(); ed.sy = clampSy(ed.sy); edDraw(); } if(stageOpen()){ sizeRibbon(); updateStage(true); } }, 150); });
 
+if('serviceWorker' in navigator && location.protocol === 'https:' && !window.claude){ navigator.serviceWorker.register('sw.js').catch(() => {}); }
 (async () => { await initStore(); setLatency(state.latencyMs); document.querySelectorAll('input[name=micMode]').forEach(r => r.checked = r.value === state.micMode); renderLibrary(); showView('library'); })();
 </script>
 </body>
