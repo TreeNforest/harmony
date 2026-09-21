@@ -115,6 +115,9 @@ body[data-view="library"] .transport{display:none}
 .back-link svg{width:20px;height:20px}
 .song-title{display:block;width:100%;border:none;background:transparent;font-size:1.9rem;font-weight:700;padding:4px 6px;margin:2px 0 14px;border-radius:8px}
 .song-title:hover,.song-title:focus{background:var(--surface)}
+.song-artist{display:block;width:100%;border:none;background:transparent;color:var(--muted);font-size:1rem;padding:4px 6px;margin:-10px 0 16px;border-radius:8px}
+.song-artist:hover,.song-artist:focus{background:var(--surface)}
+.searchbar{display:block;width:100%;min-height:46px;margin:18px 0 0;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit}
 .btn.danger{margin-top:40px;color:var(--rec);border-color:var(--rec);background:transparent}
 .chip{border:1px solid rgba(255,255,255,.25);background:none;color:var(--s-dim);border-radius:999px;font-size:.8rem;padding:2px 10px;min-height:30px;cursor:pointer}
 .chip[aria-pressed="true"]{border-color:var(--hl);color:var(--hl)}
@@ -169,6 +172,8 @@ body[data-view="library"] .transport{display:none}
 #lyrics li.past{opacity:.55}
 #lyrics li.now{color:var(--hl);font-size:1.6rem;font-weight:700;opacity:1}
 #lyrics li.untimed{cursor:default}
+#lyrics li.inrange{color:var(--hl);background:rgba(231,150,140,.12);border-radius:8px}
+.stage.punch .st-info .take{color:var(--hl)}
 .no-lyrics{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--s-dim);padding:0 48px}
 .no-lyrics[hidden]{display:none}
 .no-lyrics .btn{margin-top:12px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:var(--s-ink)}
@@ -217,6 +222,7 @@ body[data-view="library"] .transport{display:none}
   <p class="lede">先錄主唱，再戴著耳機一邊聽、一邊把合音疊上去。要疊幾軌都可以。</p>
   <button class="btn primary" id="newSong" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>新增歌曲</button>
+  <input id="songSearch" class="searchbar" type="search" placeholder="搜尋歌名或歌手" aria-label="搜尋歌曲">
   <ul id="songList"></ul>
   <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。</p>
   <h2 class="sec">設定</h2>
@@ -249,6 +255,7 @@ body[data-view="library"] .transport{display:none}
   <button class="back-link" id="toLibrary" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>歌曲庫</button>
   <input id="songTitle" class="song-title" aria-label="歌名" maxlength="60">
+  <input id="songArtist" class="song-artist" aria-label="歌手" maxlength="60" placeholder="歌手／演唱者">
   <div class="row">
     <label class="btn" for="backingFile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
@@ -427,7 +434,7 @@ body[data-view="library"] .transport{display:none}
 const $ = s => document.querySelector(s);
 const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
 const BACKING_COLOR = '#8A8D84';
-const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲' };
+const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲', artist: '' };
 let songId = null, songs = [];
 const GUIDE_COLOR = '#8E86AE';
 let ctx = null, micStream = null, playing = null;
@@ -458,18 +465,18 @@ const kvDel = k => kv('readwrite', s => s.delete(k));
 
 let metaTimer;
 const trackMeta = t => { const { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key, score } = t; return { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key: key || 0, score: score || null }; };
-function songSummary(id, title, tracks){
+function songSummary(id, title, tracks, artist){
   const voices = tracks.filter(t => t.kind === 'voice');
   const best = voices.reduce((b, t) => (t.score && (!b || t.score.pts > b.pts)) ? t.score : b, null);
-  return { id, title, updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length, best };
+  return { id, title, artist: artist || '', updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length, best };
 }
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
     kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, lyrics: state.lyrics, guideNotes: state.guideNotes, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
-    const sum = songSummary(songId, state.title, state.tracks);
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    const sum = songSummary(songId, state.title, state.tracks, state.artist);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     kvSet('songs', songs);
   }, 300);
@@ -502,7 +509,7 @@ async function initStore(){
 async function loadSong(id){
   const sg = (await kvGet('song:' + id)) || {};
   songId = id; state.tracks = []; state.pos = 0; pitchRange = null; state.guideContour = null;
-  state.title = sg.title || '新歌曲';
+  state.title = sg.title || '新歌曲'; state.artist = sg.artist || '';
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.guideNotes = Array.isArray(sg.guideNotes) ? sg.guideNotes : [];
   state.reverb = typeof sg.reverb === 'number' ? sg.reverb : 0;
@@ -781,11 +788,17 @@ function showView(v){
 }
 function renderLibrary(){
   const ul = $('#songList'); ul.innerHTML = '';
+  const q = ($('#songSearch').value || '').trim().toLowerCase();
+  const list = songs.filter(sg => !q || (sg.title || '').toLowerCase().includes(q) || (sg.artist || '').toLowerCase().includes(q));
+  $('#songSearch').hidden = songs.length < 3;
   $('#libEmpty').hidden = songs.length > 0;
-  songs.slice().sort((a, b) => b.updated - a.updated).forEach(sg => {
+  $('#libEmpty').textContent = songs.length ? '' : '歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。';
+  if(songs.length && !list.length){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = '找不到符合的歌曲。'; ul.appendChild(li); }
+  list.sort((a, b) => b.updated - a.updated).forEach(sg => {
     const li = document.createElement('li');
     const b = document.createElement('button'); b.type = 'button'; b.className = 'song';
-    const parts = [sg.backing ? '伴奏' : '還沒有伴奏'];
+    const parts = []; if(sg.artist) parts.push(sg.artist);
+    parts.push(sg.backing ? '伴奏' : '還沒有伴奏');
     if(sg.guide) parts.push('原唱人聲');
     if(sg.voices) parts.push(sg.voices + ' 軌人聲');
     b.innerHTML = '<span><span class="st"></span><span class="ss"></span></span>' + (sg.best ? '<span class="badge">' + sg.best.grade + ' · ' + sg.best.pts + '</span>' : '');
@@ -799,15 +812,15 @@ async function openSong(id){
   if(playing) haltPlayback();
   toast('載入中…');
   await loadSong(id);
-  $('#songTitle').value = state.title;
+  $('#songTitle').value = state.title; $('#songArtist').value = state.artist;
   showView('studio'); render(); updateClock();
   const b = backing(); if(b && b.key) applyKey();
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; pitchRange = null;
+  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; pitchRange = null;
   saveMeta();
-  $('#songTitle').value = state.title;
+  $('#songTitle').value = state.title; $('#songArtist').value = '';
   showView('studio'); render(); updateClock();
   $('#songTitle').select();
 }
@@ -828,8 +841,8 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, lyrics: state.lyrics, guideNotes: state.guideNotes, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
-    songs = [songSummary(songId, state.title, state.tracks), ...songs.filter(x => x.id !== songId)];
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    songs = [songSummary(songId, state.title, state.tracks, state.artist), ...songs.filter(x => x.id !== songId)];
     kvSet('songs', songs);
   }
   songId = null; state.tracks = [];
@@ -889,7 +902,8 @@ async function testMic(){
   btn.disabled = true; btn.textContent = '錄音中… 說幾句話';
   const cap = startCapture(c, stream, false);
   await sleep(4000);
-  const data = cap.stop(); let peak = 0; for(let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]));
+  const data = cap.stop(); stopMic();
+  let peak = 0; for(let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]));
   btn.textContent = '播放中…';
   const b = new AudioBuffer({ length: data.length, numberOfChannels: 1, sampleRate: c.sampleRate }); b.copyToChannel(data, 0);
   const src = c.createBufferSource(); src.buffer = b; src.connect(c.destination); src.start();
@@ -926,6 +940,11 @@ function startCapture(c, stream, monitor){
   };
   return cap;
 }
+function stopMic(){
+  if(!micStream) return;
+  micStream.getTracks().forEach(t => t.stop());
+  micStream = null; micKey = '';
+}
 function micError(e){
   if(e && e.name === 'NotAllowedError') toast('沒有取得麥克風權限，請在瀏覽器設定裡允許後再試');
   else if(e && e.name === 'NotFoundError') toast('找不到麥克風');
@@ -954,6 +973,7 @@ async function calibrate(){
   const data = cap.stop(); const sr = c.sampleRate; const t0 = cap.firstTime;
   btn.disabled = false; btn.textContent = '量測延遲';
   let peak = 0; for(let i = 0; i < data.length; i++){ const v = Math.abs(data[i]); if(v > peak) peak = v; }
+  stopMic();
   if(t0 === null || peak < 0.02){ toast('沒有收到嗶聲，請拔掉耳機、把音量開大再試一次'); return; }
   const thr = peak * 0.35, found = [];
   clicks.forEach(t => {
@@ -962,6 +982,7 @@ async function calibrate(){
   });
   if(found.length < 3){ toast('量測不穩定，請在安靜的地方再試一次'); return; }
   found.sort((a, b) => a - b);
+  stopMic();
   const ms = Math.round(found[Math.floor(found.length / 2)] * 1000 / 5) * 5;
   setLatency(ms); toast('延遲約 ' + ms + ' ms，已套用到之後的錄音');
 }
@@ -1037,18 +1058,23 @@ function closeSheet(id){ $(id).hidden = true; }
 document.querySelectorAll('.back').forEach(b => b.addEventListener('click', e => { if(e.target === b) b.hidden = true; }));
 
 /* ---------- 錄音畫面 ---------- */
-let stageMode = 'idle', take = null, sync = null, closeArmed = null, lastIdx = -2, levels = [];
+let stageMode = 'idle', take = null, sync = null, punch = null, closeArmed = null, lastIdx = -2, levels = [];
 const stageOpen = () => !$('#stage').hidden;
 
-function openStage(){
+function openStage(opts){
   if(playing) haltPlayback();
+  punch = (opts && opts.punch) ? { track: opts.punch, a: -1, b: -1 } : null;
+  $('#stage').classList.toggle('punch', !!punch);
   $('#stage').hidden = false; document.body.style.overflow = 'hidden';
   state.pos = 0; take = null; levels = [];
-  $('#stTitle').textContent = state.title || '未命名歌曲';
+  $('#stTitle').textContent = (state.title || '未命名歌曲') + (state.artist ? ' － ' + state.artist : '');
   $('#monBtn').setAttribute('aria-pressed', state.monitor);
   $('#skipBtn').setAttribute('aria-pressed', state.skipIntro);
   renderLyrics(); setStageMode('idle'); sizeRibbon(); updateStage(true);
-  beginRec();
+  if(punch){
+    if(!state.lyrics.some(l => l.t !== null)){ toast('要先有對過時的歌詞，才能一句一句修'); punch = null; $('#stage').classList.remove('punch'); setStageMode('idle'); return; }
+    toast('點一句歌詞選起來，再按「錄這一句」');
+  } else beginRec();
 }
 function closeStage(){
   if(take && take.segs.length && !closeArmed){
@@ -1056,7 +1082,7 @@ function closeStage(){
     closeArmed = setTimeout(() => closeArmed = null, 3000); return;
   }
   clearTimeout(closeArmed); closeArmed = null;
-  cancelCountdown();
+  cancelCountdown(); stopMic(); punch = null; $('#stage').classList.remove('punch');
   if(playing && playing.mode === 'rec'){ const p = playing; playing = null; stopNodes(p.nodes); p.cap.stop(); releaseWake(); }
   if(playing && playing.mode === 'sync') endSync(false);
   take = null; state.pos = 0;
@@ -1071,6 +1097,18 @@ function setStageMode(m){
   rec.classList.toggle('record', m !== 'rec');
   if(counting){ $('#recIcon').innerHTML = '<rect x="7" y="7" width="10" height="10" rx="1.5"/>'; $('#recText').textContent = '取消倒數'; rec.setAttribute('aria-label', '取消倒數'); rec.classList.add('record'); return; }
   $('#recIcon').innerHTML = m === 'rec' ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>' : '<circle cx="12" cy="12" r="7"/>';
+  if(punch){
+    $('#recText').textContent = m === 'rec' ? '停止' : '錄這一句';
+    rec.setAttribute('aria-label', $('#recText').textContent);
+    setBtnLabel($('#retakeBtn'), '復原');
+    setBtnLabel($('#doneBtn'), '結束修句');
+    $('#retakeBtn').disabled = !(punch.track && punch.track.undo) || m === 'rec';
+    $('#doneBtn').disabled = m === 'rec';
+    $('#stLyrics').disabled = m === 'rec';
+    $('#stTake').textContent = '修句：' + punch.track.name + (punch.a >= 0 ? '．第 ' + (punch.a + 1) + (punch.b > punch.a ? '–' + (punch.b + 1) : '') + ' 句' : '．還沒選句子');
+    updateRibbonNote(); updateGrade(); return;
+  }
+  setBtnLabel($('#retakeBtn'), '重錄'); setBtnLabel($('#doneBtn'), '完成');
   $('#recText').textContent = m === 'rec' ? '暫停' : (m === 'paused' ? '繼續錄音' : '開始錄音');
   rec.setAttribute('aria-label', $('#recText').textContent);
   const hasTake = !!(take && (take.segs.length || m === 'rec'));
@@ -1095,6 +1133,20 @@ function updateStage(force){
   }
   drawRibbon();
 }
+function punchRange(){
+  const L = state.lyrics, a = L[punch.a], b = L[punch.b] || a;
+  const after = L.slice(punch.b + 1).find(x => x.t !== null);
+  const r0 = Math.max(0, a.t - 0.35);
+  let r1 = after ? after.t - 0.12 : b.t + 8;
+  const notes = refNotes();
+  if(!after && notes.length){ const last = notes.filter(n => n.t0 >= b.t).pop(); if(last) r1 = last.t1 + 0.4; }
+  return { r0, r1: Math.max(r0 + 0.5, r1) };
+}
+function markRange(){
+  const items = $('#lyrics').children;
+  for(let i = 0; i < items.length; i++) items[i].classList.toggle('inrange', !!punch && punch.a >= 0 && i >= punch.a && i <= punch.b);
+}
+function setBtnLabel(btn, text){ const n = btn.lastChild; if(n && n.nodeType === 3) n.nodeValue = text; }
 function renderLyrics(){
   const ol = $('#lyrics'); ol.innerHTML = ''; lastIdx = -2;
   $('#noLyrics').hidden = state.lyrics.length > 0;
@@ -1105,17 +1157,25 @@ function renderLyrics(){
     li.addEventListener('click', () => {
       if(stageMode === 'rec' || stageMode === 'sync') return;
       if(l.t === null){ toast('歌詞還沒對時：按右上角的歌詞圖示，再按「開始對時」'); return; }
+      const i = state.lyrics.indexOf(l);
+      if(punch){
+        if(punch.a < 0 || i <= punch.a || i === punch.b){ punch.a = punch.b = i; }
+        else punch.b = i;
+        state.pos = Math.max(0, punchRange().r0 - 1.5);
+        markRange(); setStageMode(stageMode); updateStage(true); return;
+      }
       state.pos = Math.max(0, l.t - 1.5); updateStage(true);
     });
     ol.appendChild(li);
   });
+  markRange();
 }
 
 let counting = false, countTimer = null, gradeTick = 0;
 function recToggle(){
   if(stageMode === 'sync') return;
   if(counting){ cancelCountdown(); return; }
-  if(playing && playing.mode === 'rec'){ pauseRec(); return; }
+  if(playing && playing.mode === 'rec'){ if(take && take.punch){ applyPunch(); return; } pauseRec(); return; }
   if(playing) return;
   beginRec();
 }
@@ -1124,7 +1184,11 @@ async function beginRec(){
   ac();
   try{ await getMic(); }catch(e){ micError(e); return; }
   if(!stageOpen() || counting || playing) return;
-  if(!take) applySkip();
+  if(punch){
+    if(punch.a < 0){ toast('先點一句歌詞'); return; }
+    const r = punchRange(); state.pos = Math.max(0, r.r0 - 2.5); updateStage(true);
+  }
+  else if(!take) applySkip();
   let n = 3; const el = $('#count'); el.textContent = n; el.hidden = false;
   counting = true; setStageMode(stageMode);
   countTimer = setInterval(() => {
@@ -1148,12 +1212,15 @@ function applySkip(){
 function cancelCountdown(){
   clearInterval(countTimer); countTimer = null;
   if(!counting) return;
-  counting = false; $('#count').hidden = true; setStageMode(stageMode);
+  counting = false; $('#count').hidden = true; if(!playing) stopMic(); setStageMode(stageMode);
 }
 async function startRec(){
   const c = ac();
   let stream; try{ stream = await getMic(); }catch(e){ micError(e); return; }
-  if(!take) take = { startPos: state.pos, segs: [], trail: [], stats: {}, notes: refNotes(), scoring: scoringActive() };
+  if(!take){
+    take = { startPos: state.pos, segs: [], trail: [], stats: {}, notes: refNotes(), scoring: punch ? false : scoringActive() };
+    if(punch){ const r = punchRange(); take.punch = true; take.r0 = r.r0; take.r1 = r.r1; }
+  }
   const from = state.pos;
   take.startPos = Math.min(take.startPos, from);
   take.trail = take.trail.filter(q => q.t < from);
@@ -1161,6 +1228,13 @@ async function startRec(){
   const cap = startCapture(c, stream, state.monitor);
   const startAt = c.currentTime + 0.3;
   playing = { mode: 'rec', startAt, pos0: state.pos, nodes: buildGraph(c, startAt, state.pos), cap };
+  if(take.punch && punch){
+    const nd = playing.nodes.find(n => n.id === punch.track.id);
+    if(nd){ const v = punch.track.mute ? 0 : punch.track.vol;
+      nd.g.gain.setValueAtTime(v, startAt);
+      nd.g.gain.setValueAtTime(0, startAt + Math.max(0, take.r0 - state.pos));
+      nd.g.gain.setValueAtTime(v, startAt + Math.max(0, take.r1 - state.pos)); }
+  }
   const pl = playing; cap.onFrame = (d, pt) => onLiveFrame(pl, d, pt);
   holdWake(); setStageMode('rec'); loop();
 }
@@ -1178,11 +1252,12 @@ function pauseRec(){
   state.pos = p.pos0 + Math.max(0, ctx.currentTime - p.startAt);
   const seg = segmentFrom(p); if(seg) take.segs.push(seg);
   if(!take.segs.length) take = null;
-  releaseWake(); stageMeter(0);
+  releaseWake(); stopMic(); stageMeter(0);
   setStageMode(take ? 'paused' : 'idle'); updateStage(true);
 }
 function retake(){
   if(playing && playing.mode === 'rec'){ const p = playing; playing = null; stopNodes(p.nodes); p.cap.stop(); releaseWake(); }
+  stopMic();
   const back = take ? take.startPos : 0;
   take = null; levels = []; state.pos = back; stageMeter(0); updateGrade();
   setStageMode('idle'); updateStage(true); toast('這一次的錄音已清除');
@@ -1212,6 +1287,57 @@ function finishTake(){
   $('#doneTitle').textContent = t.score ? '這次 ' + t.score.pts + ' 分（' + t.score.grade + '）' : '錄好了';
   $('#doneText').textContent = '「' + t.name + '」已經存進工作室。要接著疊下一軌合音，還是先回去聽聽看？';
   openSheet('#doneSheet');
+}
+
+function trackPeak(t){
+  if(t._peak) return t._peak;
+  const d = t.buffer.getChannelData(0); let p = 0;
+  for(let i = 0; i < d.length; i++){ const v = Math.abs(d[i]); if(v > p) p = v; }
+  return t._peak = p || 1;
+}
+function spliceInto(t, data, start, gain){
+  const sr = t.buffer.sampleRate, ts = trackStart(t), old = t.buffer.getChannelData(0);
+  const oldEnd = ts + t.buffer.duration, ns = Math.min(ts, start), ne = Math.max(oldEnd, start + data.length / sr);
+  const len = Math.ceil((ne - ns) * sr), out = new Float32Array(len);
+  out.set(old, Math.round((ts - ns) * sr));
+  const base = Math.round((start - ns) * sr), F = Math.round(0.025 * sr);
+  for(let j = 0; j < data.length; j++){
+    const i = base + j; if(i < 0 || i >= len) continue;
+    let w = 1;
+    if(j < F) w = j / F; else if(j > data.length - F) w = Math.max(0, (data.length - j) / F);
+    out[i] = out[i] * (1 - w) + data[j] * gain * w;
+  }
+  const buf = new AudioBuffer({ length: len, numberOfChannels: 1, sampleRate: sr });
+  buf.copyToChannel(out, 0);
+  t.undo = { buffer: t.buffer, offset: t.offset };
+  t.buffer = buf; t.offset = ns - t.nudgeMs / 1000; t._peak = 0;
+}
+function applyPunch(){
+  if(!take || !take.punch) return;
+  pauseRec();
+  const tk = take, tgt = punch && punch.track;
+  take = null;
+  if(!tgt || !tk.segs.length){ toast('沒有錄到聲音'); setStageMode('idle'); return; }
+  const sr = ctx.sampleRate, m = mergeTake(tk.segs, sr);
+  let start = m.offset, data = m.data;
+  const lo = tk.r0 - 0.03, hi = tk.r1 + 0.06;
+  if(start < lo){ const cut = Math.round((lo - start) * sr); if(cut >= data.length){ toast('沒有錄到這一句'); setStageMode('idle'); return; } data = data.subarray(cut); start = lo; }
+  if(start + data.length / sr > hi){ const keep = Math.round((hi - start) * sr); if(keep > 0) data = data.subarray(0, keep); }
+  if(data.length < sr * 0.15){ toast('錄到的片段太短'); setStageMode('idle'); return; }
+  let pk = 0; for(let i = 0; i < data.length; i++){ const v = Math.abs(data[i]); if(v > pk) pk = v; }
+  const gain = pk > 0.001 ? Math.max(0.5, Math.min(2.5, trackPeak(tgt) / pk)) : 1;
+  spliceInto(tgt, new Float32Array(data), start, gain);
+  saveAudio(tgt); saveMeta();
+  state.pos = Math.max(0, tk.r0 - 1.5); levels = [];
+  setStageMode('idle'); updateStage(true);
+  toast('第 ' + (punch.a + 1) + ' 句已更新，可以按「復原」還原');
+}
+function undoPunch(){
+  const t = punch && punch.track;
+  if(!t || !t.undo){ toast('沒有可以復原的修改'); return; }
+  const u = t.undo; t.buffer = u.buffer; t.offset = u.offset; t.undo = null; t._peak = 0;
+  saveAudio(t); saveMeta(); setStageMode('idle');
+  toast('已復原這一句');
 }
 
 /* ---------- 對時 ---------- */
@@ -1556,6 +1682,7 @@ function render(){
       <div class="track-head">
         <span class="swatch"></span>
         <input class="name" aria-label="音軌名稱">${t.score ? '<span class="badge">' + t.score.grade + ' · ' + t.score.pts + '</span>' : ''}
+        ${t.kind === 'voice' ? '<button class="btn sm fix" type="button">修一句</button>' : ''}
         <button class="icon mute" type="button" aria-label="靜音" aria-pressed="${t.mute}">${t.mute ? ICON_MUTE_ON : ICON_MUTE_OFF}</button>
         <button class="icon del" type="button" aria-label="刪除這一軌">${ICON_TRASH}</button>
       </div>
@@ -1581,6 +1708,8 @@ function render(){
       e.currentTarget.setAttribute('aria-pressed', t.mute); e.currentTarget.innerHTML = t.mute ? ICON_MUTE_ON : ICON_MUTE_OFF;
       const n = liveNode(t.id); if(n) n.g.gain.value = t.mute ? 0 : t.vol; saveMeta();
     });
+    const fix = q('.fix');
+    if(fix) fix.addEventListener('click', () => { if(!state.lyrics.some(l => l.t !== null)){ toast('要先有對過時的歌詞，才能一句一句修'); return; } openStage({ punch: t }); });
     const del = q('.del'); let armed = null;
     del.addEventListener('click', () => {
       if(!armed){ del.classList.add('confirm'); del.textContent = '確定刪除'; armed = setTimeout(() => { armed = null; del.classList.remove('confirm'); del.innerHTML = ICON_TRASH; }, 3000); return; }
@@ -1622,7 +1751,8 @@ function loop(){
       levels.push(playing.cap.level); if(levels.length > 600) levels.shift();
       stageMeter(playing.cap.level);
       if(take && take.scoring && (++gradeTick % 10 === 0)) updateGrade();
-      if(backing() && state.pos > songLength() + 0.8){ pauseRec(); toast('歌曲結束了，可以按「完成」'); return; }
+      if(take && take.punch && state.pos > take.r1 + 0.45){ applyPunch(); return; }
+      if(!(take && take.punch) && backing() && state.pos > songLength() + 0.8){ pauseRec(); toast('歌曲結束了，可以按「完成」'); return; }
     }
     if(mode === 'sync' && state.pos > songLength() + 0.3){ endSync(false); return; }
     updateStage();
@@ -1690,6 +1820,7 @@ $('#playBtn').addEventListener('click', play);
 $('#homeBtn').addEventListener('click', () => { if(playing) return; state.pos = 0; updatePlayheads(); updateClock(); });
 $('#stageBtn').addEventListener('click', openStage);
 $('#newSong').addEventListener('click', newSong);
+$('#songSearch').addEventListener('input', renderLibrary);
 $('#noteEditBtn').addEventListener('click', edOpen);
 $('#edClose').addEventListener('click', edClose);
 $('#edPlay').addEventListener('click', edPlayToggle);
@@ -1709,6 +1840,7 @@ document.querySelectorAll('.chip2').forEach(b => b.addEventListener('click', () 
 $('#toLibrary').addEventListener('click', backToLibrary);
 $('#delSong').addEventListener('click', deleteSong);
 $('#songTitle').addEventListener('change', e => { state.title = e.target.value.trim() || '未命名歌曲'; e.target.value = state.title; saveMeta(); });
+$('#songArtist').addEventListener('change', e => { state.artist = e.target.value.trim(); saveMeta(); });
 $('#skipBtn').addEventListener('click', e => { state.skipIntro = !state.skipIntro; e.currentTarget.setAttribute('aria-pressed', state.skipIntro); saveMeta(); applySkip(); toast(state.skipIntro ? '會從第一句前 3 秒開始' : '會從頭開始'); });
 $('#exportBtn').addEventListener('click', exportMix);
 $('#calBtn').addEventListener('click', calibrate);
@@ -1725,8 +1857,8 @@ $('#stClose').addEventListener('click', closeStage);
 $('#stLyrics').addEventListener('click', () => { if(stageMode === 'sync' || stageMode === 'rec') return; openLyricsSheet(); });
 $('#noLyricsBtn').addEventListener('click', openLyricsSheet);
 $('#recBtn').addEventListener('click', recToggle);
-$('#retakeBtn').addEventListener('click', retake);
-$('#doneBtn').addEventListener('click', finishTake);
+$('#retakeBtn').addEventListener('click', () => { if(punch){ undoPunch(); return; } retake(); });
+$('#doneBtn').addEventListener('click', () => { if(punch){ closeStage(); return; } finishTake(); });
 $('#monBtn').addEventListener('click', e => {
   state.monitor = !state.monitor; e.currentTarget.setAttribute('aria-pressed', state.monitor); saveMeta();
   if(playing && playing.cap) playing.cap.setMonitor(state.monitor);
