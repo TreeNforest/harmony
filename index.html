@@ -247,6 +247,7 @@ body[data-view="library"] .transport{display:none}
   <ul id="songList"></ul>
   <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。</p>
   <h2 class="sec">設定</h2>
+  <p class="hint" id="storeInfo"></p>
   <details class="cal" id="micBox">
     <summary>收音設定</summary>
     <p>如果錄起來聲音悶、像離很遠：戴有線耳機時，手機常會改用耳機線上的小麥克風。可以在這裡改選手機本身的麥克風，或換一副沒有麥克風的耳機。</p>
@@ -527,6 +528,7 @@ async function kv(mode, fn){
 const kvGet = k => kv('readonly', s => s.get(k));
 const kvSet = (k, v) => kv('readwrite', s => s.put(v, k));
 const kvDel = k => kv('readwrite', s => s.delete(k));
+const kvKeys = () => kv('readonly', s => s.getAllKeys());
 
 let metaTimer;
 const trackMeta = t => { const { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key, score } = t; return { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key: key || 0, score: score || null }; };
@@ -543,7 +545,7 @@ function saveMeta(){
     kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
-    kvSet('songs', songs);
+    writeIndex();
   }, 300);
 }
 function saveAudio(t){
@@ -556,6 +558,38 @@ function applySettings(st){
   state.latencyMs = st.latencyMs || 0; state.micId = st.micId || ''; state.micMode = st.micMode || 'raw'; state.monitor = !!st.monitor;
   if(typeof st.skipIntro === 'boolean') state.skipIntro = st.skipIntro;
   if(st.warm){ Object.assign(W, { start: st.warm.start ?? W.start, pattern: st.warm.pattern ?? 0, slow: !!st.warm.slow, along: !!st.warm.along }); }
+}
+let removedIds = new Set();
+async function writeIndex(){
+  const stored = await kvGet('songs');
+  if(Array.isArray(stored)){
+    const have = new Set(songs.map(x => x.id));
+    stored.forEach(x => { if(!have.has(x.id) && !removedIds.has(x.id)) songs.push(x); });
+  }
+  await kvSet('songs', songs);
+}
+// 從每首歌自己的資料重建歌曲清單，清單遺失時可以找回
+async function rebuildIndex(){
+  const keys = await kvKeys();
+  if(!Array.isArray(keys)) return 0;
+  const ids = keys.filter(k => typeof k === 'string' && k.startsWith('song:')).map(k => k.slice(5));
+  const known = new Set(songs.map(x => x.id)); let added = 0;
+  for(const id of ids){
+    if(known.has(id)) continue;
+    const sg = await kvGet('song:' + id); if(!sg) continue;
+    const sum = songSummary(id, sg.title || '未命名歌曲', sg.tracks || [], sg.artist); sum.updated = 0;
+    songs.push(sum); added++;
+  }
+  if(added) await kvSet('songs', songs);
+  return added;
+}
+async function storageInfo(){
+  try{
+    const e = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+    const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false;
+    const mb = v => (v / 1048576).toFixed(v > 1048576 * 100 ? 0 : 1);
+    $('#storeInfo').textContent = '本機儲存：' + songs.length + ' 首歌' + (e ? '，已使用 ' + mb(e.usage || 0) + ' MB' : '') + (persisted ? '，已設為長期保存' : '，尚未取得長期保存權限');
+  }catch(err){}
 }
 async function initStore(){
   const st = await kvGet('settings'); applySettings(st);
@@ -571,6 +605,9 @@ async function initStore(){
       await kvDel('meta');
     }
   }
+  const found = await rebuildIndex();
+  if(found) setTimeout(() => toast('找回 ' + found + ' 首歌'), 400);
+  try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist(); }catch(e){}
 }
 async function loadSong(id){
   const sg = (await kvGet('song:' + id)) || {};
@@ -1022,6 +1059,7 @@ function showView(v){
   window.scrollTo(0, 0);
 }
 function renderLibrary(){
+  storageInfo();
   const ul = $('#songList'); ul.innerHTML = '';
   const q = ($('#songSearch').value || '').trim().toLowerCase();
   const list = songs.filter(sg => !q || (sg.title || '').toLowerCase().includes(q) || (sg.artist || '').toLowerCase().includes(q));
@@ -1068,7 +1106,7 @@ async function deleteSong(){
   clearTimeout(metaTimer);
   for(const t of state.tracks) await kvDel('audio:' + t.id);
   await kvDel('song:' + songId);
-  songs = songs.filter(x => x.id !== songId); await kvSet('songs', songs);
+  removedIds.add(songId); songs = songs.filter(x => x.id !== songId); await kvSet('songs', songs);
   songId = null; state.tracks = [];
   renderLibrary(); showView('library'); toast('已刪除');
 }
@@ -1078,7 +1116,7 @@ function backToLibrary(){
   if(songId){
     kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     songs = [songSummary(songId, state.title, state.tracks, state.artist), ...songs.filter(x => x.id !== songId)];
-    kvSet('songs', songs);
+    writeIndex();
   }
   songId = null; state.tracks = [];
   renderLibrary(); showView('library');
