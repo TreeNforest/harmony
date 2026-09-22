@@ -136,6 +136,12 @@ body[data-view="library"] .transport{display:none}
 .song-title:hover,.song-title:focus{background:var(--surface)}
 .song-artist{display:block;width:100%;border:none;background:transparent;color:var(--muted);font-size:1rem;padding:4px 6px;margin:-10px 0 16px;border-radius:8px}
 .song-artist:hover,.song-artist:focus{background:var(--surface)}
+.tagrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-6px 0 16px}
+.tagrow input{min-height:36px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:.85rem;padding:0 12px;width:9em}
+.tagfilter{display:flex;gap:6px;overflow-x:auto;margin-top:12px;padding-bottom:4px;scrollbar-width:none}
+.tagfilter::-webkit-scrollbar{display:none}
+.tagfilter .chip2{flex:none}
+.song .tg{display:inline-block;font-size:.75rem;color:var(--v1);border:1px solid var(--line);border-radius:999px;padding:0 8px;margin:4px 4px 0 0}
 .searchbar{display:block;width:100%;min-height:46px;margin:18px 0 0;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit}
 .btn.danger{margin-top:40px;color:var(--rec);border-color:var(--rec);background:transparent}
 .chip{border:1px solid rgba(255,255,255,.25);background:none;color:var(--s-dim);border-radius:999px;font-size:.8rem;padding:2px 10px;min-height:30px;cursor:pointer}
@@ -244,10 +250,22 @@ body[data-view="library"] .transport{display:none}
   <button class="btn" id="warmBtn" type="button" style="margin-left:6px">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 16c2-6 4-6 6 0s4 6 6 0 4-6 6 0"/></svg>暖聲練習</button>
   <input id="songSearch" class="searchbar" type="search" placeholder="搜尋歌名或歌手" aria-label="搜尋歌曲">
+  <div class="tagfilter" id="tagFilter" role="group" aria-label="依分類篩選"></div>
   <ul id="songList"></ul>
   <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。</p>
   <h2 class="sec">設定</h2>
   <p class="hint" id="storeInfo"></p>
+  <details class="cal" id="backupBox" open>
+    <summary>備份與還原</summary>
+    <p>資料只存在這支手機的瀏覽器裡。建議每錄完幾首就匯出一次，把檔案存到 Google 雲端硬碟或電腦。換手機或資料不見時，用「匯入備份」就能還原。</p>
+    <p id="backupInfo" style="color:var(--ink)"></p>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn primary" id="exportAll" type="button">匯出全部備份</button>
+      <label class="btn" for="importFile">匯入備份</label>
+      <input id="importFile" class="sr" type="file" accept=".zip,application/zip">
+    </div>
+  </details>
+
   <details class="cal" id="micBox">
     <summary>收音設定</summary>
     <p>如果錄起來聲音悶、像離很遠：戴有線耳機時，手機常會改用耳機線上的小麥克風。可以在這裡改選手機本身的麥克風，或換一副沒有麥克風的耳機。</p>
@@ -278,6 +296,7 @@ body[data-view="library"] .transport{display:none}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>歌曲庫</button>
   <input id="songTitle" class="song-title" aria-label="歌名" maxlength="60">
   <input id="songArtist" class="song-artist" aria-label="歌手" maxlength="60" placeholder="歌手／演唱者">
+  <div class="tagrow" id="tagRow" role="group" aria-label="分類"></div>
   <div class="row">
     <label class="btn" for="backingFile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
@@ -307,7 +326,10 @@ body[data-view="library"] .transport{display:none}
     先匯入伴奏和歌詞，再按「進入錄音」。錄合音時請戴耳機，免得麥克風收到前一軌的聲音。
   </div>
   <p class="hint" id="hint" hidden>點波形可以移動播放的開始位置。</p>
-  <button class="btn danger" id="delSong" type="button">刪除這首歌</button>
+  <div class="row" style="margin-top:40px">
+    <button class="btn" id="exportOne" type="button">備份這首歌</button>
+    <button class="btn danger" id="delSong" type="button" style="margin-top:0">刪除這首歌</button>
+  </div>
 </section>
 </main>
 
@@ -500,7 +522,7 @@ body[data-view="library"] .transport{display:none}
 const $ = s => document.querySelector(s);
 const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
 const BACKING_COLOR = '#8A8D84';
-const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲', artist: '' };
+const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲', artist: '', tags: [] };
 let songId = null, songs = [];
 const GUIDE_COLOR = '#8E86AE';
 let ctx = null, micStream = null, playing = null;
@@ -532,18 +554,18 @@ const kvKeys = () => kv('readonly', s => s.getAllKeys());
 
 let metaTimer;
 const trackMeta = t => { const { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key, score } = t; return { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key: key || 0, score: score || null }; };
-function songSummary(id, title, tracks, artist){
+function songSummary(id, title, tracks, artist, tags){
   const voices = tracks.filter(t => t.kind === 'voice');
   const best = voices.reduce((b, t) => (t.score && (!b || t.score.pts > b.pts)) ? t.score : b, null);
-  return { id, title, artist: artist || '', updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length, best };
+  return { id, title, artist: artist || '', tags: Array.isArray(tags) ? tags : [], updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length, best };
 }
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
-    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along } });
+    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0 });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
-    const sum = songSummary(songId, state.title, state.tracks, state.artist);
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, tags: state.tags || [], lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    const sum = songSummary(songId, state.title, state.tracks, state.artist, state.tags);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }, 300);
@@ -557,6 +579,7 @@ function applySettings(st){
   if(!st) return;
   state.latencyMs = st.latencyMs || 0; state.micId = st.micId || ''; state.micMode = st.micMode || 'raw'; state.monitor = !!st.monitor;
   if(typeof st.skipIntro === 'boolean') state.skipIntro = st.skipIntro;
+  state.lastBackup = st.lastBackup || 0;
   if(st.warm){ Object.assign(W, { start: st.warm.start ?? W.start, pattern: st.warm.pattern ?? 0, slow: !!st.warm.slow, along: !!st.warm.along }); }
 }
 let removedIds = new Set();
@@ -577,7 +600,7 @@ async function rebuildIndex(){
   for(const id of ids){
     if(known.has(id)) continue;
     const sg = await kvGet('song:' + id); if(!sg) continue;
-    const sum = songSummary(id, sg.title || '未命名歌曲', sg.tracks || [], sg.artist); sum.updated = 0;
+    const sum = songSummary(id, sg.title || '未命名歌曲', sg.tracks || [], sg.artist, sg.tags); sum.updated = 0;
     songs.push(sum); added++;
   }
   if(added) await kvSet('songs', songs);
@@ -588,7 +611,9 @@ async function storageInfo(){
     const e = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
     const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false;
     const mb = v => (v / 1048576).toFixed(v > 1048576 * 100 ? 0 : 1);
+    const lb = state.lastBackup ? new Date(state.lastBackup) : null;
     $('#storeInfo').textContent = '本機儲存：' + songs.length + ' 首歌' + (e ? '，已使用 ' + mb(e.usage || 0) + ' MB' : '') + (persisted ? '，已設為長期保存' : '，尚未取得長期保存權限');
+    $('#backupInfo').textContent = lb ? '上次備份：' + (lb.getMonth() + 1) + '/' + lb.getDate() + ' ' + String(lb.getHours()).padStart(2, '0') + ':' + String(lb.getMinutes()).padStart(2, '0') : '還沒有備份過。';
   }catch(err){}
 }
 async function initStore(){
@@ -612,7 +637,7 @@ async function initStore(){
 async function loadSong(id){
   const sg = (await kvGet('song:' + id)) || {};
   songId = id; state.tracks = []; state.pos = 0; pitchRange = null; state.guideContour = null;
-  state.title = sg.title || '新歌曲'; state.artist = sg.artist || '';
+  state.title = sg.title || '新歌曲'; state.artist = sg.artist || ''; state.tags = Array.isArray(sg.tags) ? sg.tags : [];
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.guideNotes = Array.isArray(sg.guideNotes) ? sg.guideNotes : [];
   state.guideTune = typeof sg.guideTune === 'number' ? sg.guideTune : 0;
@@ -927,7 +952,7 @@ function wFrame(d, pt){
   const sr = ctx.sampleRate, t = pt + d.length / 2 / sr - state.latencyMs / 1000;
   const raw = detectLive(d, sr); let m = null;
   if(raw !== null){
-    W.recent.push({ t, m: raw }); while(W.recent.length && t - W.recent[0].t > 0.13) W.recent.shift();
+    W.recent.push({ t, m: raw }); while(W.recent.length && t - W.recent[0].t > 0.07) W.recent.shift();
     const base = W.recent[W.recent.length - 1].m;
     const v = W.recent.map(q => base + circSigned(q.m, base)).sort((a, b) => a - b); m = v[v.length >> 1];
     W.cur = { m, t, raw };
@@ -1058,15 +1083,40 @@ function showView(v){
   $('#studioView').hidden = v !== 'studio';
   window.scrollTo(0, 0);
 }
+let libTag = '';
+const allTags = () => { const m = new Map(); songs.forEach(sg => (sg.tags || []).forEach(t => m.set(t, (m.get(t) || 0) + 1))); return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); };
+function renderTagFilter(){
+  const box = $('#tagFilter'), tags = allTags();
+  if(libTag && !tags.some(([t]) => t === libTag)) libTag = '';
+  box.hidden = !tags.length; box.innerHTML = '';
+  const mk = (label, val, n) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip2'; b.textContent = n === undefined ? label : label + ' ' + n; b.setAttribute('aria-pressed', libTag === val); b.addEventListener('click', () => { libTag = libTag === val ? '' : val; renderLibrary(); }); box.appendChild(b); };
+  mk('全部', '', songs.length);
+  tags.forEach(([t, n]) => mk(t, t, n));
+}
+function renderTags(){
+  const row = $('#tagRow'); row.innerHTML = '';
+  const tags = new Set([...allTags().map(([t]) => t), ...state.tags]);
+  tags.forEach(t => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip2'; b.textContent = t;
+    b.setAttribute('aria-pressed', state.tags.includes(t));
+    b.addEventListener('click', () => { state.tags = state.tags.includes(t) ? state.tags.filter(x => x !== t) : [...state.tags, t]; saveMeta(); songs = songs.map(x => x.id === songId ? { ...x, tags: state.tags } : x); renderTags(); });
+    row.appendChild(b);
+  });
+  const inp = document.createElement('input'); inp.placeholder = '＋ 新分類'; inp.maxLength = 16; inp.setAttribute('aria-label', '新增分類');
+  inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
+  inp.addEventListener('change', () => { const v = inp.value.trim(); if(v && !state.tags.includes(v)){ state.tags = [...state.tags, v]; saveMeta(); songs = songs.map(x => x.id === songId ? { ...x, tags: state.tags } : x); } renderTags(); });
+  row.appendChild(inp);
+}
 function renderLibrary(){
-  storageInfo();
+  storageInfo(); renderTagFilter();
   const ul = $('#songList'); ul.innerHTML = '';
   const q = ($('#songSearch').value || '').trim().toLowerCase();
-  const list = songs.filter(sg => !q || (sg.title || '').toLowerCase().includes(q) || (sg.artist || '').toLowerCase().includes(q));
+  const list = songs.filter(sg => (!libTag || (sg.tags || []).includes(libTag)) && (!q || (sg.title || '').toLowerCase().includes(q) || (sg.artist || '').toLowerCase().includes(q) || (sg.tags || []).some(t => t.toLowerCase().includes(q))));
   $('#songSearch').hidden = songs.length < 3;
+  $('#songSearch').placeholder = '搜尋歌名、歌手或分類';
   $('#libEmpty').hidden = songs.length > 0;
   $('#libEmpty').textContent = songs.length ? '' : '歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。';
-  if(songs.length && !list.length){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = '找不到符合的歌曲。'; ul.appendChild(li); }
+  if(songs.length && !list.length){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = libTag ? '這個分類裡沒有符合的歌曲。' : '找不到符合的歌曲。'; ul.appendChild(li); }
   list.sort((a, b) => b.updated - a.updated).forEach(sg => {
     const li = document.createElement('li');
     const b = document.createElement('button'); b.type = 'button'; b.className = 'song';
@@ -1077,6 +1127,7 @@ function renderLibrary(){
     b.innerHTML = '<span><span class="st"></span><span class="ss"></span></span>' + (sg.best ? '<span class="badge">' + sg.best.grade + ' · ' + sg.best.pts + '</span>' : '');
     b.querySelector('.st').textContent = sg.title || '未命名歌曲';
     b.querySelector('.ss').textContent = parts.join(' · ');
+    if(sg.tags && sg.tags.length){ const tg = document.createElement('span'); tg.style.display = 'block'; sg.tags.forEach(t => { const x = document.createElement('span'); x.className = 'tg'; x.textContent = t; tg.appendChild(x); }); b.querySelector('.ss').after(tg); }
     b.addEventListener('click', () => openSong(sg.id));
     li.appendChild(b); ul.appendChild(li);
   });
@@ -1085,15 +1136,15 @@ async function openSong(id){
   if(playing) haltPlayback();
   toast('載入中…');
   await loadSong(id);
-  $('#songTitle').value = state.title; $('#songArtist').value = state.artist;
+  $('#songTitle').value = state.title; $('#songArtist').value = state.artist; renderTags();
   showView('studio'); render(); updateClock();
   const b = backing(); if(b && b.key) applyKey();
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.guideTune = 0; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; pitchRange = null;
+  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.guideTune = 0; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.tags = []; pitchRange = null;
   saveMeta();
-  $('#songTitle').value = state.title; $('#songArtist').value = '';
+  $('#songTitle').value = state.title; $('#songArtist').value = ''; renderTags();
   showView('studio'); render(); updateClock();
   $('#songTitle').select();
 }
@@ -1104,7 +1155,7 @@ async function deleteSong(){
   clearTimeout(delSongArmed); delSongArmed = null; btn.textContent = '刪除這首歌';
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
-  for(const t of state.tracks) await kvDel('audio:' + t.id);
+  for(const t of state.tracks){ await kvDel('audio:' + t.id); await kvDel('orig:' + t.id); }
   await kvDel('song:' + songId);
   removedIds.add(songId); songs = songs.filter(x => x.id !== songId); await kvSet('songs', songs);
   songId = null; state.tracks = [];
@@ -1114,8 +1165,8 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
-    songs = [songSummary(songId, state.title, state.tracks, state.artist), ...songs.filter(x => x.id !== songId)];
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, tags: state.tags || [], lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    songs = [songSummary(songId, state.title, state.tracks, state.artist, state.tags), ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }
   songId = null; state.tracks = [];
@@ -1194,7 +1245,8 @@ async function testMic(){
 }
 function startCapture(c, stream, monitor){
   const src = c.createMediaStreamSource(stream);
-  const proc = c.createScriptProcessor(2048, 1, 1);
+  const proc = c.createScriptProcessor(1024, 1, 1);
+  const WIN = 2048, win = new Float32Array(WIN);
   const sink = c.createGain(); sink.gain.value = 0;
   let mon = null;
   const cap = { chunks: [], firstTime: null, level: 0 };
@@ -1207,7 +1259,7 @@ function startCapture(c, stream, monitor){
     const d = e.inputBuffer.getChannelData(0);
     if(cap.firstTime === null) cap.firstTime = e.playbackTime;
     cap.chunks.push(new Float32Array(d));
-    if(cap.onFrame) cap.onFrame(d, e.playbackTime);
+    if(cap.onFrame){ win.copyWithin(0, d.length); win.set(d, WIN - d.length); cap.onFrame(win, e.playbackTime + d.length / c.sampleRate - WIN / c.sampleRate); }
     let m = 0; for(let i = 0; i < d.length; i += 4){ const v = Math.abs(d[i]); if(v > m) m = v; }
     cap.level = m;
   };
@@ -1279,32 +1331,33 @@ async function importBacking(file){
   if(!file) return;
   const c = ac();
   try{
-    const buf = await c.decodeAudioData(await file.arrayBuffer());
+    const raw = await file.arrayBuffer();
+    const buf = await c.decodeAudioData(raw.slice(0));
     const old = backing();
-    if(old){ state.tracks = state.tracks.filter(t => t !== old); kvDel('audio:' + old.id); }
+    if(old){ state.tracks = state.tracks.filter(t => t !== old); kvDel('audio:' + old.id); kvDel('orig:' + old.id); }
     const t = { id: uid(), kind: 'backing', name: file.name.replace(/\.[^.]+$/, '') || '伴奏', color: BACKING_COLOR, vol: 0.8, pan: 0, mute: false, offset: 0, nudgeMs: 0, buffer: buf };
     state.tracks.unshift(t);
     if(!state.title || state.title === '新歌曲'){ state.title = t.name; $('#songTitle').value = state.title; }
-    saveAudio(t); saveMeta(); render();
+    saveAudio(t); kvSet('orig:' + t.id, { mime: file.type, name: file.name, bytes: raw }); saveMeta(); render();
   }catch(e){ toast('這個檔案無法讀取，請換成 mp3、m4a 或 wav'); }
 }
 
 async function importGuide(file){
   if(!file) return;
-  const c = ac(); let buf;
-  try{ buf = await c.decodeAudioData(await file.arrayBuffer()); }catch(e){ toast('這個檔案無法讀取，請換成 mp3、m4a 或 wav'); return; }
+  const c = ac(); let buf, raw;
+  try{ raw = await file.arrayBuffer(); buf = await c.decodeAudioData(raw.slice(0)); }catch(e){ toast('這個檔案無法讀取，請換成 mp3、m4a 或 wav'); return; }
   toast('分析音高中…');
   let notes;
   try{ notes = await analyzeGuide(buf, p => toast('分析音高中… ' + Math.round(p * 100) + '%')); }
   catch(e){ toast('分析失敗：' + (e.message || e)); return; }
   if(!notes.length){ toast('找不到清楚的人聲音高，請確認是分離後的人聲檔'); return; }
   const old = guide();
-  if(old){ state.tracks = state.tracks.filter(t => t !== old); kvDel('audio:' + old.id); }
+  if(old){ state.tracks = state.tracks.filter(t => t !== old); kvDel('audio:' + old.id); kvDel('orig:' + old.id); }
   const t = { id: uid(), kind: 'guide', name: '原唱人聲', color: GUIDE_COLOR, vol: 0.8, pan: 0, mute: true, offset: 0, nudgeMs: 0, buffer: buf };
   const bi = state.tracks.findIndex(x => x.kind === 'backing');
   state.tracks.splice(bi + 1, 0, t);
   state.guideNotes = notes; state.guideContour = analyzeGuide.lastContour; setTuning(); pitchRange = null;
-  saveAudio(t); saveMeta(); render();
+  saveAudio(t); kvSet('orig:' + t.id, { mime: file.type, name: file.name, bytes: raw }); saveMeta(); render();
   toast('抓到 ' + notes.length + ' 個音，錄主唱時會出現音高條和分數');
   if(backing() && backing().key) applyKey();
 }
@@ -1687,7 +1740,7 @@ async function analyzeGuide(buf, onProgress){
   const oc = new OfflineAudioContext(1, len, SR);
   const src = oc.createBufferSource(); src.buffer = buf; src.connect(oc.destination); src.start();
   const x = (await oc.startRendering()).getChannelData(0);
-  const W = 400, HOP = 160, tauMax = Math.ceil(SR / 70), tauMin = Math.floor(SR / 1100), hop = HOP / SR;
+  const W = 400, HOP = 80, tauMax = Math.ceil(SR / 70), tauMin = Math.floor(SR / 1100), hop = HOP / SR;
   const count = Math.max(0, Math.floor((len - W - tauMax - 2) / HOP));
   const rms = new Float32Array(count); let peak = 0;
   for(let k = 0; k < count; k++){ let e = 0; const o = k * HOP; for(let j = 0; j < W; j++) e += x[o + j] * x[o + j]; rms[k] = Math.sqrt(e / W); if(rms[k] > peak) peak = rms[k]; }
@@ -1701,12 +1754,12 @@ async function analyzeGuide(buf, onProgress){
   const close = () => {
     if(!cur) return;
     const t0 = cur.s * hop, t1 = (cur.e + 1) * hop;
-    if(t1 - t0 >= 0.1){ const v = cur.v.slice().sort((a, b) => a - b); notes.push([+t0.toFixed(3), +t1.toFixed(3), Math.round(v[v.length >> 1])]); }
+    if(t1 - t0 >= 0.07){ const v = cur.v.slice().sort((a, b) => a - b); notes.push([+t0.toFixed(3), +t1.toFixed(3), Math.round(v[v.length >> 1])]); }
     cur = null;
   };
   for(let i = 0; i < med.length; i++){
     const v = med[i];
-    if(v === null){ if(cur && ++cur.gap > 2) close(); continue; }
+    if(v === null){ if(cur && ++cur.gap > 4) close(); continue; }
     if(cur && Math.abs(v - cur.avg) < 1){ cur.v.push(v); cur.e = i; cur.gap = 0; cur.avg += (v - cur.avg) * 0.15; }
     else { close(); cur = { s: i, e: i, v: [v], avg: v, gap: 0 }; }
   }
@@ -1776,7 +1829,7 @@ function onLiveFrame(p, d, pt){
   if(raw !== null){
     const rc = take.recent || (take.recent = []);
     rc.push({ t, m: raw });
-    while(rc.length && t - rc[0].t > 0.13) rc.shift();
+    while(rc.length && t - rc[0].t > 0.07) rc.shift();
     const base = rc[rc.length - 1].m;
     const vals = rc.map(q => base + circSigned(q.m, base)).sort((a, b) => a - b);
     m = vals[vals.length >> 1];
@@ -1784,7 +1837,7 @@ function onLiveFrame(p, d, pt){
   } else if(take.recent) take.recent.length = 0;
   if(take.scoring){
     const i = findNote(take.notes, t);
-    if(i >= 0){ const st = take.stats[i] || (take.stats[i] = { hit: 0, total: 0 }); st.total++; if(m !== null) st.hit += pitchCredit(circ(m, take.notes[i].m)); }
+    if(i >= 0){ const st = take.stats[i] || (take.stats[i] = { hit: 0, total: 0 }); st.total++; if(m !== null){ let best = pitchCredit(circ(m, take.notes[i].m)); for(const dt of [-0.07, 0.07]){ const j = findNote(take.notes, t + dt); if(j >= 0 && j !== i) best = Math.max(best, pitchCredit(circ(m, take.notes[j].m))); } st.hit += best; } }
   }
 }
 
@@ -2017,7 +2070,7 @@ function render(){
     del.addEventListener('click', () => {
       if(!armed){ del.classList.add('confirm'); del.textContent = '確定刪除'; armed = setTimeout(() => { armed = null; del.classList.remove('confirm'); del.innerHTML = ICON_TRASH; }, 3000); return; }
       clearTimeout(armed); if(playing) haltPlayback();
-      state.tracks = state.tracks.filter(x => x !== t); kvDel('audio:' + t.id); if(t.kind === 'guide'){ state.guideNotes = []; state.guideContour = null; pitchRange = null; } saveMeta(); render();
+      state.tracks = state.tracks.filter(x => x !== t); kvDel('audio:' + t.id); kvDel('orig:' + t.id); if(t.kind === 'guide'){ state.guideNotes = []; state.guideContour = null; pitchRange = null; } saveMeta(); render();
     });
     q('.wave').addEventListener('click', e => {
       if(playing && playing.mode !== 'play') return;
@@ -2100,6 +2153,164 @@ function makeZip(name, data){
   e.setUint32(12, 46 + nb.length, true); e.setUint32(16, 30 + nb.length + data.length, true);
   return new Blob([lh, nb, data, cd, nb, e]);
 }
+/* ---------- 備份與還原 ---------- */
+function rawWav(chs, sr){
+  const ch = chs.length, n = chs[0].length, size = 44 + n * ch * 2, ab = new ArrayBuffer(size), v = new DataView(ab); let o = 0;
+  const ws = s => { for(const c of s) v.setUint8(o++, c.charCodeAt(0)); };
+  ws('RIFF'); v.setUint32(o, size - 8, true); o += 4; ws('WAVE'); ws('fmt ');
+  v.setUint32(o, 16, true); o += 4; v.setUint16(o, 1, true); o += 2; v.setUint16(o, ch, true); o += 2;
+  v.setUint32(o, sr, true); o += 4; v.setUint32(o, sr * ch * 2, true); o += 4; v.setUint16(o, ch * 2, true); o += 2; v.setUint16(o, 16, true); o += 2;
+  ws('data'); v.setUint32(o, n * ch * 2, true); o += 4;
+  for(let i = 0; i < n; i++) for(let c = 0; c < ch; c++){ const s = Math.max(-1, Math.min(1, chs[c][i])); v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2; }
+  return new Uint8Array(ab);
+}
+function parseWav(ab){
+  const v = new DataView(ab); let p = 12, ch = 1, sr = 44100, bits = 16, dataOff = -1, dataLen = 0;
+  while(p + 8 <= v.byteLength){
+    const id = String.fromCharCode(v.getUint8(p), v.getUint8(p + 1), v.getUint8(p + 2), v.getUint8(p + 3)), len = v.getUint32(p + 4, true);
+    if(id === 'fmt '){ ch = v.getUint16(p + 10, true); sr = v.getUint32(p + 12, true); bits = v.getUint16(p + 22, true); }
+    if(id === 'data'){ dataOff = p + 8; dataLen = Math.min(len, v.byteLength - dataOff); break; }
+    p += 8 + len + (len & 1);
+  }
+  if(dataOff < 0 || bits !== 16) throw new Error('WAV 格式不支援');
+  const n = Math.floor(dataLen / (2 * ch)), out = []; for(let c = 0; c < ch; c++) out.push(new Float32Array(n));
+  for(let i = 0; i < n; i++) for(let c = 0; c < ch; c++) out[c][i] = v.getInt16(dataOff + (i * ch + c) * 2, true) / 32768;
+  return { sr, ch: out };
+}
+function zipWriter(){
+  let blob = new Blob([]), off = 0; const cd = [];
+  return {
+    add(name, data){
+      const nb = new TextEncoder().encode(name), crc = crc32(data), lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);
+      lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, nb.length, true);
+      blob = new Blob([blob, lh, nb, data]);
+      cd.push({ nb, crc, size: data.length, off }); off += 30 + nb.length + data.length;
+    },
+    finish(){
+      const parts = []; let cdSize = 0;
+      for(const e of cd){
+        const h = new DataView(new ArrayBuffer(46));
+        h.setUint32(0, 0x02014b50, true); h.setUint16(4, 20, true); h.setUint16(6, 20, true); h.setUint16(8, 0x0800, true); h.setUint16(14, 0x21, true);
+        h.setUint32(16, e.crc, true); h.setUint32(20, e.size, true); h.setUint32(24, e.size, true); h.setUint16(28, e.nb.length, true); h.setUint32(42, e.off, true);
+        parts.push(h, e.nb); cdSize += 46 + e.nb.length;
+      }
+      const end = new DataView(new ArrayBuffer(22));
+      end.setUint32(0, 0x06054b50, true); end.setUint16(8, cd.length, true); end.setUint16(10, cd.length, true);
+      end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+      return new Blob([blob, ...parts, end], { type: 'application/zip' });
+    }
+  };
+}
+async function zipReader(file){
+  const tailLen = Math.min(file.size, 65557), tail = new DataView(await file.slice(file.size - tailLen).arrayBuffer());
+  let e = -1; for(let i = tailLen - 22; i >= 0; i--) if(tail.getUint32(i, true) === 0x06054b50){ e = i; break; }
+  if(e < 0) throw new Error('不是 zip 檔');
+  const count = tail.getUint16(e + 10, true), cdSize = tail.getUint32(e + 12, true), cdOff = tail.getUint32(e + 16, true);
+  const cd = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer()), entries = {};
+  for(let i = 0, p = 0; i < count; i++){
+    if(cd.getUint32(p, true) !== 0x02014b50) break;
+    const method = cd.getUint16(p + 10, true), size = cd.getUint32(p + 20, true), nl = cd.getUint16(p + 28, true), el = cd.getUint16(p + 30, true), cl = cd.getUint16(p + 32, true), lo = cd.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(new Uint8Array(cd.buffer, cd.byteOffset + p + 46, nl));
+    entries[name] = { method, size, lo }; p += 46 + nl + el + cl;
+  }
+  return {
+    has: n => !!entries[n],
+    async read(n){
+      const en = entries[n]; if(!en) throw new Error('備份檔缺少 ' + n);
+      if(en.method !== 0) throw new Error('這個 zip 被重新壓縮過，請用原始的備份檔');
+      const lh = new DataView(await file.slice(en.lo, en.lo + 30).arrayBuffer());
+      const start = en.lo + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+      return await file.slice(start, start + en.size).arrayBuffer();
+    }
+  };
+}
+async function flushSong(){
+  if(!songId) return;
+  clearTimeout(metaTimer);
+  await kvSet('song:' + songId, { title: state.title, artist: state.artist, tags: state.tags || [], lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+  songs = [songSummary(songId, state.title, state.tracks, state.artist, state.tags), ...songs.filter(x => x.id !== songId)];
+  await writeIndex();
+}
+let backupBusy = false;
+async function exportBackup(onlyId){
+  if(backupBusy) return; backupBusy = true;
+  try{
+    if(playing) haltPlayback();
+    await flushSong();
+    const list = onlyId ? songs.filter(x => x.id === onlyId) : songs.slice();
+    if(!list.length){ toast('還沒有歌可以備份'); return; }
+    const z = zipWriter(), man = { app: 'harmonia', v: 1, created: Date.now(), settings: await kvGet('settings'), songs: [] };
+    for(let i = 0; i < list.length; i++){
+      const id = list[i].id, doc = await kvGet('song:' + id); if(!doc) continue;
+      toast('備份中… ' + (i + 1) + ' / ' + list.length + '：' + (doc.title || ''));
+      const audio = {};
+      for(const t of doc.tracks || []){
+        const orig = await kvGet('orig:' + t.id);
+        if(orig && orig.bytes){
+          const ext = ((orig.name || '').match(/\.([a-z0-9]+)$/i) || [0, 'audio'])[1];
+          const name = 'audio/' + t.id + '.' + ext; z.add(name, new Uint8Array(orig.bytes));
+          audio[t.id] = { file: name, type: 'orig', mime: orig.mime || '', name: orig.name || '' };
+        } else {
+          const a = await kvGet('audio:' + t.id); if(!a || !a.ch) continue;
+          const name = 'audio/' + t.id + '.wav'; z.add(name, rawWav(a.ch, a.sr));
+          audio[t.id] = { file: name, type: 'wav' };
+        }
+        await sleep(0);
+      }
+      man.songs.push({ id, doc, audio });
+    }
+    z.add('backup.json', new TextEncoder().encode(JSON.stringify(man)));
+    const blob = z.finish(), d = new Date();
+    const stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+    const fname = 'harmonia-' + (onlyId ? 'song-' : 'backup-') + stamp + '.zip';
+    const dl = await dlPromise;
+    if(dl){ try{ await dl.save({ filename: fname, data: blob }); }catch(e){ if(e && e.code !== 'declined') toast('匯出失敗：' + (e.message || e.code)); return; } }
+    else { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); }
+    if(!onlyId){ state.lastBackup = Date.now(); saveMeta(); }
+    storageInfo();
+    toast('備份完成：' + man.songs.length + ' 首，' + (blob.size / 1048576).toFixed(0) + ' MB');
+  }catch(e){ toast('備份失敗：' + (e.message || e)); }
+  finally{ backupBusy = false; }
+}
+async function importBackup(file){
+  if(!file || backupBusy) return; backupBusy = true;
+  try{
+    const z = await zipReader(file);
+    if(!z.has('backup.json')){ toast('這不是 Harmonia 的備份檔'); return; }
+    const man = JSON.parse(new TextDecoder().decode(await z.read('backup.json')));
+    if(man.app !== 'harmonia'){ toast('這不是 Harmonia 的備份檔'); return; }
+    const wasEmpty = songs.length === 0, have = new Set(songs.map(x => x.id));
+    let added = 0, skipped = 0;
+    for(let i = 0; i < man.songs.length; i++){
+      const sg = man.songs[i];
+      if(have.has(sg.id)){ skipped++; continue; }
+      toast('還原中… ' + (i + 1) + ' / ' + man.songs.length + '：' + (sg.doc.title || ''));
+      for(const t of sg.doc.tracks || []){
+        const a = sg.audio[t.id]; if(!a) continue;
+        const bytes = await z.read(a.file);
+        if(a.type === 'wav'){ await kvSet('audio:' + t.id, parseWav(bytes)); }
+        else {
+          await kvSet('orig:' + t.id, { mime: a.mime, name: a.name, bytes: bytes.slice(0) });
+          const buf = await ac().decodeAudioData(bytes), ch = [];
+          for(let c = 0; c < buf.numberOfChannels; c++) ch.push(buf.getChannelData(c));
+          await kvSet('audio:' + t.id, { sr: buf.sampleRate, ch });
+        }
+        await sleep(0);
+      }
+      await kvSet('song:' + sg.id, sg.doc);
+      removedIds.delete(sg.id);
+      songs.push(songSummary(sg.id, sg.doc.title || '未命名歌曲', sg.doc.tracks || [], sg.doc.artist, sg.doc.tags));
+      added++;
+    }
+    await writeIndex();
+    if(wasEmpty && added && man.settings){ applySettings(man.settings); setLatency(state.latencyMs); document.querySelectorAll('input[name=micMode]').forEach(r => r.checked = r.value === state.micMode); }
+    renderLibrary();
+    toast('還原了 ' + added + ' 首歌' + (skipped ? '，' + skipped + ' 首已經存在，所以略過' : ''));
+  }catch(e){ toast('還原失敗：' + (e.message || e)); }
+  finally{ backupBusy = false; }
+}
+
 const dlPromise = (window.claude && typeof window.claude.use === 'function') ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
 
 async function exportMix(){
@@ -2138,6 +2349,9 @@ $('#seek').addEventListener('input', e => {
 $('#seek').addEventListener('change', e => { seeking = false; seekTo(+e.target.value); });
 $('#stageBtn').addEventListener('click', openStage);
 $('#newSong').addEventListener('click', newSong);
+$('#exportAll').addEventListener('click', () => exportBackup());
+$('#exportOne').addEventListener('click', () => exportBackup(songId));
+$('#importFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; importBackup(f); });
 $('#warmBtn').addEventListener('click', wOpen);
 $('#wClose').addEventListener('click', wClose);
 document.querySelectorAll('[data-wm]').forEach(b => b.addEventListener('click', () => { W.mode = b.dataset.wm; if(W.mode === 'free') wStopEx(); wSyncControls(); }));
