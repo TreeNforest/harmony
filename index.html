@@ -114,6 +114,15 @@ body[data-view="library"] .transport{display:none}
 .ed-sel[hidden]{display:none}
 .ed-sel #edName{flex:1;text-align:center;font-weight:700;font-size:.95rem}
 .ed-hint{font-size:.8rem;color:var(--muted);margin:6px 0 0}
+.tuner{padding:4px 16px 10px;text-align:center}
+.tn-note{font-size:2.2rem;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.tn-note small{font-size:.9rem;font-weight:400;color:var(--muted);margin-left:.5em}
+.tn-meter{display:flex;align-items:center;gap:10px;font-size:.75rem;color:var(--muted);margin:6px auto 0;max-width:420px}
+.tn-bar{position:relative;flex:1;height:10px;border-radius:5px;background:var(--surface);border:1px solid var(--line)}
+.tn-bar i{position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--muted)}
+.tn-bar b{position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--line);transition:left .08s linear,background .15s}
+.tn-sub{font-size:.8rem;color:var(--muted);margin-top:6px;min-height:1.2em}
+.wsel{width:100%;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;padding:0 10px}
 .sec{font-size:1.05rem;margin:36px 0 4px;color:var(--muted);font-weight:700;letter-spacing:.1em}
 #songList{list-style:none;margin:18px 0 0;padding:0}
 .song{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 4px;border:none;border-bottom:1px solid var(--line);background:none;cursor:pointer;min-height:64px}
@@ -232,6 +241,8 @@ body[data-view="library"] .transport{display:none}
   <p class="lede">先錄主唱，再戴著耳機一邊聽、一邊把合音疊上去。要疊幾軌都可以。</p>
   <button class="btn primary" id="newSong" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>新增歌曲</button>
+  <button class="btn" id="warmBtn" type="button" style="margin-left:6px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 16c2-6 4-6 6 0s4 6 6 0 4-6 6 0"/></svg>暖聲練習</button>
   <input id="songSearch" class="searchbar" type="search" placeholder="搜尋歌名或歌手" aria-label="搜尋歌曲">
   <ul id="songList"></ul>
   <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。</p>
@@ -445,6 +456,43 @@ body[data-view="library"] .transport{display:none}
   </div>
 </section>
 
+<section class="editor warm" id="warm" hidden aria-label="暖聲練習">
+  <div class="ed-top">
+    <button class="icon" id="wClose" type="button" aria-label="關閉暖聲練習">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <strong>暖聲練習</strong>
+    <span></span>
+  </div>
+  <div class="tuner">
+    <div class="tn-note"><span id="wNote">—</span><small id="wCents"></small></div>
+    <div class="tn-meter"><span>−50</span><div class="tn-bar"><i></i><b id="wDot"></b></div><span>+50</span></div>
+    <div class="tn-sub" id="wSub">對著麥克風發聲</div>
+  </div>
+  <div class="ed-canvas"><canvas id="wCanvas"></canvas></div>
+  <div class="ed-bottom">
+    <div class="row" style="gap:6px" role="group" aria-label="練習模式">
+      <button class="chip2" type="button" data-wm="free" aria-pressed="true">自由發聲</button>
+      <button class="chip2" type="button" data-wm="ex" aria-pressed="false">音階跟唱</button>
+    </div>
+    <div id="wEx" hidden>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <select id="wPattern" class="wsel" aria-label="練習內容"></select>
+      </div>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <span style="font-size:.9rem;color:var(--muted)">起始音</span>
+        <button class="btn sm" id="wDown" type="button" aria-label="起始音降半音">−</button>
+        <strong id="wStart" style="min-width:2.6em;text-align:center"></strong>
+        <button class="btn sm" id="wUp" type="button" aria-label="起始音升半音">＋</button>
+        <button class="chip2" type="button" id="wSlow" aria-pressed="false">慢速</button>
+        <button class="chip2" type="button" id="wAlong" aria-pressed="false">邊聽邊唱</button>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="btn primary" id="wGo" type="button">開始練習</button><span id="wResult" style="font-size:.9rem;color:var(--muted)"></span></div>
+    </div>
+    <p class="ed-hint" id="wHint">上方會顯示你現在唱的音和偏差，綠色代表準。下面的線是你的音高軌跡。</p>
+  </div>
+</section>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -490,9 +538,9 @@ function songSummary(id, title, tracks, artist){
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
-    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro });
+    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along } });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     kvSet('songs', songs);
@@ -507,6 +555,7 @@ function applySettings(st){
   if(!st) return;
   state.latencyMs = st.latencyMs || 0; state.micId = st.micId || ''; state.micMode = st.micMode || 'raw'; state.monitor = !!st.monitor;
   if(typeof st.skipIntro === 'boolean') state.skipIntro = st.skipIntro;
+  if(st.warm){ Object.assign(W, { start: st.warm.start ?? W.start, pattern: st.warm.pattern ?? 0, slow: !!st.warm.slow, along: !!st.warm.along }); }
 }
 async function initStore(){
   const st = await kvGet('settings'); applySettings(st);
@@ -529,6 +578,7 @@ async function loadSong(id){
   state.title = sg.title || '新歌曲'; state.artist = sg.artist || '';
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.guideNotes = Array.isArray(sg.guideNotes) ? sg.guideNotes : [];
+  state.guideTune = typeof sg.guideTune === 'number' ? sg.guideTune : 0;
   state.reverb = typeof sg.reverb === 'number' ? sg.reverb : 0;
   for(const m of sg.tracks || []){
     const a = await kvGet('audio:' + m.id); if(!a || !a.ch || !a.ch.length) continue;
@@ -617,7 +667,7 @@ function edClose(){
 async function edContour(){
   const g = guide(); if(!g) return;
   edStatus('分析音高曲線中…');
-  try{ await analyzeGuide(g.buffer, p => edStatus('分析音高曲線中… ' + Math.round(p * 100) + '%')); state.guideContour = analyzeGuide.lastContour; }catch(e){}
+  try{ await analyzeGuide(g.buffer, p => edStatus('分析音高曲線中… ' + Math.round(p * 100) + '%')); state.guideContour = analyzeGuide.lastContour; setTuning(); }catch(e){}
   edStatus(''); edDraw();
 }
 function edSize(){
@@ -787,13 +837,181 @@ async function edRedetect(){
   const g = guide(); if(!g) return;
   edStop(); edStatus('重新偵測中…');
   const notes = await analyzeGuide(g.buffer, p => edStatus('重新偵測中… ' + Math.round(p * 100) + '%'));
-  state.guideContour = analyzeGuide.lastContour;
+  state.guideContour = analyzeGuide.lastContour; setTuning();
   edPushUndo(); ed.notes = notes.map(n => ({ t0: n[0] + ed.off, t1: n[1] + ed.off, m: n[2] })); ed.sel = -1;
   edCommit(); edUpdateSel(); edStatus(''); edDraw(); toast('已重新偵測，可以按「復原」回到之前的版本');
 }
 function edNudgeSel(dm){
   const n = ed.notes[ed.sel]; if(!n) return;
   edPushUndo(); n.m = Math.max(ed.lo, Math.min(ed.hi, n.m + dm)); edTone(n.m); edCommit(); edUpdateSel(); edDraw();
+}
+
+/* ---------- 暖聲練習 ---------- */
+const W = { cap: null, trail: [], recent: [], cur: null, sy: null, rowH: 22, lo: 33, hi: 88, pps: 70, mode: 'free', ex: null, shown: null, pattern: 0, start: 48, slow: false, along: false, raf: 0 };
+const PATTERNS = [
+  { name: '五音音階　1-2-3-4-5-4-3-2-1', s: [0, 2, 4, 5, 7, 5, 4, 2, 0] },
+  { name: '大三和弦　1-3-5-8-5-3-1', s: [0, 4, 7, 12, 7, 4, 0] },
+  { name: '八度跳音　1-8-1', s: [0, 12, 0], len: 1.2 },
+  { name: '長音穩定　1（每音 3 秒）', s: [0], len: 3 },
+  { name: '三度上行　1-3-2-4-3-5-4-2-1', s: [0, 4, 2, 5, 4, 7, 5, 2, 0] }
+];
+let wCv = null, wG = null, wW = 0, wH = 0;
+async function wOpen(){
+  if(playing) haltPlayback();
+  $('#warm').hidden = false; document.body.style.overflow = 'hidden';
+  wSize(); W.trail = []; W.recent = []; W.cur = null; W.sy = null; W.shown = null;
+  $('#wPattern').innerHTML = PATTERNS.map((p, i) => '<option value="' + i + '">' + p.name + '</option>').join('');
+  $('#wPattern').value = W.pattern; wSyncControls();
+  const c = ac();
+  try{ const st = await getMic(); if($('#warm').hidden) return stopMic(); W.cap = startCapture(c, st, false); W.cap.onFrame = wFrame; }
+  catch(e){ micError(e); }
+  cancelAnimationFrame(W.raf); wLoop();
+}
+function wClose(){
+  wStopEx(); if(W.cap){ W.cap.stop(); W.cap = null; } stopMic();
+  cancelAnimationFrame(W.raf); $('#warm').hidden = true; document.body.style.overflow = '';
+}
+function wSize(){
+  wCv = $('#wCanvas'); const box = wCv.parentElement, dpr = window.devicePixelRatio || 1;
+  wW = box.clientWidth; wH = box.clientHeight;
+  wCv.width = wW * dpr; wCv.height = wH * dpr; wCv.style.width = wW + 'px'; wCv.style.height = wH + 'px';
+  wG = wCv.getContext('2d'); wG.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function wSyncControls(){
+  $('#wStart').textContent = noteName(W.start);
+  $('#wSlow').setAttribute('aria-pressed', W.slow); $('#wAlong').setAttribute('aria-pressed', W.along);
+  document.querySelectorAll('[data-wm]').forEach(b => b.setAttribute('aria-pressed', b.dataset.wm === W.mode));
+  $('#wEx').hidden = W.mode !== 'ex';
+  $('#wHint').textContent = W.mode === 'ex'
+    ? (W.along ? '邊聽邊唱：跟著琴聲一起唱，請戴耳機，不然麥克風會收到琴聲。' : '先聽再唱：先聽一遍示範（淡色音條），再換你唱實心的音條。每一輪會升高半音，共 6 輪。')
+    : '上方會顯示你現在唱的音和偏差，綠色代表準。下面的線是你的音高軌跡。';
+}
+function wFrame(d, pt){
+  const sr = ctx.sampleRate, t = pt + d.length / 2 / sr - state.latencyMs / 1000;
+  const raw = detectLive(d, sr); let m = null;
+  if(raw !== null){
+    W.recent.push({ t, m: raw }); while(W.recent.length && t - W.recent[0].t > 0.13) W.recent.shift();
+    const base = W.recent[W.recent.length - 1].m;
+    const v = W.recent.map(q => base + circSigned(q.m, base)).sort((a, b) => a - b); m = v[v.length >> 1];
+    W.cur = { m, t, raw };
+  } else W.recent.length = 0;
+  W.trail.push({ t, m }); while(W.trail.length && t - W.trail[0].t > 15) W.trail.shift();
+  if(W.ex){
+    for(const n of W.ex.notes){
+      if(n.demo || t < n.t0 + (n.t1 - n.t0) * 0.18 || t > n.t1) continue;
+      n.total++; if(m !== null) n.hit += pitchCredit(circ(m, n.m)); break;
+    }
+  }
+}
+function wTone(c, m, t, dur, vol){
+  const f = 440 * Math.pow(2, (m - 69) / 12), g = c.createGain(), o1 = c.createOscillator(), o2 = c.createOscillator(), g2 = c.createGain();
+  o1.type = 'triangle'; o1.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 2; g2.gain.value = 0.25;
+  o1.connect(g); o2.connect(g2); g2.connect(g); g.connect(c.destination);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(vol * 0.45, t + Math.min(0.4, dur * 0.5)); g.gain.setValueAtTime(vol * 0.45, t + dur - 0.06); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  o1.start(t); o2.start(t); o1.stop(t + dur + 0.02); o2.stop(t + dur + 0.02);
+  return [o1, o2];
+}
+function wStartEx(){
+  wStopEx();
+  const c = ac(), P = PATTERNS[W.pattern], beat = P.len || (W.slow ? 0.75 : 0.5);
+  let t = c.currentTime + 0.8; const notes = [], oscs = [];
+  for(let r = 0; r < 6; r++){
+    const root = W.start + r;
+    if(!W.along){
+      P.s.forEach(k => { oscs.push(...wTone(c, root + k, t, beat * 0.95, 0.22)); notes.push({ t0: t, t1: t + beat, m: root + k, demo: true }); t += beat; });
+      t += Math.max(0.5, beat);
+    }
+    P.s.forEach(k => {
+      if(W.along) oscs.push(...wTone(c, root + k, t, beat * 0.95, 0.13));
+      notes.push({ t0: t, t1: t + beat, m: root + k, demo: false, hit: 0, total: 0 }); t += beat;
+    });
+    t += Math.max(0.6, beat * 1.2);
+  }
+  W.ex = { notes, oscs, end: t, P }; W.shown = W.ex;
+  $('#wGo').textContent = '停止'; $('#wResult').textContent = '';
+}
+function wStopEx(){
+  if(!W.ex) return;
+  W.ex.oscs.forEach(o => { try{ o.stop(); }catch(e){} });
+  W.ex = null; $('#wGo').textContent = '開始練習';
+}
+function wFinishEx(){
+  const ex = W.ex; W.ex = null; $('#wGo').textContent = '開始練習';
+  let h = 0, tt = 0; ex.notes.forEach(n => { if(!n.demo && n.total){ h += n.hit / n.total; tt++; } });
+  const pct = tt ? Math.round(h / tt * 100) : 0;
+  $('#wResult').textContent = '這次音準 ' + pct + '%';
+}
+function wLoop(){
+  if($('#warm').hidden) return;
+  const now = ctx ? ctx.currentTime : 0;
+  if(W.ex && now > W.ex.end) wFinishEx();
+  // 上方音準表
+  const cur = W.cur && now - W.cur.t < 0.35 ? W.cur : null;
+  if(cur){
+    const near = Math.round(cur.m), cents = Math.round((cur.m - near) * 100), a = Math.abs(cents);
+    $('#wNote').textContent = noteName(near); $('#wCents').textContent = (cents > 0 ? '+' : '') + cents + ' 音分';
+    const dot = $('#wDot'); dot.style.left = (50 + Math.max(-50, Math.min(50, cents))) + '%';
+    dot.style.background = a <= 15 ? '#6FB38A' : a <= 30 ? '#D9B25F' : 'var(--rec)';
+    $('#wSub').textContent = Math.round(440 * Math.pow(2, (cur.raw - 69) / 12)) + ' Hz';
+  } else { $('#wNote').textContent = '—'; $('#wCents').textContent = ''; $('#wDot').style.left = '50%'; $('#wDot').style.background = 'var(--line)'; $('#wSub').textContent = W.cap ? '對著麥克風發聲' : '需要麥克風權限'; }
+  wDraw(now, cur);
+  W.raf = requestAnimationFrame(wLoop);
+}
+function wDraw(now, cur){
+  if(!wG) return;
+  const g = wG, w = wW, h = wH, cs = getComputedStyle(document.documentElement), C = k => cs.getPropertyValue(k).trim();
+  const GW = 46, nowX = w * 0.8;
+  // 垂直跟隨
+  let focus = null;
+  const ex = W.ex || W.shown;
+  if(W.ex){ const up = W.ex.notes.filter(n => n.t1 > now - 1 && n.t0 < now + 4); if(up.length) focus = up.reduce((a, n) => a + n.m, 0) / up.length; }
+  if(focus === null && cur) focus = cur.m;
+  const rowY = m => (W.hi - m) * W.rowH - W.sy;
+  if(W.sy === null) W.sy = (W.hi - (focus ?? 57)) * W.rowH - h / 2;
+  if(focus !== null){
+    const y = rowY(focus);
+    if(W.ex || y < h * 0.25 || y > h * 0.75){ const want = (W.hi - focus) * W.rowH - h / 2; W.sy += (want - W.sy) * 0.08; }
+  }
+  W.sy = Math.max(0, Math.min(W.sy, (W.hi - W.lo + 1) * W.rowH - h));
+  g.fillStyle = C('--paper'); g.fillRect(0, 0, w, h);
+  for(let m = W.hi; m >= W.lo; m--){
+    const y = rowY(m); if(y + W.rowH < 0 || y > h) continue;
+    if(isBlack(m)){ g.fillStyle = C('--surface'); g.fillRect(GW, y, w - GW, W.rowH); }
+    if(cur && Math.round(cur.m) === m){ g.fillStyle = C('--v1'); g.globalAlpha = 0.12; g.fillRect(GW, y, w - GW, W.rowH); g.globalAlpha = 1; }
+  }
+  const X = t => nowX + (t - now) * W.pps;
+  if(ex){
+    for(const n of ex.notes){
+      const x0 = X(n.t0), x1 = X(n.t1); if(x1 < GW || x0 > w) continue;
+      const y = rowY(n.m) + 3, hh = W.rowH - 6;
+      if(n.demo){ g.strokeStyle = C('--muted'); g.lineWidth = 1.5; rrect(g, x0 + 1, y, x1 - x0 - 2, hh, 5); g.stroke(); continue; }
+      let col = C('--v1'), alpha = 0.55;
+      if(n.t1 < now && n.total){ const r = n.hit / n.total; col = r >= 0.6 ? C('--v1') : C('--rec'); alpha = 0.9; }
+      g.globalAlpha = alpha; g.fillStyle = col; rrect(g, x0 + 1, y, x1 - x0 - 2, hh, 5); g.fill(); g.globalAlpha = 1;
+    }
+  }
+  g.strokeStyle = C('--ink'); g.lineWidth = 2.2; g.lineJoin = 'round'; g.beginPath();
+  let prev = null;
+  for(const q of W.trail){
+    const x = X(q.t); if(x < GW){ prev = null; continue; }
+    if(q.m === null){ prev = null; continue; }
+    let m = q.m;
+    const y = rowY(m) + W.rowH / 2;
+    if(prev && q.t - prev.t < 0.15 && Math.abs(m - prev.m) < 3) g.lineTo(x, y); else g.moveTo(x, y);
+    prev = { t: q.t, m };
+  }
+  g.stroke();
+  if(cur){ g.fillStyle = C('--v2'); g.beginPath(); g.arc(X(cur.t), rowY(cur.m) + W.rowH / 2, 5, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = C('--muted'); g.globalAlpha = 0.6; g.fillRect(nowX, 0, 2, h); g.globalAlpha = 1;
+  g.fillStyle = C('--surface'); g.fillRect(0, 0, GW, h);
+  g.font = '12px system-ui, sans-serif'; g.textBaseline = 'middle';
+  for(let m = W.hi; m >= W.lo; m--){
+    const y = rowY(m); if(y + W.rowH < 0 || y > h || isBlack(m)) continue;
+    g.fillStyle = cur && Math.round(cur.m) === m ? C('--v1') : ((m % 12) + 12) % 12 === 0 ? C('--ink') : C('--muted');
+    g.fillText(noteName(m), 7, y + W.rowH / 2);
+  }
+  g.fillStyle = C('--line'); g.fillRect(GW - 1, 0, 1, h);
 }
 
 /* ---------- 歌曲庫 ---------- */
@@ -835,7 +1053,7 @@ async function openSong(id){
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; pitchRange = null;
+  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.guideTune = 0; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; pitchRange = null;
   saveMeta();
   $('#songTitle').value = state.title; $('#songArtist').value = '';
   showView('studio'); render(); updateClock();
@@ -858,7 +1076,7 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     songs = [songSummary(songId, state.title, state.tracks, state.artist), ...songs.filter(x => x.id !== songId)];
     kvSet('songs', songs);
   }
@@ -1047,7 +1265,7 @@ async function importGuide(file){
   const t = { id: uid(), kind: 'guide', name: '原唱人聲', color: GUIDE_COLOR, vol: 0.8, pan: 0, mute: true, offset: 0, nudgeMs: 0, buffer: buf };
   const bi = state.tracks.findIndex(x => x.kind === 'backing');
   state.tracks.splice(bi + 1, 0, t);
-  state.guideNotes = notes; state.guideContour = analyzeGuide.lastContour; pitchRange = null;
+  state.guideNotes = notes; state.guideContour = analyzeGuide.lastContour; setTuning(); pitchRange = null;
   saveAudio(t); saveMeta(); render();
   toast('抓到 ' + notes.length + ' 個音，錄主唱時會出現音高條和分數');
   if(backing() && backing().key) applyKey();
@@ -1460,11 +1678,23 @@ async function analyzeGuide(buf, onProgress){
   analyzeGuide.lastContour = { hop, m: Float32Array.from(med, v => v === null ? NaN : v) };
   return merged;
 }
+function setTuning(){
+  const ct = state.guideContour; if(!ct) return;
+  const fr = [];
+  for(let i = 0; i < ct.m.length; i++){ const v = ct.m[i]; if(!isNaN(v)) fr.push(v - Math.round(v)); }
+  if(fr.length < 50) return;
+  fr.sort((a, b) => a - b);
+  state.guideTune = Math.round(fr[fr.length >> 1] * 100) / 100;
+  pitchRange = null; saveMeta();
+}
 function refNotes(){
   const g = guide(); if(!g || !state.guideNotes.length) return [];
   const off = trackStart(g), key = (backing() && backing().key) || 0;
-  return state.guideNotes.map(n => ({ t0: n[0] + off, t1: n[1] + off, m: n[2] + key }));
+  const tune = state.guideTune || 0;
+  return state.guideNotes.map(n => ({ t0: n[0] + off, t1: n[1] + off, m: n[2] + key + tune }));
 }
+// 誤差 25 音分內滿分，到 60 音分遞減為 0
+const pitchCredit = dv => dv <= 0.25 ? 1 : dv < 0.6 ? 1 - (dv - 0.25) / 0.35 : 0;
 const circ = (a, b) => { const d = (((a - b) % 12) + 12) % 12; return Math.min(d, 12 - d); };
 const circSigned = (a, b) => { const d = (((a - b) % 12) + 12) % 12; return d > 6 ? d - 12 : d; };
 function findNote(notes, t){
@@ -1503,11 +1733,20 @@ function onLiveFrame(p, d, pt){
   const sr = ctx.sampleRate;
   const t = p.pos0 + (pt + d.length / 2 / sr - p.startAt) - state.latencyMs / 1000;
   if(t < p.pos0 || !take) return;
-  const m = detectLive(d, sr);
-  if(m !== null){ take.trail.push({ t, m }); if(take.trail.length > 20000) take.trail.splice(0, 5000); }
+  const raw = detectLive(d, sr);
+  let m = null;
+  if(raw !== null){
+    const rc = take.recent || (take.recent = []);
+    rc.push({ t, m: raw });
+    while(rc.length && t - rc[0].t > 0.13) rc.shift();
+    const base = rc[rc.length - 1].m;
+    const vals = rc.map(q => base + circSigned(q.m, base)).sort((a, b) => a - b);
+    m = vals[vals.length >> 1];
+    take.trail.push({ t, m }); if(take.trail.length > 20000) take.trail.splice(0, 5000);
+  } else if(take.recent) take.recent.length = 0;
   if(take.scoring){
     const i = findNote(take.notes, t);
-    if(i >= 0){ const st = take.stats[i] || (take.stats[i] = { hit: 0, total: 0 }); st.total++; if(m !== null){ const dv = circ(m, take.notes[i].m); st.hit += dv <= 0.5 ? 1 : dv < 1 ? 1 - (dv - 0.5) / 0.5 : 0; } }
+    if(i >= 0){ const st = take.stats[i] || (take.stats[i] = { hit: 0, total: 0 }); st.total++; if(m !== null) st.hit += pitchCredit(circ(m, take.notes[i].m)); }
   }
 }
 
@@ -1861,6 +2100,15 @@ $('#seek').addEventListener('input', e => {
 $('#seek').addEventListener('change', e => { seeking = false; seekTo(+e.target.value); });
 $('#stageBtn').addEventListener('click', openStage);
 $('#newSong').addEventListener('click', newSong);
+$('#warmBtn').addEventListener('click', wOpen);
+$('#wClose').addEventListener('click', wClose);
+document.querySelectorAll('[data-wm]').forEach(b => b.addEventListener('click', () => { W.mode = b.dataset.wm; if(W.mode === 'free') wStopEx(); wSyncControls(); }));
+$('#wPattern').addEventListener('change', e => { W.pattern = +e.target.value; saveMeta(); });
+$('#wDown').addEventListener('click', () => { W.start = Math.max(36, W.start - 1); wSyncControls(); saveMeta(); });
+$('#wUp').addEventListener('click', () => { W.start = Math.min(72, W.start + 1); wSyncControls(); saveMeta(); });
+$('#wSlow').addEventListener('click', () => { W.slow = !W.slow; wSyncControls(); saveMeta(); });
+$('#wAlong').addEventListener('click', () => { W.along = !W.along; wSyncControls(); saveMeta(); });
+$('#wGo').addEventListener('click', () => { if(W.ex) wStopEx(); else wStartEx(); });
 $('#songSearch').addEventListener('input', renderLibrary);
 $('#noteEditBtn').addEventListener('click', edOpen);
 $('#edClose').addEventListener('click', edClose);
@@ -1920,7 +2168,7 @@ $('#syncEnd').addEventListener('click', () => endSync(false));
 $('#doneHarmony').addEventListener('click', () => { closeSheet('#doneSheet'); setStageMode('idle'); updateStage(true); beginRec(); });
 $('#doneStudio').addEventListener('click', () => { closeSheet('#doneSheet'); closeStage(); });
 
-let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawAll(); if(!$('#editor').hidden){ edSize(); ed.sy = clampSy(ed.sy); edDraw(); } if(stageOpen()){ sizeRibbon(); updateStage(true); } }, 150); });
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawAll(); if(!$('#editor').hidden){ edSize(); ed.sy = clampSy(ed.sy); edDraw(); } if(!$('#warm').hidden) wSize(); if(stageOpen()){ sizeRibbon(); updateStage(true); } }, 150); });
 
 if('serviceWorker' in navigator && location.protocol === 'https:' && !window.claude){ navigator.serviceWorker.register('sw.js').catch(() => {}); }
 (async () => { await initStore(); setLatency(state.latencyMs); document.querySelectorAll('input[name=micMode]').forEach(r => r.checked = r.value === state.micMode); renderLibrary(); showView('library'); })();
