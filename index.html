@@ -33,6 +33,7 @@
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none !important}
 body{margin:0;background:var(--paper);color:var(--ink);
   font-family:"LXGW WenKai TC","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
   font-size:17px;line-height:1.65;-webkit-text-size-adjust:100%}
@@ -130,6 +131,27 @@ body[data-view="library"] .transport{display:none}
 .song .st{font-size:1.15rem;font-weight:700;display:block}
 .song .ss{font-size:.85rem;color:var(--muted);display:block}
 .song .badge{margin-left:auto}
+.libhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.libhead h1{flex:1;min-width:0}
+.libhead h1 .en{font-size:clamp(2rem,9vw,2.6rem)}
+.libhead h1 .zh{display:inline-block;font-size:.8rem;letter-spacing:.4em;margin:0 0 0 .2em}
+.searchrow{display:flex;gap:8px;align-items:center;margin-top:14px}
+.searchrow .searchbar{margin:0}
+.songhead{display:flex;gap:14px;align-items:center;margin:6px 0 14px}
+.songmeta{flex:1;min-width:0}
+.songmeta .song-title{font-size:1.5rem;margin:0}
+.songmeta .song-artist{margin:0}
+.coverbox{position:relative;flex:none}
+.cover{display:block;border-radius:12px;background:var(--surface);background-size:cover;background-position:center;
+  border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;color:var(--muted)}
+.cover span{font-size:1.5rem;font-weight:700;opacity:.85}
+.cover.big{width:92px;height:92px;cursor:pointer}
+.cover.big span{font-size:.78rem;font-weight:400;text-align:center;line-height:1.3;padding:0 6px}
+.cover.has span{display:none}
+.coverdel{position:absolute;top:-6px;right:-6px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);
+  background:var(--paper);color:var(--ink);cursor:pointer;line-height:1}
+.song .cover{width:54px;height:54px;flex:none}
+.song .cover span{font-size:1.25rem}
 .back-link{display:inline-flex;align-items:center;gap:4px;border:none;background:none;color:var(--muted);min-height:44px;padding:0 6px 0 0;cursor:pointer}
 .back-link svg{width:20px;height:20px}
 .song-title{display:block;width:100%;border:none;background:transparent;font-size:1.9rem;font-weight:700;padding:4px 6px;margin:2px 0 14px;border-radius:8px}
@@ -247,17 +269,23 @@ body[data-view="library"] .transport{display:none}
 <body>
 <main>
 <section id="libraryView">
-  <h1><span class="en">Harmonia</span><span class="zh">和聲本</span></h1>
-  <p class="lede">先錄主唱，再戴著耳機一邊聽、一邊把合音疊上去。要疊幾軌都可以。</p>
-  <button class="btn primary" id="newSong" type="button">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>新增歌曲</button>
-  <button class="btn" id="warmBtn" type="button" style="margin-left:6px">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 16c2-6 4-6 6 0s4 6 6 0 4-6 6 0"/></svg>暖聲練習</button>
-  <input id="songSearch" class="searchbar" type="search" placeholder="搜尋歌名或歌手" aria-label="搜尋歌曲">
+  <div class="libhead">
+    <h1><span class="en">Harmonia</span><span class="zh">和聲本</span></h1>
+    <button class="btn sm" id="warmBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 16c2-6 4-6 6 0s4 6 6 0 4-6 6 0"/></svg>暖聲</button>
+    <button class="btn sm primary" id="newSong" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>新增</button>
+  </div>
+  <p class="lede" id="libLede">先錄主唱，再戴著耳機一邊聽、一邊把合音疊上去。要疊幾軌都可以。</p>
+  <div class="searchrow">
+    <input id="songSearch" class="searchbar" type="search" placeholder="搜尋歌名或歌手" aria-label="搜尋歌曲">
+    <button class="btn sm" id="sortToggle" type="button" aria-pressed="false" aria-controls="sortBar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M6 12h12M9 17h6"/></svg>排序</button>
+  </div>
   <div class="tagfilter" id="langFilter" role="group" aria-label="依分類篩選"></div>
-  <div class="tagfilter" id="sortBar" role="group" aria-label="排序方式"></div>
+  <div class="tagfilter" id="sortBar" role="group" aria-label="排序方式" hidden></div>
   <ul id="songList"></ul>
-  <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。</p>
+  <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增」，放進伴奏就可以開始唱。</p>
   <h2 class="sec">設定</h2>
   <p class="hint" id="storeInfo"></p>
   <details class="cal" id="backupBox" open>
@@ -299,8 +327,17 @@ body[data-view="library"] .transport{display:none}
 <section id="studioView" hidden>
   <button class="back-link" id="toLibrary" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>歌曲庫</button>
-  <input id="songTitle" class="song-title" aria-label="歌名" maxlength="60">
-  <input id="songArtist" class="song-artist" aria-label="歌手" maxlength="60" placeholder="歌手／演唱者">
+  <div class="songhead">
+    <div class="coverbox">
+      <label class="cover big" id="coverBtn" for="coverFile" title="專輯封面"><span></span></label>
+      <input id="coverFile" class="sr" type="file" accept="image/*">
+      <button class="coverdel" id="coverDel" type="button" aria-label="移除封面" hidden>×</button>
+    </div>
+    <div class="songmeta">
+      <input id="songTitle" class="song-title" aria-label="歌名" maxlength="60">
+      <input id="songArtist" class="song-artist" aria-label="歌手" maxlength="60" placeholder="歌手／演唱者">
+    </div>
+  </div>
   <div class="tagrow" id="langRow" role="group" aria-label="分類"></div>
   <div class="row">
     <label class="btn" for="backingFile">
@@ -527,7 +564,7 @@ body[data-view="library"] .transport{display:none}
 const $ = s => document.querySelector(s);
 const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
 const BACKING_COLOR = '#8A8D84';
-const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲', artist: '', lang: '', order: 0, created: 0 };
+const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲', artist: '', lang: '', order: 0, created: 0, cover: false };
 let songId = null, songs = [];
 const GUIDE_COLOR = '#8E86AE';
 let ctx = null, micStream = null, playing = null;
@@ -563,14 +600,14 @@ function songSummary(id, title, tracks, artist, x){
   x = x || {};
   const voices = tracks.filter(t => t.kind === 'voice');
   const best = voices.reduce((b, t) => (t.score && (!b || t.score.pts > b.pts)) ? t.score : b, null);
-  return { id, title, artist: artist || '', lang: x.lang || (Array.isArray(x.tags) && x.tags[0]) || '', order: x.order || 0, created: x.created || Date.now(), updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length, best };
+  return { id, title, artist: artist || '', cover: !!x.cover, lang: x.lang || (Array.isArray(x.tags) && x.tags[0]) || '', order: x.order || 0, created: x.created || Date.now(), updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length, best };
 }
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
     kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lib: { lang: libLang, sort: libSort, group: libGroup } });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     writeIndex();
@@ -645,7 +682,7 @@ async function loadSong(id){
   const sg = (await kvGet('song:' + id)) || {};
   songId = id; state.tracks = []; state.pos = 0; pitchRange = null; state.guideContour = null;
   state.title = sg.title || '新歌曲'; state.artist = sg.artist || '';
-  state.lang = sg.lang || (Array.isArray(sg.tags) && sg.tags[0]) || ''; state.order = sg.order || 0; state.created = sg.created || Date.now();
+  state.lang = sg.lang || (Array.isArray(sg.tags) && sg.tags[0]) || ''; state.order = sg.order || 0; state.created = sg.created || Date.now(); state.cover = !!sg.cover;
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.guideNotes = Array.isArray(sg.guideNotes) ? sg.guideNotes : [];
   state.guideTune = typeof sg.guideTune === 'number' ? sg.guideTune : 0;
@@ -1110,8 +1147,10 @@ function renderLangFilter(){
   chip(box, '全部 ' + songs.length, !libLang, () => { libLang = ''; saveMeta(); renderLibrary(); });
   langs.forEach(([l, n]) => chip(box, l + ' ' + n, libLang === l, () => { libLang = libLang === l ? '' : l; saveMeta(); renderLibrary(); }));
 }
+let sortOpen = false;
 function renderSortBar(){
-  const box = $('#sortBar'); box.hidden = songs.length < 2; box.innerHTML = '';
+  const box = $('#sortBar'); box.hidden = !sortOpen || songs.length < 2; box.innerHTML = '';
+  $('#sortToggle').hidden = songs.length < 2; $('#sortToggle').setAttribute('aria-pressed', sortOpen);
   [['name', '歌名'], ['added', '最近加入'], ['custom', '自訂順序']].forEach(([k, label]) =>
     chip(box, label, libSort === k, () => { libSort = k; saveMeta(); renderLibrary(); }));
   chip(box, '依歌手分組', libGroup, () => { libGroup = !libGroup; saveMeta(); renderLibrary(); });
@@ -1154,17 +1193,60 @@ function renderLang(){
   });
   row.appendChild(inp);
 }
+const coverCache = new Map();
+async function coverUrl(id){
+  if(coverCache.has(id)) return coverCache.get(id);
+  const c = await kvGet('cover:' + id);
+  if(!c || !c.bytes){ coverCache.set(id, null); return null; }
+  const url = URL.createObjectURL(new Blob([c.bytes], { type: c.mime || 'image/jpeg' }));
+  coverCache.set(id, url); return url;
+}
+function dropCover(id){ const u = coverCache.get(id); if(u) URL.revokeObjectURL(u); coverCache.delete(id); }
+function coverEl(sg, cls){
+  const d = document.createElement('div'); d.className = 'cover ' + (cls || '');
+  const t = document.createElement('span'); t.textContent = (sg.title || '?').trim().charAt(0) || '?';
+  d.appendChild(t);
+  if(sg.cover) coverUrl(sg.id).then(u => { if(u){ d.style.backgroundImage = 'url(' + u + ')'; d.classList.add('has'); } });
+  return d;
+}
+async function saveCover(file){
+  if(!file || !songId) return;
+  try{
+    const bmp = await createImageBitmap(file);
+    const S = 400, cv = document.createElement('canvas'); cv.width = S; cv.height = S;
+    const g = cv.getContext('2d'), side = Math.min(bmp.width, bmp.height);
+    g.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, S, S);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.84));
+    await kvSet('cover:' + songId, { mime: 'image/jpeg', bytes: await blob.arrayBuffer() });
+    dropCover(songId); state.cover = true;
+    songs = songs.map(x => x.id === songId ? { ...x, cover: true } : x);
+    saveMeta(); renderCover();
+  }catch(e){ toast('這張圖片無法讀取'); }
+}
+async function removeCover(){
+  if(!songId) return;
+  await kvDel('cover:' + songId); dropCover(songId); state.cover = false;
+  songs = songs.map(x => x.id === songId ? { ...x, cover: false } : x);
+  saveMeta(); renderCover();
+}
+function renderCover(){
+  const box = $('#coverBtn'), t = box.querySelector('span');
+  t.textContent = '＋ 封面';
+  box.classList.remove('has'); box.style.backgroundImage = '';
+  $('#coverDel').hidden = !state.cover;
+  if(state.cover) coverUrl(songId).then(u => { if(u && state.cover){ box.style.backgroundImage = 'url(' + u + ')'; box.classList.add('has'); } });
+}
 function songRow(sg, list){
   const li = document.createElement('li');
   const b = document.createElement('button'); b.type = 'button'; b.className = 'song';
   const parts = []; if(sg.artist && !libGroup) parts.push(sg.artist);
-  parts.push(sg.backing ? '伴奏' : '還沒有伴奏');
-  if(sg.guide) parts.push('原唱人聲');
-  if(sg.voices) parts.push(sg.voices + ' 軌人聲');
-  b.innerHTML = '<span><span class="st"></span><span class="ss"></span></span>' + (sg.best ? '<span class="badge">' + sg.best.grade + ' · ' + sg.best.pts + '</span>' : '');
+  if(!sg.backing) parts.push('還沒有伴奏');
+  else { if(sg.guide) parts.push('有音高條'); if(sg.voices) parts.push(sg.voices + ' 軌人聲'); }
+  if(sg.lang && !libLang) parts.push(sg.lang);
+  b.innerHTML = '<span class="txt"><span class="st"></span><span class="ss"></span></span>' + (sg.best ? '<span class="badge">' + sg.best.grade + ' · ' + sg.best.pts + '</span>' : '');
+  b.prepend(coverEl(sg));
   b.querySelector('.st').textContent = sg.title || '未命名歌曲';
-  b.querySelector('.ss').textContent = parts.join(' · ');
-  if(sg.lang && !libLang){ const x = document.createElement('span'); x.className = 'tg'; x.textContent = sg.lang; b.querySelector('.ss').after(x); }
+  b.querySelector('.ss').textContent = parts.join(' · ') || '還沒有伴奏';
   b.addEventListener('click', () => openSong(sg.id));
   li.appendChild(b);
   if(libSort === 'custom'){
@@ -1186,7 +1268,8 @@ function renderLibrary(){
   const list = songs.filter(sg => (!libLang || langKey(sg) === libLang) && (!q || (sg.title || '').toLowerCase().includes(q) || (sg.artist || '').toLowerCase().includes(q) || (sg.lang || '').toLowerCase().includes(q)));
   $('#songSearch').hidden = songs.length < 3;
   $('#libEmpty').hidden = songs.length > 0;
-  $('#libEmpty').textContent = songs.length ? '' : '歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。';
+  $('#libEmpty').textContent = songs.length ? '' : '歌曲庫還是空的。按「新增」，放進伴奏就可以開始唱。';
+  $('#libLede').hidden = songs.length > 0;
   if(songs.length && !list.length){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = libLang ? '這個分類裡沒有符合的歌曲。' : '找不到符合的歌曲。'; ul.appendChild(li); }
   if(libGroup){
     const groups = new Map();
@@ -1207,15 +1290,15 @@ async function openSong(id){
   if(playing) haltPlayback();
   toast('載入中…');
   await loadSong(id);
-  $('#songTitle').value = state.title; $('#songArtist').value = state.artist; renderLang();
+  $('#songTitle').value = state.title; $('#songArtist').value = state.artist; renderLang(); renderCover();
   showView('studio'); render(); updateClock();
   const b = backing(); if(b && b.key) applyKey();
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.guideTune = 0; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; pitchRange = null;
+  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.guideTune = 0; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; pitchRange = null;
   saveMeta();
-  $('#songTitle').value = state.title; $('#songArtist').value = ''; renderLang();
+  $('#songTitle').value = state.title; $('#songArtist').value = ''; renderLang(); renderCover();
   showView('studio'); render(); updateClock();
   $('#songTitle').select();
 }
@@ -1227,6 +1310,7 @@ async function deleteSong(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   for(const t of state.tracks){ await kvDel('audio:' + t.id); await kvDel('orig:' + t.id); }
+  await kvDel('cover:' + songId); dropCover(songId);
   await kvDel('song:' + songId);
   removedIds.add(songId); songs = songs.filter(x => x.id !== songId); await kvSet('songs', songs);
   songId = null; state.tracks = [];
@@ -1236,7 +1320,7 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }
@@ -2299,7 +2383,7 @@ async function zipReader(file){
 async function flushSong(){
   if(!songId) return;
   clearTimeout(metaTimer);
-  await kvSet('song:' + songId, { title: state.title, artist: state.artist, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+  await kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
   songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
   await writeIndex();
 }
@@ -2329,7 +2413,10 @@ async function exportBackup(onlyId){
         }
         await sleep(0);
       }
-      man.songs.push({ id, doc, audio });
+      const cv = doc.cover ? await kvGet('cover:' + id) : null;
+      let cover = null;
+      if(cv && cv.bytes){ const cn = 'covers/' + id + '.jpg'; z.add(cn, new Uint8Array(cv.bytes)); cover = { file: cn, mime: cv.mime || 'image/jpeg' }; }
+      man.songs.push({ id, doc, audio, cover });
     }
     z.add('backup.json', new TextEncoder().encode(JSON.stringify(man)));
     const blob = z.finish(), d = new Date();
@@ -2369,6 +2456,7 @@ async function importBackup(file){
         }
         await sleep(0);
       }
+      if(sg.cover && z.has(sg.cover.file)){ await kvSet('cover:' + sg.id, { mime: sg.cover.mime, bytes: await z.read(sg.cover.file) }); }
       await kvSet('song:' + sg.id, sg.doc);
       removedIds.delete(sg.id);
       songs.push(songSummary(sg.id, sg.doc.title || '未命名歌曲', sg.doc.tracks || [], sg.doc.artist, sg.doc));
@@ -2424,6 +2512,9 @@ $('#exportAll').addEventListener('click', () => exportBackup());
 $('#exportOne').addEventListener('click', () => exportBackup(songId));
 $('#importFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; importBackup(f); });
 $('#warmBtn').addEventListener('click', wOpen);
+$('#sortToggle').addEventListener('click', () => { sortOpen = !sortOpen; renderLibrary(); });
+$('#coverFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; saveCover(f); });
+$('#coverDel').addEventListener('click', removeCover);
 $('#wClose').addEventListener('click', wClose);
 document.querySelectorAll('[data-wm]').forEach(b => b.addEventListener('click', () => { W.mode = b.dataset.wm; if(W.mode === 'free') wStopEx(); wSyncControls(); }));
 $('#wPattern').addEventListener('change', e => { W.pattern = +e.target.value; saveMeta(); });
