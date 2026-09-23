@@ -142,6 +142,10 @@ body[data-view="library"] .transport{display:none}
 .tagfilter::-webkit-scrollbar{display:none}
 .tagfilter .chip2{flex:none}
 .song .tg{display:inline-block;font-size:.75rem;color:var(--v1);border:1px solid var(--line);border-radius:999px;padding:0 8px;margin:4px 4px 0 0}
+.grouphead{font-size:.9rem;font-weight:700;color:var(--muted);letter-spacing:.06em;padding:18px 4px 4px;border-bottom:1px solid var(--line)}
+.movebtns{display:flex;flex-direction:column;gap:2px;margin-left:auto}
+.movebtns button{width:40px;height:30px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;cursor:pointer;font-size:.8rem}
+.movebtns button:disabled{opacity:.35}
 .searchbar{display:block;width:100%;min-height:46px;margin:18px 0 0;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit}
 .btn.danger{margin-top:40px;color:var(--rec);border-color:var(--rec);background:transparent}
 .chip{border:1px solid rgba(255,255,255,.25);background:none;color:var(--s-dim);border-radius:999px;font-size:.8rem;padding:2px 10px;min-height:30px;cursor:pointer}
@@ -250,7 +254,8 @@ body[data-view="library"] .transport{display:none}
   <button class="btn" id="warmBtn" type="button" style="margin-left:6px">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 16c2-6 4-6 6 0s4 6 6 0 4-6 6 0"/></svg>暖聲練習</button>
   <input id="songSearch" class="searchbar" type="search" placeholder="搜尋歌名或歌手" aria-label="搜尋歌曲">
-  <div class="tagfilter" id="tagFilter" role="group" aria-label="依分類篩選"></div>
+  <div class="tagfilter" id="langFilter" role="group" aria-label="依分類篩選"></div>
+  <div class="tagfilter" id="sortBar" role="group" aria-label="排序方式"></div>
   <ul id="songList"></ul>
   <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。</p>
   <h2 class="sec">設定</h2>
@@ -296,7 +301,7 @@ body[data-view="library"] .transport{display:none}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>歌曲庫</button>
   <input id="songTitle" class="song-title" aria-label="歌名" maxlength="60">
   <input id="songArtist" class="song-artist" aria-label="歌手" maxlength="60" placeholder="歌手／演唱者">
-  <div class="tagrow" id="tagRow" role="group" aria-label="分類"></div>
+  <div class="tagrow" id="langRow" role="group" aria-label="分類"></div>
   <div class="row">
     <label class="btn" for="backingFile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
@@ -522,7 +527,7 @@ body[data-view="library"] .transport{display:none}
 const $ = s => document.querySelector(s);
 const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
 const BACKING_COLOR = '#8A8D84';
-const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲', artist: '', tags: [] };
+const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, guideNotes: [], micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲', artist: '', lang: '', order: 0, created: 0 };
 let songId = null, songs = [];
 const GUIDE_COLOR = '#8E86AE';
 let ctx = null, micStream = null, playing = null;
@@ -554,18 +559,19 @@ const kvKeys = () => kv('readonly', s => s.getAllKeys());
 
 let metaTimer;
 const trackMeta = t => { const { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key, score } = t; return { id, kind, name, color, vol, pan, mute, offset, nudgeMs, key: key || 0, score: score || null }; };
-function songSummary(id, title, tracks, artist, tags){
+function songSummary(id, title, tracks, artist, x){
+  x = x || {};
   const voices = tracks.filter(t => t.kind === 'voice');
   const best = voices.reduce((b, t) => (t.score && (!b || t.score.pts > b.pts)) ? t.score : b, null);
-  return { id, title, artist: artist || '', tags: Array.isArray(tags) ? tags : [], updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length, best };
+  return { id, title, artist: artist || '', lang: x.lang || (Array.isArray(x.tags) && x.tags[0]) || '', order: x.order || 0, created: x.created || Date.now(), updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length, best };
 }
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
-    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0 });
+    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lib: { lang: libLang, sort: libSort, group: libGroup } });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, tags: state.tags || [], lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
-    const sum = songSummary(songId, state.title, state.tracks, state.artist, state.tags);
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }, 300);
@@ -580,6 +586,7 @@ function applySettings(st){
   state.latencyMs = st.latencyMs || 0; state.micId = st.micId || ''; state.micMode = st.micMode || 'raw'; state.monitor = !!st.monitor;
   if(typeof st.skipIntro === 'boolean') state.skipIntro = st.skipIntro;
   state.lastBackup = st.lastBackup || 0;
+  if(st.lib){ libLang = st.lib.lang || ''; libSort = st.lib.sort || 'name'; libGroup = !!st.lib.group; }
   if(st.warm){ Object.assign(W, { start: st.warm.start ?? W.start, pattern: st.warm.pattern ?? 0, slow: !!st.warm.slow, along: !!st.warm.along }); }
 }
 let removedIds = new Set();
@@ -600,7 +607,7 @@ async function rebuildIndex(){
   for(const id of ids){
     if(known.has(id)) continue;
     const sg = await kvGet('song:' + id); if(!sg) continue;
-    const sum = songSummary(id, sg.title || '未命名歌曲', sg.tracks || [], sg.artist, sg.tags); sum.updated = 0;
+    const sum = songSummary(id, sg.title || '未命名歌曲', sg.tracks || [], sg.artist, sg); sum.updated = 0;
     songs.push(sum); added++;
   }
   if(added) await kvSet('songs', songs);
@@ -637,7 +644,8 @@ async function initStore(){
 async function loadSong(id){
   const sg = (await kvGet('song:' + id)) || {};
   songId = id; state.tracks = []; state.pos = 0; pitchRange = null; state.guideContour = null;
-  state.title = sg.title || '新歌曲'; state.artist = sg.artist || ''; state.tags = Array.isArray(sg.tags) ? sg.tags : [];
+  state.title = sg.title || '新歌曲'; state.artist = sg.artist || '';
+  state.lang = sg.lang || (Array.isArray(sg.tags) && sg.tags[0]) || ''; state.order = sg.order || 0; state.created = sg.created || Date.now();
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.guideNotes = Array.isArray(sg.guideNotes) ? sg.guideNotes : [];
   state.guideTune = typeof sg.guideTune === 'number' ? sg.guideTune : 0;
@@ -1083,68 +1091,131 @@ function showView(v){
   $('#studioView').hidden = v !== 'studio';
   window.scrollTo(0, 0);
 }
-let libTag = '';
-const allTags = () => { const m = new Map(); songs.forEach(sg => (sg.tags || []).forEach(t => m.set(t, (m.get(t) || 0) + 1))); return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); };
-function renderTagFilter(){
-  const box = $('#tagFilter'), tags = allTags();
-  if(libTag && !tags.some(([t]) => t === libTag)) libTag = '';
-  box.hidden = !tags.length; box.innerHTML = '';
-  const mk = (label, val, n) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip2'; b.textContent = n === undefined ? label : label + ' ' + n; b.setAttribute('aria-pressed', libTag === val); b.addEventListener('click', () => { libTag = libTag === val ? '' : val; renderLibrary(); }); box.appendChild(b); };
-  mk('全部', '', songs.length);
-  tags.forEach(([t, n]) => mk(t, t, n));
+let libLang = '', libSort = 'name', libGroup = false;
+const LANG_BASE = ['中文', '英文', '日文', '韓文', '台語', '粵語'];
+const langKey = sg => sg.lang || '未分類';
+function allLangs(){
+  const m = new Map();
+  songs.forEach(sg => m.set(langKey(sg), (m.get(langKey(sg)) || 0) + 1));
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hant'));
 }
-function renderTags(){
-  const row = $('#tagRow'); row.innerHTML = '';
-  const tags = new Set([...allTags().map(([t]) => t), ...state.tags]);
-  tags.forEach(t => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip2'; b.textContent = t;
-    b.setAttribute('aria-pressed', state.tags.includes(t));
-    b.addEventListener('click', () => { state.tags = state.tags.includes(t) ? state.tags.filter(x => x !== t) : [...state.tags, t]; saveMeta(); songs = songs.map(x => x.id === songId ? { ...x, tags: state.tags } : x); renderTags(); });
-    row.appendChild(b);
-  });
-  const inp = document.createElement('input'); inp.placeholder = '＋ 新分類'; inp.maxLength = 16; inp.setAttribute('aria-label', '新增分類');
+function chip(box, label, on, fn){
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip2'; b.textContent = label;
+  b.setAttribute('aria-pressed', on); b.addEventListener('click', fn); box.appendChild(b); return b;
+}
+function renderLangFilter(){
+  const box = $('#langFilter'), langs = allLangs();
+  if(libLang && !langs.some(([l]) => l === libLang)) libLang = '';
+  box.hidden = langs.length < 2; box.innerHTML = '';
+  chip(box, '全部 ' + songs.length, !libLang, () => { libLang = ''; saveMeta(); renderLibrary(); });
+  langs.forEach(([l, n]) => chip(box, l + ' ' + n, libLang === l, () => { libLang = libLang === l ? '' : l; saveMeta(); renderLibrary(); }));
+}
+function renderSortBar(){
+  const box = $('#sortBar'); box.hidden = songs.length < 2; box.innerHTML = '';
+  [['name', '歌名'], ['added', '最近加入'], ['custom', '自訂順序']].forEach(([k, label]) =>
+    chip(box, label, libSort === k, () => { libSort = k; saveMeta(); renderLibrary(); }));
+  chip(box, '依歌手分組', libGroup, () => { libGroup = !libGroup; saveMeta(); renderLibrary(); });
+}
+function sortSongs(list){
+  const byName = (a, b) => (a.title || '').localeCompare(b.title || '', 'zh-Hant', { sensitivity: 'base', numeric: true });
+  const cmp = {
+    name: byName,
+    added: (a, b) => (b.created || b.updated || 0) - (a.created || a.updated || 0),
+    custom: (a, b) => ((a.order || 0) - (b.order || 0)) || ((a.created || 0) - (b.created || 0))
+  };
+  return list.slice().sort(cmp[libSort] || byName);
+}
+async function moveSong(sg, dir, list){
+  const i = list.indexOf(sg), j = i + dir;
+  if(i < 0 || j < 0 || j >= list.length) return;
+  list.splice(i, 1); list.splice(j, 0, sg);
+  list.forEach((x, k) => x.order = k + 1);
+  await writeIndex();
+  for(const x of list){
+    const doc = await kvGet('song:' + x.id);
+    if(doc && doc.order !== x.order){ doc.order = x.order; await kvSet('song:' + x.id, doc); }
+  }
+  renderLibrary();
+}
+function renderLang(){
+  const row = $('#langRow'); row.innerHTML = '';
+  const langs = [...new Set([...LANG_BASE, ...songs.map(sg => sg.lang).filter(Boolean), state.lang].filter(Boolean))];
+  langs.forEach(l => chip(row, l, state.lang === l, () => {
+    state.lang = state.lang === l ? '' : l; saveMeta();
+    songs = songs.map(x => x.id === songId ? { ...x, lang: state.lang } : x);
+    renderLang();
+  }));
+  const inp = document.createElement('input'); inp.placeholder = '＋ 新分類'; inp.maxLength = 12; inp.setAttribute('aria-label', '新增分類');
   inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
-  inp.addEventListener('change', () => { const v = inp.value.trim(); if(v && !state.tags.includes(v)){ state.tags = [...state.tags, v]; saveMeta(); songs = songs.map(x => x.id === songId ? { ...x, tags: state.tags } : x); } renderTags(); });
+  inp.addEventListener('change', () => {
+    const v = inp.value.trim();
+    if(v){ state.lang = v; saveMeta(); songs = songs.map(x => x.id === songId ? { ...x, lang: v } : x); }
+    renderLang();
+  });
   row.appendChild(inp);
 }
+function songRow(sg, list){
+  const li = document.createElement('li');
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'song';
+  const parts = []; if(sg.artist && !libGroup) parts.push(sg.artist);
+  parts.push(sg.backing ? '伴奏' : '還沒有伴奏');
+  if(sg.guide) parts.push('原唱人聲');
+  if(sg.voices) parts.push(sg.voices + ' 軌人聲');
+  b.innerHTML = '<span><span class="st"></span><span class="ss"></span></span>' + (sg.best ? '<span class="badge">' + sg.best.grade + ' · ' + sg.best.pts + '</span>' : '');
+  b.querySelector('.st').textContent = sg.title || '未命名歌曲';
+  b.querySelector('.ss').textContent = parts.join(' · ');
+  if(sg.lang && !libLang){ const x = document.createElement('span'); x.className = 'tg'; x.textContent = sg.lang; b.querySelector('.ss').after(x); }
+  b.addEventListener('click', () => openSong(sg.id));
+  li.appendChild(b);
+  if(libSort === 'custom'){
+    const nav = document.createElement('div'); nav.className = 'movebtns';
+    const up = document.createElement('button'); up.type = 'button'; up.textContent = '↑'; up.setAttribute('aria-label', '往上移');
+    const dn = document.createElement('button'); dn.type = 'button'; dn.textContent = '↓'; dn.setAttribute('aria-label', '往下移');
+    up.disabled = list.indexOf(sg) === 0; dn.disabled = list.indexOf(sg) === list.length - 1;
+    up.addEventListener('click', () => moveSong(sg, -1, list)); dn.addEventListener('click', () => moveSong(sg, 1, list));
+    nav.appendChild(up); nav.appendChild(dn);
+    b.style.flex = '1'; li.style.display = 'flex'; li.style.alignItems = 'center'; li.style.gap = '8px';
+    li.appendChild(nav);
+  }
+  return li;
+}
 function renderLibrary(){
-  storageInfo(); renderTagFilter();
+  storageInfo(); renderLangFilter(); renderSortBar();
   const ul = $('#songList'); ul.innerHTML = '';
   const q = ($('#songSearch').value || '').trim().toLowerCase();
-  const list = songs.filter(sg => (!libTag || (sg.tags || []).includes(libTag)) && (!q || (sg.title || '').toLowerCase().includes(q) || (sg.artist || '').toLowerCase().includes(q) || (sg.tags || []).some(t => t.toLowerCase().includes(q))));
+  const list = songs.filter(sg => (!libLang || langKey(sg) === libLang) && (!q || (sg.title || '').toLowerCase().includes(q) || (sg.artist || '').toLowerCase().includes(q) || (sg.lang || '').toLowerCase().includes(q)));
   $('#songSearch').hidden = songs.length < 3;
-  $('#songSearch').placeholder = '搜尋歌名、歌手或分類';
   $('#libEmpty').hidden = songs.length > 0;
   $('#libEmpty').textContent = songs.length ? '' : '歌曲庫還是空的。按「新增歌曲」，放進伴奏就可以開始唱。';
-  if(songs.length && !list.length){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = libTag ? '這個分類裡沒有符合的歌曲。' : '找不到符合的歌曲。'; ul.appendChild(li); }
-  list.sort((a, b) => b.updated - a.updated).forEach(sg => {
-    const li = document.createElement('li');
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'song';
-    const parts = []; if(sg.artist) parts.push(sg.artist);
-    parts.push(sg.backing ? '伴奏' : '還沒有伴奏');
-    if(sg.guide) parts.push('原唱人聲');
-    if(sg.voices) parts.push(sg.voices + ' 軌人聲');
-    b.innerHTML = '<span><span class="st"></span><span class="ss"></span></span>' + (sg.best ? '<span class="badge">' + sg.best.grade + ' · ' + sg.best.pts + '</span>' : '');
-    b.querySelector('.st').textContent = sg.title || '未命名歌曲';
-    b.querySelector('.ss').textContent = parts.join(' · ');
-    if(sg.tags && sg.tags.length){ const tg = document.createElement('span'); tg.style.display = 'block'; sg.tags.forEach(t => { const x = document.createElement('span'); x.className = 'tg'; x.textContent = t; tg.appendChild(x); }); b.querySelector('.ss').after(tg); }
-    b.addEventListener('click', () => openSong(sg.id));
-    li.appendChild(b); ul.appendChild(li);
-  });
+  if(songs.length && !list.length){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = libLang ? '這個分類裡沒有符合的歌曲。' : '找不到符合的歌曲。'; ul.appendChild(li); }
+  if(libGroup){
+    const groups = new Map();
+    list.forEach(sg => { const k = sg.artist || '未填歌手'; (groups.get(k) || groups.set(k, []).get(k)).push(sg); });
+    [...groups.keys()].sort((a, b) => a.localeCompare(b, 'zh-Hant', { sensitivity: 'base' })).forEach(k => {
+      const head = document.createElement('li'); head.className = 'grouphead'; head.textContent = k + '（' + groups.get(k).length + '）';
+      ul.appendChild(head);
+      const inner = sortSongs(groups.get(k));
+      inner.forEach(sg => ul.appendChild(songRow(sg, inner)));
+    });
+  } else {
+    const sorted = sortSongs(list);
+    sorted.forEach(sg => ul.appendChild(songRow(sg, sorted)));
+  }
 }
+
 async function openSong(id){
   if(playing) haltPlayback();
   toast('載入中…');
   await loadSong(id);
-  $('#songTitle').value = state.title; $('#songArtist').value = state.artist; renderTags();
+  $('#songTitle').value = state.title; $('#songArtist').value = state.artist; renderLang();
   showView('studio'); render(); updateClock();
   const b = backing(); if(b && b.key) applyKey();
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.guideTune = 0; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.tags = []; pitchRange = null;
+  songId = uid(); state.guideContour = null; state.tracks = []; state.lyrics = []; state.guideNotes = []; state.guideTune = 0; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; pitchRange = null;
   saveMeta();
-  $('#songTitle').value = state.title; $('#songArtist').value = ''; renderTags();
+  $('#songTitle').value = state.title; $('#songArtist').value = ''; renderLang();
   showView('studio'); render(); updateClock();
   $('#songTitle').select();
 }
@@ -1165,8 +1236,8 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, tags: state.tags || [], lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
-    songs = [songSummary(songId, state.title, state.tracks, state.artist, state.tags), ...songs.filter(x => x.id !== songId)];
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }
   songId = null; state.tracks = [];
@@ -2228,8 +2299,8 @@ async function zipReader(file){
 async function flushSong(){
   if(!songId) return;
   clearTimeout(metaTimer);
-  await kvSet('song:' + songId, { title: state.title, artist: state.artist, tags: state.tags || [], lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
-  songs = [songSummary(songId, state.title, state.tracks, state.artist, state.tags), ...songs.filter(x => x.id !== songId)];
+  await kvSet('song:' + songId, { title: state.title, artist: state.artist, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+  songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
   await writeIndex();
 }
 let backupBusy = false;
@@ -2300,7 +2371,7 @@ async function importBackup(file){
       }
       await kvSet('song:' + sg.id, sg.doc);
       removedIds.delete(sg.id);
-      songs.push(songSummary(sg.id, sg.doc.title || '未命名歌曲', sg.doc.tracks || [], sg.doc.artist, sg.doc.tags));
+      songs.push(songSummary(sg.id, sg.doc.title || '未命名歌曲', sg.doc.tracks || [], sg.doc.artist, sg.doc));
       added++;
     }
     await writeIndex();
