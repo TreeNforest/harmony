@@ -299,6 +299,22 @@ body[data-view="library"] .transport{display:none}
     </div>
   </details>
 
+  <details class="cal" id="cloudBox">
+    <summary>雲端備份（Firebase）</summary>
+    <p>把備份檔放到你自己的 Firebase Storage，換手機或資料被清掉都能還原。第一次要先在 Firebase 主控台建立專案、開啟 Storage，並在「Authentication」啟用「匿名」登入，再把網頁應用程式的 firebaseConfig 貼進來。</p>
+    <label style="font-size:.9rem">firebaseConfig（JSON）
+      <textarea id="fbCfg" spellcheck="false" style="min-height:22vh" placeholder='{ "apiKey": "...", "authDomain": "...", "projectId": "...", "storageBucket": "...", "appId": "..." }'></textarea>
+    </label>
+    <label style="font-size:.9rem;display:block;margin-top:10px">備份代號（自己取，還原時要用同一個）
+      <input id="cloudCode" class="wsel" type="text" maxlength="40" placeholder="例如 ripple-2026">
+    </label>
+    <p id="cloudInfo" style="color:var(--ink)"></p>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn primary" id="cloudUp" type="button">上傳到雲端</button>
+      <button class="btn" id="cloudDown" type="button">從雲端還原</button>
+    </div>
+  </details>
+
   <details class="cal" id="micBox">
     <summary>收音設定</summary>
     <p>如果錄起來聲音悶、像離很遠：戴有線耳機時，手機常會改用耳機線上的小麥克風。可以在這裡改選手機本身的麥克風，或換一副沒有麥克風的耳機。</p>
@@ -605,7 +621,7 @@ function songSummary(id, title, tracks, artist, x){
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
-    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lib: { lang: libLang, sort: libSort, group: libGroup } });
+    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, fbConfig: state.fbConfig || '', cloudCode: state.cloudCode || '', lib: { lang: libLang, sort: libSort, group: libGroup } });
     if(!songId) return;
     kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
@@ -614,15 +630,33 @@ function saveMeta(){
   }, 300);
 }
 function saveAudio(t){
-  const b = t.buffer; const ch = [];
-  for(let i = 0; i < b.numberOfChannels; i++) ch.push(b.getChannelData(i));
-  return kvSet('audio:' + t.id, { sr: b.sampleRate, ch });
+  if(t.orig) return kvDel('audio:' + t.id);
+  const b = t.buffer, ch = [];
+  for(let i = 0; i < b.numberOfChannels; i++){
+    const d = b.getChannelData(i), q = new Int16Array(d.length);
+    for(let j = 0; j < d.length; j++){ const v = d[j]; q[j] = v < 0 ? Math.max(-1, v) * 32768 : Math.min(1, v) * 32767; }
+    ch.push(q);
+  }
+  return kvSet('audio:' + t.id, { sr: b.sampleRate, f: 16, ch });
+}
+function bufFromStored(a){
+  const n = a.ch[0].length, buf = new AudioBuffer({ length: n, numberOfChannels: a.ch.length, sampleRate: a.sr });
+  a.ch.forEach((d, i) => {
+    if(d instanceof Float32Array) buf.copyToChannel(d, i);
+    else { const f = new Float32Array(n); for(let j = 0; j < n; j++) f[j] = d[j] / 32768; buf.copyToChannel(f, i); }
+  });
+  return buf;
+}
+function packStored(chs, sr){
+  const ch = chs.map(d => { const q = new Int16Array(d.length); for(let j = 0; j < d.length; j++){ const v = d[j]; q[j] = v < 0 ? Math.max(-1, v) * 32768 : Math.min(1, v) * 32767; } return q; });
+  return { sr, f: 16, ch };
 }
 function applySettings(st){
   if(!st) return;
   state.latencyMs = st.latencyMs || 0; state.micId = st.micId || ''; state.micMode = st.micMode || 'raw'; state.monitor = !!st.monitor;
   if(typeof st.skipIntro === 'boolean') state.skipIntro = st.skipIntro;
-  state.lastBackup = st.lastBackup || 0;
+  state.lastBackup = st.lastBackup || 0; state.lastCloud = st.lastCloud || 0;
+  state.fbConfig = st.fbConfig || ''; state.cloudCode = st.cloudCode || '';
   if(st.lib){ libLang = st.lib.lang || ''; libSort = st.lib.sort || 'name'; libGroup = !!st.lib.group; }
   if(st.warm){ Object.assign(W, { start: st.warm.start ?? W.start, pattern: st.warm.pattern ?? 0, slow: !!st.warm.slow, along: !!st.warm.along }); }
 }
@@ -657,6 +691,7 @@ async function storageInfo(){
     const mb = v => (v / 1048576).toFixed(v > 1048576 * 100 ? 0 : 1);
     const lb = state.lastBackup ? new Date(state.lastBackup) : null;
     $('#storeInfo').textContent = '本機儲存：' + songs.length + ' 首歌' + (e ? '，已使用 ' + mb(e.usage || 0) + ' MB' : '') + (persisted ? '，已設為長期保存' : '，尚未取得長期保存權限');
+    $('#storeInfo').textContent += songs.length && e ? '（平均每首約 ' + mb((e.usage || 0) / songs.length) + ' MB）' : '';
     $('#backupInfo').textContent = lb ? '上次備份：' + (lb.getMonth() + 1) + '/' + lb.getDate() + ' ' + String(lb.getHours()).padStart(2, '0') + ':' + String(lb.getMinutes()).padStart(2, '0') : '還沒有備份過。';
   }catch(err){}
 }
@@ -688,10 +723,13 @@ async function loadSong(id){
   state.guideTune = typeof sg.guideTune === 'number' ? sg.guideTune : 0;
   state.reverb = typeof sg.reverb === 'number' ? sg.reverb : 0;
   for(const m of sg.tracks || []){
-    const a = await kvGet('audio:' + m.id); if(!a || !a.ch || !a.ch.length) continue;
-    const buf = new AudioBuffer({ length: a.ch[0].length, numberOfChannels: a.ch.length, sampleRate: a.sr });
-    a.ch.forEach((d, i) => buf.copyToChannel(d, i));
-    state.tracks.push({ ...m, buffer: buf });
+    let buf = null, hasOrig = false;
+    const o = await kvGet('orig:' + m.id);
+    if(o && o.bytes){ try{ buf = await ac().decodeAudioData(o.bytes.slice(0)); hasOrig = true; }catch(e){} }
+    if(!buf){ const a = await kvGet('audio:' + m.id); if(a && a.ch && a.ch.length) buf = bufFromStored(a); }
+    if(!buf) continue;
+    if(hasOrig) kvDel('audio:' + m.id);
+    state.tracks.push({ ...m, buffer: buf, orig: hasOrig });
   }
 }
 
@@ -1493,7 +1531,7 @@ async function importBacking(file){
     const t = { id: uid(), kind: 'backing', name: file.name.replace(/\.[^.]+$/, '') || '伴奏', color: BACKING_COLOR, vol: 0.8, pan: 0, mute: false, offset: 0, nudgeMs: 0, buffer: buf };
     state.tracks.unshift(t);
     if(!state.title || state.title === '新歌曲'){ state.title = t.name; $('#songTitle').value = state.title; }
-    saveAudio(t); kvSet('orig:' + t.id, { mime: file.type, name: file.name, bytes: raw }); saveMeta(); render();
+    t.orig = true; await kvSet('orig:' + t.id, { mime: file.type, name: file.name, bytes: raw }); saveAudio(t); saveMeta(); render();
   }catch(e){ toast('這個檔案無法讀取，請換成 mp3、m4a 或 wav'); }
 }
 
@@ -1512,7 +1550,7 @@ async function importGuide(file){
   const bi = state.tracks.findIndex(x => x.kind === 'backing');
   state.tracks.splice(bi + 1, 0, t);
   state.guideNotes = notes; state.guideContour = analyzeGuide.lastContour; setTuning(); pitchRange = null;
-  saveAudio(t); kvSet('orig:' + t.id, { mime: file.type, name: file.name, bytes: raw }); saveMeta(); render();
+  t.orig = true; await kvSet('orig:' + t.id, { mime: file.type, name: file.name, bytes: raw }); saveAudio(t); saveMeta(); render();
   toast('抓到 ' + notes.length + ' 個音，錄主唱時會出現音高條和分數');
   if(backing() && backing().key) applyKey();
 }
@@ -2319,6 +2357,19 @@ function rawWav(chs, sr){
   for(let i = 0; i < n; i++) for(let c = 0; c < ch; c++){ const s = Math.max(-1, Math.min(1, chs[c][i])); v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2; }
   return new Uint8Array(ab);
 }
+function wavFromStored(a){
+  if(a.f === 16){
+    const ch = a.ch.length, n = a.ch[0].length, sr = a.sr, size = 44 + n * ch * 2, ab = new ArrayBuffer(size), v = new DataView(ab); let o = 0;
+    const ws = x => { for(const c of x) v.setUint8(o++, c.charCodeAt(0)); };
+    ws('RIFF'); v.setUint32(o, size - 8, true); o += 4; ws('WAVE'); ws('fmt ');
+    v.setUint32(o, 16, true); o += 4; v.setUint16(o, 1, true); o += 2; v.setUint16(o, ch, true); o += 2;
+    v.setUint32(o, sr, true); o += 4; v.setUint32(o, sr * ch * 2, true); o += 4; v.setUint16(o, ch * 2, true); o += 2; v.setUint16(o, 16, true); o += 2;
+    ws('data'); v.setUint32(o, n * ch * 2, true); o += 4;
+    for(let i = 0; i < n; i++) for(let c = 0; c < ch; c++){ v.setInt16(o, a.ch[c][i], true); o += 2; }
+    return new Uint8Array(ab);
+  }
+  return rawWav(a.ch, a.sr);
+}
 function parseWav(ab){
   const v = new DataView(ab); let p = 12, ch = 1, sr = 44100, bits = 16, dataOff = -1, dataLen = 0;
   while(p + 8 <= v.byteLength){
@@ -2388,13 +2439,12 @@ async function flushSong(){
   await writeIndex();
 }
 let backupBusy = false;
-async function exportBackup(onlyId){
-  if(backupBusy) return; backupBusy = true;
-  try{
-    if(playing) haltPlayback();
-    await flushSong();
-    const list = onlyId ? songs.filter(x => x.id === onlyId) : songs.slice();
-    if(!list.length){ toast('還沒有歌可以備份'); return; }
+async function buildBackup(onlyId){
+  if(playing) haltPlayback();
+  await flushSong();
+  const list = onlyId ? songs.filter(x => x.id === onlyId) : songs.slice();
+  if(!list.length) return null;
+  {
     const z = zipWriter(), man = { app: 'harmonia', v: 1, created: Date.now(), settings: await kvGet('settings'), songs: [] };
     for(let i = 0; i < list.length; i++){
       const id = list[i].id, doc = await kvGet('song:' + id); if(!doc) continue;
@@ -2408,7 +2458,7 @@ async function exportBackup(onlyId){
           audio[t.id] = { file: name, type: 'orig', mime: orig.mime || '', name: orig.name || '' };
         } else {
           const a = await kvGet('audio:' + t.id); if(!a || !a.ch) continue;
-          const name = 'audio/' + t.id + '.wav'; z.add(name, rawWav(a.ch, a.sr));
+          const name = 'audio/' + t.id + '.wav'; z.add(name, wavFromStored(a));
           audio[t.id] = { file: name, type: 'wav' };
         }
         await sleep(0);
@@ -2419,7 +2469,15 @@ async function exportBackup(onlyId){
       man.songs.push({ id, doc, audio, cover });
     }
     z.add('backup.json', new TextEncoder().encode(JSON.stringify(man)));
-    const blob = z.finish(), d = new Date();
+    return { blob: z.finish(), count: man.songs.length };
+  }
+}
+async function exportBackup(onlyId){
+  if(backupBusy) return; backupBusy = true;
+  try{
+    const made = await buildBackup(onlyId);
+    if(!made){ toast('還沒有歌可以備份'); return; }
+    const blob = made.blob, d = new Date();
     const stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
     const fname = 'harmonia-' + (onlyId ? 'song-' : 'backup-') + stamp + '.zip';
     const dl = await dlPromise;
@@ -2427,9 +2485,54 @@ async function exportBackup(onlyId){
     else { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); }
     if(!onlyId){ state.lastBackup = Date.now(); saveMeta(); }
     storageInfo();
-    toast('備份完成：' + man.songs.length + ' 首，' + (blob.size / 1048576).toFixed(0) + ' MB');
+    toast('備份完成：' + made.count + ' 首，' + (blob.size / 1048576).toFixed(1) + ' MB');
   }catch(e){ toast('備份失敗：' + (e.message || e)); }
   finally{ backupBusy = false; }
+}
+let fb = null;
+async function fbInit(){
+  if(fb) return fb;
+  if(!state.fbConfig) throw new Error('還沒貼上 Firebase 設定');
+  if(!state.cloudCode) throw new Error('還沒設定備份代號');
+  let cfg; try{ cfg = JSON.parse(state.fbConfig); }catch(e){ throw new Error('Firebase 設定不是有效的 JSON'); }
+  const base = 'https://cdn.jsdelivr.net/npm/firebase@10.12.2/';
+  const [app, storage, auth] = await Promise.all([import(base + 'app/+esm'), import(base + 'storage/+esm'), import(base + 'auth/+esm')]);
+  const a = app.initializeApp(cfg), au = auth.getAuth(a);
+  if(!au.currentUser) await auth.signInAnonymously(au);
+  fb = { storage, st: storage.getStorage(a) };
+  return fb;
+}
+const cloudPath = () => 'harmonia/' + encodeURIComponent(state.cloudCode) + '/backup.zip';
+async function cloudUpload(){
+  if(backupBusy) return; backupBusy = true;
+  try{
+    toast('準備備份檔…');
+    const made = await buildBackup();
+    if(!made){ toast('還沒有歌可以備份'); return; }
+    const { storage, st } = await fbInit();
+    toast('上傳中… ' + (made.blob.size / 1048576).toFixed(1) + ' MB');
+    await storage.uploadBytes(storage.ref(st, cloudPath()), made.blob, { contentType: 'application/zip' });
+    state.lastCloud = Date.now(); saveMeta(); cloudInfo();
+    toast('已上傳到雲端：' + made.count + ' 首');
+  }catch(e){ toast('雲端備份失敗：' + (e.message || e)); }
+  finally{ backupBusy = false; }
+}
+async function cloudRestore(){
+  if(backupBusy) return;
+  try{
+    toast('連線中…');
+    const { storage, st } = await fbInit();
+    const r = storage.ref(st, cloudPath());
+    let blob;
+    try{ blob = await storage.getBlob(r); }
+    catch(e){ const url = await storage.getDownloadURL(r); blob = await (await fetch(url)).blob(); }
+    toast('下載完成，開始還原…');
+    await importBackup(new File([blob], 'cloud.zip', { type: 'application/zip' }));
+  }catch(e){ toast(/object-not-found/.test(String(e && e.code || e)) ? '雲端還沒有這個代號的備份' : '雲端還原失敗：' + (e.message || e)); }
+}
+function cloudInfo(){
+  const t = state.lastCloud ? new Date(state.lastCloud) : null;
+  $('#cloudInfo').textContent = t ? '上次上傳：' + (t.getMonth() + 1) + '/' + t.getDate() + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') : (state.fbConfig ? '還沒上傳過。' : '');
 }
 async function importBackup(file){
   if(!file || backupBusy) return; backupBusy = true;
@@ -2447,12 +2550,9 @@ async function importBackup(file){
       for(const t of sg.doc.tracks || []){
         const a = sg.audio[t.id]; if(!a) continue;
         const bytes = await z.read(a.file);
-        if(a.type === 'wav'){ await kvSet('audio:' + t.id, parseWav(bytes)); }
+        if(a.type === 'wav'){ const w = parseWav(bytes); await kvSet('audio:' + t.id, packStored(w.ch, w.sr)); }
         else {
-          await kvSet('orig:' + t.id, { mime: a.mime, name: a.name, bytes: bytes.slice(0) });
-          const buf = await ac().decodeAudioData(bytes), ch = [];
-          for(let c = 0; c < buf.numberOfChannels; c++) ch.push(buf.getChannelData(c));
-          await kvSet('audio:' + t.id, { sr: buf.sampleRate, ch });
+          await kvSet('orig:' + t.id, { mime: a.mime, name: a.name, bytes: bytes });
         }
         await sleep(0);
       }
@@ -2509,6 +2609,11 @@ $('#seek').addEventListener('change', e => { seeking = false; seekTo(+e.target.v
 $('#stageBtn').addEventListener('click', openStage);
 $('#newSong').addEventListener('click', newSong);
 $('#exportAll').addEventListener('click', () => exportBackup());
+$('#fbCfg').addEventListener('change', e => { state.fbConfig = e.target.value.trim(); fb = null; saveMeta(); cloudInfo(); });
+$('#cloudCode').addEventListener('change', e => { state.cloudCode = e.target.value.trim(); saveMeta(); });
+$('#cloudUp').addEventListener('click', cloudUpload);
+$('#cloudDown').addEventListener('click', cloudRestore);
+$('#cloudBox').addEventListener('toggle', e => { if(e.target.open){ $('#fbCfg').value = state.fbConfig || ''; $('#cloudCode').value = state.cloudCode || ''; cloudInfo(); } });
 $('#exportOne').addEventListener('click', () => exportBackup(songId));
 $('#importFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; importBackup(f); });
 $('#warmBtn').addEventListener('click', wOpen);
