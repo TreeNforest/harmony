@@ -300,18 +300,16 @@ body[data-view="library"] .transport{display:none}
   </details>
 
   <details class="cal" id="cloudBox">
-    <summary>雲端備份（Firebase）</summary>
-    <p>把備份檔放到你自己的 Firebase Storage，換手機或資料被清掉都能還原。第一次要先在 Firebase 主控台建立專案、開啟 Storage，並在「Authentication」啟用「匿名」登入，再把網頁應用程式的 firebaseConfig 貼進來。</p>
-    <label style="font-size:.9rem">firebaseConfig（JSON）
-      <textarea id="fbCfg" spellcheck="false" style="min-height:22vh" placeholder='{ "apiKey": "...", "authDomain": "...", "projectId": "...", "storageBucket": "...", "appId": "..." }'></textarea>
-    </label>
-    <label style="font-size:.9rem;display:block;margin-top:10px">備份代號（自己取，還原時要用同一個）
-      <input id="cloudCode" class="wsel" type="text" maxlength="40" placeholder="例如 ripple-2026">
+    <summary>雲端備份（Google 雲端硬碟）</summary>
+    <p>備份檔會存進你自己的雲端硬碟，檔名是「Harmonia 備份.zip」，每次上傳都會覆蓋同一個檔案。App 只看得到自己建立的檔案，碰不到你其他資料。</p>
+    <label style="font-size:.9rem;display:block">OAuth 用戶端 ID
+      <input id="gdId" class="wsel" type="text" placeholder="xxxxxx.apps.googleusercontent.com">
     </label>
     <p id="cloudInfo" style="color:var(--ink)"></p>
     <div class="row" style="margin-bottom:10px">
-      <button class="btn primary" id="cloudUp" type="button">上傳到雲端</button>
-      <button class="btn" id="cloudDown" type="button">從雲端還原</button>
+      <button class="btn primary" id="cloudUp" type="button">上傳到雲端硬碟</button>
+      <button class="btn" id="cloudDown" type="button">從雲端硬碟還原</button>
+      <button class="btn" id="cloudOut" type="button">解除連結</button>
     </div>
   </details>
 
@@ -621,7 +619,7 @@ function songSummary(id, title, tracks, artist, x){
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
-    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, fbConfig: state.fbConfig || '', cloudCode: state.cloudCode || '', lib: { lang: libLang, sort: libSort, group: libGroup } });
+    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', lib: { lang: libLang, sort: libSort, group: libGroup } });
     if(!songId) return;
     kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, guideNotes: state.guideNotes, guideTune: state.guideTune || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
@@ -656,7 +654,7 @@ function applySettings(st){
   state.latencyMs = st.latencyMs || 0; state.micId = st.micId || ''; state.micMode = st.micMode || 'raw'; state.monitor = !!st.monitor;
   if(typeof st.skipIntro === 'boolean') state.skipIntro = st.skipIntro;
   state.lastBackup = st.lastBackup || 0; state.lastCloud = st.lastCloud || 0;
-  state.fbConfig = st.fbConfig || ''; state.cloudCode = st.cloudCode || '';
+  state.gdClientId = st.gdClientId || ''; state.gdFileId = st.gdFileId || '';
   if(st.lib){ libLang = st.lib.lang || ''; libSort = st.lib.sort || 'name'; libGroup = !!st.lib.group; }
   if(st.warm){ Object.assign(W, { start: st.warm.start ?? W.start, pattern: st.warm.pattern ?? 0, slow: !!st.warm.slow, along: !!st.warm.along }); }
 }
@@ -2489,50 +2487,86 @@ async function exportBackup(onlyId){
   }catch(e){ toast('備份失敗：' + (e.message || e)); }
   finally{ backupBusy = false; }
 }
-let fb = null;
-async function fbInit(){
-  if(fb) return fb;
-  if(!state.fbConfig) throw new Error('還沒貼上 Firebase 設定');
-  if(!state.cloudCode) throw new Error('還沒設定備份代號');
-  let cfg; try{ cfg = JSON.parse(state.fbConfig); }catch(e){ throw new Error('Firebase 設定不是有效的 JSON'); }
-  const base = 'https://cdn.jsdelivr.net/npm/firebase@10.12.2/';
-  const [app, storage, auth] = await Promise.all([import(base + 'app/+esm'), import(base + 'storage/+esm'), import(base + 'auth/+esm')]);
-  const a = app.initializeApp(cfg), au = auth.getAuth(a);
-  if(!au.currentUser) await auth.signInAnonymously(au);
-  fb = { storage, st: storage.getStorage(a) };
-  return fb;
+let gdToken = null;
+function loadScript(src){
+  return new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => rej(new Error('無法載入 Google 登入元件')); document.head.appendChild(el); });
 }
-const cloudPath = () => 'harmonia/' + encodeURIComponent(state.cloudCode) + '/backup.zip';
-async function cloudUpload(){
+async function gdAuth(interactive){
+  if(!state.gdClientId) throw new Error('還沒填用戶端 ID');
+  if(gdToken && gdToken.exp > Date.now() + 60000) return gdToken.token;
+  if(!(window.google && google.accounts && google.accounts.oauth2)) await loadScript('https://accounts.google.com/gsi/client');
+  return await new Promise((res, rej) => {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: state.gdClientId,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: r => { if(r.error) return rej(new Error(r.error)); gdToken = { token: r.access_token, exp: Date.now() + (r.expires_in || 3600) * 1000 }; res(gdToken.token); },
+      error_callback: e => rej(new Error((e && e.type) === 'popup_closed' ? '授權視窗被關掉了' : '授權失敗'))
+    });
+    client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+  });
+}
+const GD_NAME = 'Harmonia 備份.zip';
+function gdSend(method, url, token, body, type, onProgress){
+  return new Promise((res, rej) => {
+    const x = new XMLHttpRequest();
+    x.open(method, url); x.setRequestHeader('Authorization', 'Bearer ' + token);
+    if(type) x.setRequestHeader('Content-Type', type);
+    if(x.upload && onProgress) x.upload.onprogress = e => { if(e.lengthComputable) onProgress(e.loaded / e.total); };
+    x.onload = () => (x.status >= 200 && x.status < 300) ? res(JSON.parse(x.responseText || '{}')) : rej(new Error('HTTP ' + x.status + '：' + x.responseText.slice(0, 120)));
+    x.onerror = () => rej(new Error('連線失敗'));
+    x.send(body);
+  });
+}
+async function gdUpload(){
   if(backupBusy) return; backupBusy = true;
   try{
     toast('準備備份檔…');
     const made = await buildBackup();
     if(!made){ toast('還沒有歌可以備份'); return; }
-    const { storage, st } = await fbInit();
-    toast('上傳中… ' + (made.blob.size / 1048576).toFixed(1) + ' MB');
-    await storage.uploadBytes(storage.ref(st, cloudPath()), made.blob, { contentType: 'application/zip' });
-    state.lastCloud = Date.now(); saveMeta(); cloudInfo();
-    toast('已上傳到雲端：' + made.count + ' 首');
+    const token = await gdAuth(!gdToken);
+    const mb = (made.blob.size / 1048576).toFixed(1);
+    const prog = p => toast('上傳中… ' + Math.round(p * 100) + '%（' + mb + ' MB）');
+    let out = null;
+    if(state.gdFileId){
+      try{ out = await gdSend('PATCH', 'https://www.googleapis.com/upload/drive/v3/files/' + state.gdFileId + '?uploadType=media&fields=id', token, made.blob, 'application/zip', prog); }
+      catch(e){ state.gdFileId = ''; }
+    }
+    if(!out){
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name: GD_NAME, mimeType: 'application/zip' })], { type: 'application/json' }));
+      form.append('file', made.blob);
+      out = await gdSend('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', token, form, null, prog);
+    }
+    state.gdFileId = out.id || state.gdFileId; state.lastCloud = Date.now(); saveMeta(); cloudInfo();
+    toast('已上傳到雲端硬碟：' + made.count + ' 首，' + mb + ' MB');
   }catch(e){ toast('雲端備份失敗：' + (e.message || e)); }
   finally{ backupBusy = false; }
 }
-async function cloudRestore(){
+async function gdRestore(){
   if(backupBusy) return;
   try{
     toast('連線中…');
-    const { storage, st } = await fbInit();
-    const r = storage.ref(st, cloudPath());
-    let blob;
-    try{ blob = await storage.getBlob(r); }
-    catch(e){ const url = await storage.getDownloadURL(r); blob = await (await fetch(url)).blob(); }
-    toast('下載完成，開始還原…');
-    await importBackup(new File([blob], 'cloud.zip', { type: 'application/zip' }));
-  }catch(e){ toast(/object-not-found/.test(String(e && e.code || e)) ? '雲端還沒有這個代號的備份' : '雲端還原失敗：' + (e.message || e)); }
+    const token = await gdAuth(!gdToken);
+    let id = state.gdFileId;
+    if(!id){
+      const q = encodeURIComponent("name='" + GD_NAME + "' and trashed=false");
+      const r = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=modifiedTime desc&fields=files(id,modifiedTime)', { headers: { Authorization: 'Bearer ' + token } });
+      const j = await r.json();
+      if(j.files && j.files.length) id = j.files[0].id;
+    }
+    if(!id){ toast('雲端硬碟裡找不到備份'); return; }
+    toast('下載中…');
+    const r2 = await fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', { headers: { Authorization: 'Bearer ' + token } });
+    if(!r2.ok) throw new Error('下載失敗 HTTP ' + r2.status);
+    const blob = await r2.blob();
+    state.gdFileId = id; saveMeta();
+    await importBackup(new File([blob], 'drive.zip', { type: 'application/zip' }));
+  }catch(e){ toast('雲端還原失敗：' + (e.message || e)); }
 }
 function cloudInfo(){
   const t = state.lastCloud ? new Date(state.lastCloud) : null;
-  $('#cloudInfo').textContent = t ? '上次上傳：' + (t.getMonth() + 1) + '/' + t.getDate() + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') : (state.fbConfig ? '還沒上傳過。' : '');
+  $('#cloudInfo').textContent = (state.gdClientId ? (gdToken ? '已連結帳號。' : '') : '還沒設定用戶端 ID。') +
+    (t ? '上次上傳：' + (t.getMonth() + 1) + '/' + t.getDate() + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') : (state.gdClientId ? '還沒上傳過。' : ''));
 }
 async function importBackup(file){
   if(!file || backupBusy) return; backupBusy = true;
@@ -2609,11 +2643,11 @@ $('#seek').addEventListener('change', e => { seeking = false; seekTo(+e.target.v
 $('#stageBtn').addEventListener('click', openStage);
 $('#newSong').addEventListener('click', newSong);
 $('#exportAll').addEventListener('click', () => exportBackup());
-$('#fbCfg').addEventListener('change', e => { state.fbConfig = e.target.value.trim(); fb = null; saveMeta(); cloudInfo(); });
-$('#cloudCode').addEventListener('change', e => { state.cloudCode = e.target.value.trim(); saveMeta(); });
-$('#cloudUp').addEventListener('click', cloudUpload);
-$('#cloudDown').addEventListener('click', cloudRestore);
-$('#cloudBox').addEventListener('toggle', e => { if(e.target.open){ $('#fbCfg').value = state.fbConfig || ''; $('#cloudCode').value = state.cloudCode || ''; cloudInfo(); } });
+$('#gdId').addEventListener('change', e => { state.gdClientId = e.target.value.trim(); gdToken = null; saveMeta(); cloudInfo(); });
+$('#cloudUp').addEventListener('click', gdUpload);
+$('#cloudDown').addEventListener('click', gdRestore);
+$('#cloudOut').addEventListener('click', () => { gdToken = null; state.gdFileId = ''; saveMeta(); cloudInfo(); toast('已解除連結，下次上傳會重新授權'); });
+$('#cloudBox').addEventListener('toggle', e => { if(e.target.open){ $('#gdId').value = state.gdClientId || ''; cloudInfo(); } });
 $('#exportOne').addEventListener('click', () => exportBackup(songId));
 $('#importFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; importBackup(f); });
 $('#warmBtn').addEventListener('click', wOpen);
