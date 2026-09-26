@@ -68,6 +68,7 @@ input[type=range]{width:100%;accent-color:var(--tc,var(--v1));min-height:32px}
 .name{flex:1;min-width:0;border:none;background:transparent;font-size:1.1rem;font-weight:700;padding:6px 4px;border-radius:6px}
 .name:hover,.name:focus{background:var(--surface)}
 .icon{width:44px;height:44px;border-radius:50%;border:1px solid transparent;background:transparent;cursor:pointer;display:grid;place-items:center;color:var(--muted)}
+.icon:disabled{opacity:.35;cursor:not-allowed}
 .icon:hover{border-color:var(--line)}
 .icon svg{width:22px;height:22px}
 .icon[aria-pressed="true"]{color:var(--rec)}
@@ -184,7 +185,7 @@ body[data-view="library"] .transport{display:none}
   background:linear-gradient(180deg,#3C3639 0%,#2D2A2C 50%,#222022 100%);color:var(--s-ink);
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .stage[hidden]{display:none}
-.st-top{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;padding:6px 6px 4px}
+.st-top{display:grid;grid-template-columns:48px 1fr 48px 48px;align-items:center;padding:6px 6px 4px}
 .st-top .icon{color:var(--s-ink)}
 .st-title{text-align:center;font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:.4em;justify-content:center;align-items:center}
 .st-title svg{width:1.2em;height:1.2em;flex:none;opacity:.8}
@@ -200,7 +201,7 @@ body[data-view="library"] .transport{display:none}
 .mix-row .t .mm[aria-pressed="true"]{color:var(--rec);border-color:var(--rec)}
 .st-prog{height:3px;background:rgba(255,255,255,.12)}
 .st-prog i{display:block;height:100%;width:0;background:var(--hl)}
-.st-info{display:flex;align-items:center;gap:8px;padding:8px 18px 0;font-variant-numeric:tabular-nums;font-size:.95rem}
+.st-info{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;padding:8px 18px 0;font-variant-numeric:tabular-nums;font-size:.95rem}
 .st-info .dot{width:9px;height:9px;border-radius:50%;background:var(--s-dim)}
 .stage.rec .st-info .dot{background:var(--s-red);animation:blink 1s steps(2,start) infinite}
 @keyframes blink{to{visibility:hidden}}
@@ -218,20 +219,15 @@ body[data-view="library"] .transport{display:none}
   -webkit-mask-image:linear-gradient(transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(transparent,#000 18%,#000 82%,transparent)}
 #lyrics::-webkit-scrollbar{display:none}
 #lyrics li{position:relative;font-size:1.3rem;line-height:1.5;margin:0 0 1.15em;color:var(--s-dim);transition:color .2s,font-size .2s;cursor:pointer;padding:0 6px}
-#lyrics li .tk{position:relative;display:inline-block;white-space:pre}
-#lyrics li .tk .fill{position:absolute;left:0;top:0;color:var(--hl);pointer-events:none;opacity:0;white-space:pre;
-  clip-path:inset(0 calc(100% - var(--p,0%)) 0 0)}
-#lyrics li.now .tk .fill{opacity:1}
-.stage.sync #lyrics li .tk .fill{opacity:1}
 .stage.sync #lyrics li.now{box-shadow:0 0 0 2px var(--hl);border-radius:12px;background:rgba(231,150,140,.12);padding:8px 12px}
-.stage.sync.word #lyrics li.now{box-shadow:none;background:none;padding:0 6px}
-#lyrics li .tk.next{color:var(--s-ink);border-radius:6px;box-shadow:0 0 0 2px var(--hl);background:rgba(231,150,140,.16);animation:tkpulse 1.1s ease-in-out infinite}
-@keyframes tkpulse{50%{box-shadow:0 0 0 2px rgba(231,150,140,.35)}}
-@media (prefers-reduced-motion:reduce){#lyrics li .tk.next{animation:none}}
 #lyrics li.past{opacity:.55}
 #lyrics li.now{color:rgba(238,233,228,.82);font-size:1.75rem;font-weight:700;opacity:1}
-#lyrics li.now .tk .fill{font-weight:700}
 #lyrics li.untimed{cursor:default}
+#lyrics li.line-other:not(.now){opacity:.45}
+.who-dot{display:inline-block;width:.55em;height:.55em;border-radius:50%;margin-right:.4em;vertical-align:middle}
+.who-dot.who-me{background:#6FA8DC}
+.who-dot.who-other{background:#E2A94F}
+.who-dot.who-both{background:linear-gradient(135deg,#6FA8DC 50%,#E2A94F 50%)}
 #lyrics li.inrange{color:var(--hl);background:rgba(231,150,140,.12);border-radius:8px}
 .stage.punch .st-info .take{color:var(--hl)}
 .no-lyrics{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--s-dim);padding:0 48px}
@@ -270,6 +266,14 @@ body[data-view="library"] .transport{display:none}
 .mix-row .t{display:flex;align-items:center;gap:8px;font-weight:700}
 .mix-row .g{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:.9rem;color:var(--muted)}
 .mix-row output{float:right;color:var(--ink)}
+.duet{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.duet-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:700;font-size:.95rem}
+.duet-list{list-style:none;margin:10px 0 0;padding:0;max-height:32vh;overflow-y:auto}
+.duet-list li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid var(--line);font-size:.92rem}
+.duet-dot{width:26px;height:26px;flex:none;border-radius:50%;border:2px solid var(--line);background:var(--paper);cursor:pointer}
+.duet-dot[data-who="me"]{background:#6FA8DC;border-color:#6FA8DC}
+.duet-dot[data-who="other"]{background:#E2A94F;border-color:#E2A94F}
+.duet-dot[data-who="both"]{background:linear-gradient(135deg,#6FA8DC 50%,#E2A94F 50%);border-color:var(--muted)}
 .keyrow{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:.9rem;color:var(--muted)}
 .keyrow button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--paper);font-size:1.2rem;cursor:pointer}
 .keyrow button:disabled{opacity:.4}
@@ -435,9 +439,12 @@ body[data-view="library"] .transport{display:none}
     <button class="icon" id="stLyrics" type="button" aria-label="編輯歌詞">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>
     </button>
+    <button class="icon" id="stEditor" type="button" aria-label="編輯歌曲">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>
+    </button>
   </div>
   <div class="st-prog"><i id="stProg"></i></div>
-  <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><span class="take" id="stTake"></span></div>
+  <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><button type="button" class="chip" id="duetSkipBtn" aria-pressed="false" hidden>只錄我的部分</button><span class="take" id="stTake"></span></div>
   <div class="st-body">
     <div class="st-meter"><div class="bar" id="stMeter"><i></i></div>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0M12 17v4"/></svg></div>
@@ -468,7 +475,7 @@ body[data-view="library"] .transport{display:none}
   </div>
   <div class="sync-ctl">
     <button type="button" class="ghost" id="syncBack">退一句</button>
-    <button type="button" class="tap" id="syncTap">這句開始</button>
+    <button type="button" class="tap" id="syncTap">對上了</button>
     <button type="button" class="ghost" id="syncEnd">結束</button>
   </div>
 </section>
@@ -476,15 +483,26 @@ body[data-view="library"] .transport{display:none}
 <div class="back" id="lyricsSheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="lyTitle">
     <h2 id="lyTitle">歌詞</h2>
-    <p>可以貼上或匯入 LRC 歌詞檔（每行開頭有 [01:23.45] 這種時間碼），就會自動跟著捲動。只有純文字的話，貼上後按「逐句對時」，邊聽邊點每一句的開頭；想讓填色一個字一個字跟著走，就用「逐字對時」。</p>
+    <p>可以貼上或匯入 LRC 歌詞檔（每行開頭有 [01:23.45] 這種時間碼），就會自動跟著捲動。只有純文字的話，貼上後按「開始對時」，邊聽邊點每一句的開頭。對時時可以放慢速度，也可以只重對某一句之後的部分。</p>
     <textarea id="lyText" spellcheck="false" placeholder="[00:12.30]第一句歌詞&#10;[00:16.80]第二句歌詞&#10;&#10;或是每行一句的純文字"></textarea>
     <div class="row">
       <label class="btn" for="lyFile">匯入檔案</label>
       <input id="lyFile" class="sr" type="file" accept=".lrc,.txt,text/plain">
-      <button class="btn" id="lySync" type="button">逐句對時</button>
-      <button class="btn" id="lySyncWord" type="button">逐字對時</button>
+      <button class="btn" id="lySync" type="button">開始對時</button>
       <button class="chip2" id="lyFromHere" type="button" aria-pressed="false">從目前這一句開始</button>
       <button class="btn primary" id="lySave" type="button" style="margin-left:auto">儲存</button>
+    </div>
+    <div class="duet" id="duetBox" hidden>
+      <div class="duet-head">
+        <span>對唱分工（可選）</span>
+        <div class="row" style="gap:6px">
+          <button class="chip2" id="duetAllMe" type="button">全部：我</button>
+          <button class="chip2" id="duetAllOther" type="button">全部：對方</button>
+          <button class="chip2" id="duetClear" type="button">清除</button>
+        </div>
+      </div>
+      <p class="hint">男女對唱的歌可以這樣分工。點每一句前面的圓點切換：不分工 → 我 → 對方 → 合唱。錄音時會用顏色標出每句是誰唱的，也可以只錄自己的部分、自動跳過對方的段落。</p>
+      <ol class="duet-list" id="duetList"></ol>
     </div>
   </div>
 </div>
@@ -506,7 +524,7 @@ body[data-view="library"] .transport{display:none}
     <h2 id="doneTitle">錄好了</h2>
     <p id="doneText"></p>
     <div class="row">
-      <button class="btn" id="doneStudio" type="button">回到工作室</button>
+      <button class="btn" id="doneStudio" type="button">到編輯畫面聽聽看</button>
       <button class="btn primary" id="doneHarmony" type="button" style="margin-left:auto">疊一軌合音</button>
     </div>
   </div>
@@ -555,7 +573,7 @@ body[data-view="library"] .transport{display:none}
 const $ = s => document.querySelector(s);
 const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
 const BACKING_COLOR = '#8A8D84';
-const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, micId: '', micMode: 'raw', skipIntro: true, title: '新歌曲', artist: '', lang: '', order: 0, created: 0, cover: false };
+const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, micId: '', micMode: 'raw', skipIntro: true, skipOther: false, title: '新歌曲', artist: '', lang: '', order: 0, created: 0, cover: false };
 let songId = null, songs = [];
 const GUIDE_COLOR = '#8E86AE';
 let ctx = null, micStream = null, playing = null;
@@ -597,7 +615,7 @@ function saveMeta(){
   metaTimer = setTimeout(() => {
     kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', lib: { lang: libLang, sort: libSort, group: libGroup } });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, skipOther: !!state.skipOther, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     writeIndex();
@@ -693,6 +711,7 @@ async function loadSong(id){
   state.title = sg.title || '新歌曲'; state.artist = sg.artist || '';
   state.lang = sg.lang || (Array.isArray(sg.tags) && sg.tags[0]) || ''; state.order = sg.order || 0; state.created = sg.created || Date.now(); state.cover = !!sg.cover;
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
+  state.skipOther = !!sg.skipOther;
   state.reverb = typeof sg.reverb === 'number' ? sg.reverb : 0;
   for(const m of sg.tracks || []){
     let buf = null, hasOrig = false;
@@ -1041,7 +1060,7 @@ function songRow(sg, list){
   const b = document.createElement('button'); b.type = 'button'; b.className = 'song';
   const parts = []; if(sg.artist && !libGroup) parts.push(sg.artist);
   if(!sg.backing) parts.push('還沒有伴奏');
-  else { if(sg.guide) parts.push('有導唱'); if(sg.voices) parts.push(sg.voices + ' 軌人聲'); }
+  else { parts.push(sg.voices ? sg.voices + ' 軌人聲' : '還沒錄音'); if(sg.guide) parts.push('有導唱'); }
   if(sg.lang && !libLang) parts.push(sg.lang);
   b.innerHTML = '<span class="txt"><span class="st"></span><span class="ss"></span></span>';
   b.prepend(coverEl(sg));
@@ -1091,12 +1110,13 @@ async function openSong(id){
   toast('載入中…');
   await loadSong(id);
   $('#songTitle').value = state.title; $('#songArtist').value = state.artist; renderLang(); renderCover();
-  showView('studio'); render(); updateClock();
+  render(); updateClock();
   const b = backing(); if(b && b.key) applyKey();
+  openStage();
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false;
+  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; state.skipOther = false;
   saveMeta();
   $('#songTitle').value = state.title; $('#songArtist').value = ''; renderLang(); renderCover();
   showView('studio'); render(); updateClock();
@@ -1120,7 +1140,7 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, skipOther: !!state.skipOther, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }
@@ -1338,9 +1358,34 @@ function openLyricsSheet(){
   const n = syncStartLine() + 1;
   $('#lyFromHere').textContent = '從第 ' + n + ' 句開始';
   $('#lyFromHere').hidden = !state.lyrics.some(l => l.t !== null);
+  renderDuet();
   openSheet('#lyricsSheet');
 }
-function saveLyricsFromSheet(){ state.lyrics = parseLyrics($('#lyText').value); saveMeta(); renderLyrics(); updateStudioLabels(); }
+function saveLyricsFromSheet(){
+  const old = state.lyrics, next = parseLyrics($('#lyText').value);
+  if(old.length === next.length) next.forEach((l, i) => { if(old[i] && old[i].who) l.who = old[i].who; });
+  state.lyrics = next; saveMeta(); renderLyrics(); updateStudioLabels(); renderDuet();
+}
+
+/* ---------- 對唱分工 ---------- */
+const DUET_ORDER = [undefined, 'me', 'other', 'both'];
+const duetLabel = w => w === 'me' ? '我' : w === 'other' ? '對方' : w === 'both' ? '合唱' : '不分工';
+function renderDuet(){
+  const box = $('#duetList'); box.innerHTML = '';
+  $('#duetBox').hidden = !state.lyrics.length;
+  state.lyrics.forEach(l => {
+    const li = document.createElement('li');
+    const dot = document.createElement('button'); dot.type = 'button'; dot.className = 'duet-dot';
+    dot.dataset.who = l.who || ''; dot.setAttribute('aria-label', duetLabel(l.who));
+    dot.addEventListener('click', () => {
+      const cur = DUET_ORDER.indexOf(l.who); l.who = DUET_ORDER[(cur + 1) % DUET_ORDER.length];
+      dot.dataset.who = l.who || ''; dot.setAttribute('aria-label', duetLabel(l.who));
+      saveMeta();
+    });
+    const span = document.createElement('span'); span.textContent = l.text || '♪';
+    li.appendChild(dot); li.appendChild(span); box.appendChild(li);
+  });
+}
 
 /* ---------- 面板 ---------- */
 function openSheet(id){ $(id).hidden = false; }
@@ -1360,15 +1405,15 @@ function openStage(opts){
   $('#stTitle').textContent = (state.title || '未命名歌曲') + (state.artist ? ' － ' + state.artist : '');
   $('#monBtn').setAttribute('aria-pressed', state.monitor);
   $('#skipBtn').setAttribute('aria-pressed', state.skipIntro);
-  renderLyrics(); setStageMode('idle'); updateStage(true);
+  renderLyrics(); setStageMode('idle'); updateStage(true); updateDuetUI();
   if(punch){
     if(!state.lyrics.some(l => l.t !== null)){ toast('要先有對過時的歌詞，才能一句一句修'); punch = null; $('#stage').classList.remove('punch'); setStageMode('idle'); return; }
     toast('點一句歌詞選起來，再按「錄這一句」');
-  } else beginRec();
+  }
 }
-function closeStage(){
+function stageTeardown(after){
   if(take && take.segs.length && !closeArmed){
-    toast('還沒按「完成」的錄音會捨棄，再按一次關閉');
+    toast('還沒按「完成」的錄音會捨棄，再按一次');
     closeArmed = setTimeout(() => closeArmed = null, 3000); return;
   }
   clearTimeout(closeArmed); closeArmed = null;
@@ -1377,13 +1422,15 @@ function closeStage(){
   if(playing && playing.mode === 'sync') endSync(false);
   take = null; state.pos = 0;
   $('#stage').hidden = true; document.body.style.overflow = '';
-  render(); updateClock();
+  after();
 }
+// 關閉錄音畫面 → 回歌曲庫；鉛筆 → 編輯歌曲畫面
+function closeStage(){ stageTeardown(backToLibrary); }
+function openEditorFromStage(){ stageTeardown(() => { showView('studio'); render(); updateClock(); }); }
 function setStageMode(m){
   stageMode = m;
   const st = $('#stage');
   st.classList.toggle('rec', m === 'rec'); st.classList.toggle('sync', m === 'sync');
-  st.classList.toggle('word', !!(sync && sync.word));
   const rec = $('#recBtn');
   rec.classList.toggle('record', m !== 'rec');
   if(counting){ $('#recIcon').innerHTML = '<rect x="7" y="7" width="10" height="10" rx="1.5"/>'; $('#recText').textContent = '取消倒數'; rec.setAttribute('aria-label', '取消倒數'); rec.classList.add('record'); return; }
@@ -1395,7 +1442,7 @@ function setStageMode(m){
     setBtnLabel($('#doneBtn'), '結束修句');
     $('#retakeBtn').disabled = !(punch.track && punch.track.undo) || m === 'rec';
     $('#doneBtn').disabled = m === 'rec';
-    $('#stLyrics').disabled = m === 'rec';
+    $('#stLyrics').disabled = m === 'rec'; $('#stEditor').disabled = m === 'rec';
     $('#stTake').textContent = '修句：' + punch.track.name + (punch.a >= 0 ? '．第 ' + (punch.a + 1) + (punch.b > punch.a ? '–' + (punch.b + 1) : '') + ' 句' : '．還沒選句子');
     return;
   }
@@ -1404,8 +1451,15 @@ function setStageMode(m){
   rec.setAttribute('aria-label', $('#recText').textContent);
   const hasTake = !!(take && (take.segs.length || m === 'rec'));
   $('#retakeBtn').disabled = !hasTake; $('#doneBtn').disabled = !hasTake;
-  $('#stLyrics').disabled = m === 'rec';
+  $('#stLyrics').disabled = m === 'rec'; $('#stEditor').disabled = m === 'rec';
   $('#stTake').textContent = m === 'sync' ? '對時中' : '正在錄：' + nextVoiceName();
+  updateDuetUI();
+}
+function lineIndexAt(pos, look){
+  look = look === undefined ? 0.05 : look;
+  let idx = -1;
+  state.lyrics.forEach((l, i) => { if(l.t !== null && l.t <= pos + look) idx = i; });
+  return idx;
 }
 function updateStage(force){
   const len = Math.max(songLength(), state.pos);
@@ -1413,27 +1467,7 @@ function updateStage(force){
   $('#stProg').style.width = (len ? Math.min(100, state.pos / len * 100) : 0) + '%';
   let idx;
   if(sync) idx = sync.i;
-  else { const look = playing ? 0.05 : 1.6; idx = -1; state.lyrics.forEach((l, i) => { if(l.t !== null && l.t <= state.pos + look) idx = i; }); }
-  const items0 = $('#lyrics').children;
-  if(idx >= 0 && items0[idx] && !sync){
-    const times = tokenTimes(idx), tks = items0[idx].querySelectorAll('.tk');
-    if(times) tks.forEach((el, k) => {
-      const [a, b] = times[k] || [0, 0];
-      const p = Math.max(0, Math.min(1, (state.pos - a) / Math.max(0.08, b - a)));
-      el.style.setProperty('--p', (p * 100).toFixed(1) + '%');
-    });
-  }
-  if(sync && sync.word){
-    const items = $('#lyrics').children;
-    for(let i = 0; i < items.length; i++){
-      const tks = items[i].querySelectorAll('.tk');
-      tks.forEach((el, k) => {
-        const done = i < sync.i || (i === sync.i && k < sync.j);
-        el.style.setProperty('--p', done ? '100%' : '0%');
-        el.classList.toggle('next', i === sync.i && k === sync.j);
-      });
-    }
-  }
+  else idx = lineIndexAt(state.pos, playing ? 0.05 : 1.6);
   if(idx !== lastIdx || force){
     lastIdx = idx;
     const items = $('#lyrics').children;
@@ -1454,45 +1488,13 @@ function markRange(){
   for(let i = 0; i < items.length; i++) items[i].classList.toggle('inrange', !!punch && punch.a >= 0 && i >= punch.a && i <= punch.b);
 }
 function setBtnLabel(btn, text){ const n = btn.lastChild; if(n && n.nodeType === 3) n.nodeValue = text; }
-const lyTok = [];
-function tokenize(text){
-  const re = /(\s*)([A-Za-z0-9'’\-]+|[^\s])/gu, out = []; let m;
-  while((m = re.exec(text))){
-    const tok = m[1] + m[2];
-    if(out.length && /^\s*[^\p{L}\p{N}]$/u.test(tok)) out[out.length - 1] += tok;
-    else out.push(tok);
-  }
-  return out.length ? out : [text || '♪'];
-}
-function lineEnd(i){
-  const l = state.lyrics[i], nxt = state.lyrics.slice(i + 1).find(x => x.t !== null);
-  return nxt ? nxt.t : (l.t !== null ? l.t + 4 : 4);
-}
-// 每個字的起訖時間：有逐字對時就用它，否則依字數平均分配
-function tokenTimes(i){
-  const l = state.lyrics[i], tk = lyTok[i] || [];
-  if(l.t === null) return null;
-  const end = Math.min(lineEnd(i), l.t + 12);
-  if(Array.isArray(l.w) && l.w.length === tk.length){
-    return tk.map((t, k) => [l.w[k], k + 1 < l.w.length ? l.w[k + 1] : end]);
-  }
-  const lens = tk.map(t => Math.max(1, t.trim().length)), total = lens.reduce((a, b) => a + b, 0);
-  const dur = Math.max(0.6, end - l.t); let acc = 0;
-  return tk.map((t, k) => { const a = l.t + dur * acc / total; acc += lens[k]; return [a, l.t + dur * acc / total]; });
-}
 function renderLyrics(){
   const ol = $('#lyrics'); ol.innerHTML = ''; lastIdx = -2;
   $('#noLyrics').hidden = state.lyrics.length > 0;
-  lyTok.length = 0;
-  state.lyrics.forEach((l, li0) => {
+  state.lyrics.forEach(l => {
     const li = document.createElement('li');
-    const tk = tokenize(l.text || '♪'); lyTok[li0] = tk;
-    tk.forEach(t => {
-      const w = document.createElement('span'); w.className = 'tk';
-      const b = document.createElement('span'); b.textContent = t;
-      const f = document.createElement('span'); f.className = 'fill'; f.textContent = t;
-      w.appendChild(b); w.appendChild(f); li.appendChild(w);
-    });
+    if(l.who){ const d = document.createElement('span'); d.className = 'who-dot who-' + l.who; li.appendChild(d); li.classList.add('line-' + l.who); }
+    li.appendChild(document.createTextNode(l.text || '♪'));
     if(l.t === null) li.classList.add('untimed');
     li.addEventListener('click', () => {
       if(stageMode === 'rec' || stageMode === 'sync') return;
@@ -1542,6 +1544,26 @@ function introStart(){
   let t = l ? l.t : null;
   return (t !== null && t > 3.5) ? t - 3 : 0;
 }
+let skipGuardIdx = -1;
+function updateDuetUI(){
+  const hasOther = state.lyrics.some(l => l.who === 'other');
+  $('#duetSkipBtn').hidden = !hasOther;
+  $('#duetSkipBtn').setAttribute('aria-pressed', !!state.skipOther);
+}
+function nextRecordableTime(fromIdx){
+  const nxt = state.lyrics.slice(fromIdx + 1).find(l => l.t !== null && l.who !== 'other');
+  return nxt ? nxt.t : songLength();
+}
+function skipAheadDuringRec(target){
+  const p = playing; if(!p || p.mode !== 'rec') return;
+  playing = null; stopNodes(p.nodes);
+  const seg = segmentFrom(p); if(seg) take.segs.push(seg);
+  state.pos = target;
+  const c = ctx, cap = startCapture(c, micStream, state.monitor);
+  const startAt = c.currentTime + 0.05;
+  playing = { mode: 'rec', startAt, pos0: state.pos, nodes: buildGraph(c, startAt, state.pos), cap };
+  updateStage(true);
+}
 function applySkip(){
   if(take || playing) return;
   if(state.skipIntro && state.pos < 0.05) state.pos = introStart();
@@ -1554,6 +1576,7 @@ function cancelCountdown(){
   counting = false; $('#count').hidden = true; if(!playing) stopMic(); setStageMode(stageMode);
 }
 async function startRec(){
+  skipGuardIdx = -1;
   const c = ac();
   let stream; try{ stream = await getMic(); }catch(e){ micError(e); return; }
   if(!take){
@@ -1678,7 +1701,7 @@ function syncStartLine(){
   const i = state.lyrics.findIndex(l => l.t === null || l.t >= state.pos - 0.05);
   return i < 0 ? 0 : i;
 }
-function startSync(word, fromHere){
+function startSync(fromHere){
   cancelCountdown();
   if(playing) return;
   saveLyricsFromSheet();
@@ -1687,15 +1710,13 @@ function startSync(word, fromHere){
   closeSheet('#lyricsSheet');
   if(!stageOpen()) openStage();
   const from = fromHere ? syncStartLine() : 0;
-  state.lyrics.forEach((l, i) => { if(i >= from){ l.t = null; delete l.w; } });
+  state.lyrics.forEach((l, i) => { if(i >= from) l.t = null; });
   renderLyrics();
   const prev = from > 0 ? state.lyrics[from - 1] : null;
   const startPos = from > 0 ? Math.max(0, (prev && prev.t !== null ? prev.t : state.pos) - 1.5) : 0;
-  const c = ac(); state.pos = startPos; sync = { i: from, j: 0, word: !!word };
+  const c = ac(); state.pos = startPos; sync = { i: from };
   $('#syncSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.r === syncRate));
-  $('.sync-tip').textContent = word ? '唱到框起來的那個字時，點一下「對上了」。' : '唱到框起來的那一句時，點一下「對上了」。';
-  $('#syncTap').textContent = '對上了';
-  $('#syncBack').textContent = word ? '退一字' : '退一句';
+  $('.sync-tip').textContent = '唱到框起來的那一句時，點一下「對上了」。';
   const startAt = c.currentTime + 0.4;
   playing = { mode: 'sync', startAt, pos0: startPos, rate: syncRate, nodes: buildGraph(c, startAt, startPos, syncRate) };
   holdWake(); setStageMode('sync'); updateStage(true); loop();
@@ -1703,20 +1724,9 @@ function startSync(word, fromHere){
 function syncTap(){
   if(!sync || !playing) return;
   const l = state.lyrics[sync.i]; if(!l) return;
-  const now = +state.pos.toFixed(2);
-  if(sync.word){
-    const tk = lyTok[sync.i] || [];
-    if(!Array.isArray(l.w)) l.w = [];
-    l.w[sync.j] = now;
-    if(sync.j === 0) l.t = now;
-    $('#lyrics').children[sync.i].classList.remove('untimed');
-    sync.j++;
-    if(sync.j >= tk.length){ sync.i++; sync.j = 0; }
-  } else {
-    l.t = now;
-    $('#lyrics').children[sync.i].classList.remove('untimed');
-    sync.i++;
-  }
+  l.t = +state.pos.toFixed(2);
+  $('#lyrics').children[sync.i].classList.remove('untimed');
+  sync.i++;
   if(sync.i >= state.lyrics.length) endSync(true); else updateStage(true);
 }
 function setSyncRate(r){
@@ -1729,28 +1739,16 @@ function setSyncRate(r){
   playing = { mode: 'sync', startAt, pos0: keep, rate: r, nodes: buildGraph(c, startAt, keep, r) };
 }
 function syncBack(){
-  if(!sync) return;
-  if(sync.word){
-    if(sync.j > 0) sync.j--;
-    else if(sync.i > 0){ sync.i--; sync.j = Math.max(0, (lyTok[sync.i] || []).length - 1); }
-    else return;
-    const l = state.lyrics[sync.i];
-    if(Array.isArray(l.w)) l.w.length = sync.j;
-    if(sync.j === 0){ l.t = null; delete l.w; }
-  } else {
-    if(sync.i === 0) return;
-    sync.i--; state.lyrics[sync.i].t = null;
-  }
+  if(!sync || sync.i === 0) return;
+  sync.i--; state.lyrics[sync.i].t = null;
   updateStage(true);
 }
 function endSync(done){
   if(playing && playing.mode === 'sync'){ stopNodes(playing.nodes); playing = null; }
   const stamped = state.lyrics.filter(l => l.t !== null).length;
   sync = null; releaseWake();
-  state.lyrics.forEach(l => { if(Array.isArray(l.w) && !l.w.length) delete l.w; });
   saveMeta(); state.pos = 0; renderLyrics(); setStageMode('idle'); updateStage(true); updateStudioLabels();
-  const words = state.lyrics.filter(l => Array.isArray(l.w) && l.w.length).length;
-  toast(done ? (words ? '逐字對時完成' : '對時完成，歌詞會跟著捲動了') : '已結束對時，對好的 ' + stamped + ' 句會保留，其餘維持原樣');
+  toast(done ? '對時完成，歌詞會跟著捲動了' : '已結束對時，對好的 ' + stamped + ' 句會保留，其餘維持原樣');
 }
 
 /* ---------- 音高偵測（YIN） ---------- */
@@ -1996,6 +1994,14 @@ function loop(){
       stageMeter(playing.cap.level);
       if(take && take.punch && state.pos > take.r1 + 0.45){ applyPunch(); return; }
       if(!(take && take.punch) && backing() && state.pos > songLength() + 0.8){ pauseRec(); toast('歌曲結束了，可以按「完成」'); return; }
+      if(!(take && take.punch) && state.skipOther){
+        const idx = lineIndexAt(state.pos);
+        if(idx >= 0 && state.lyrics[idx].who === 'other' && idx !== skipGuardIdx){
+          skipGuardIdx = idx;
+          const target = nextRecordableTime(idx) - 1.2;   // 提前 1.2 秒落地，好準備
+          if(target > state.pos + 0.5) skipAheadDuringRec(target);
+        }
+      }
     }
     if(mode === 'sync' && state.pos > songLength() + 0.3){ endSync(false); return; }
     updateStage();
@@ -2121,7 +2127,7 @@ async function zipReader(file){
 async function flushSong(){
   if(!songId) return;
   clearTimeout(metaTimer);
-  await kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+  await kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, skipOther: !!state.skipOther, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
   songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
   await writeIndex();
 }
@@ -2370,10 +2376,12 @@ $('#guideFile').addEventListener('change', e => { importGuide(e.target.files[0])
 
 $('#stClose').addEventListener('click', closeStage);
 $('#stLyrics').addEventListener('click', () => { if(stageMode === 'sync' || stageMode === 'rec') return; openLyricsSheet(); });
+$('#stEditor').addEventListener('click', () => { if(stageMode === 'sync' || stageMode === 'rec') return; openEditorFromStage(); });
+$('#duetSkipBtn').addEventListener('click', e => { state.skipOther = !state.skipOther; e.currentTarget.setAttribute('aria-pressed', state.skipOther); saveMeta(); toast(state.skipOther ? '會自動跳過標記為「對方」的段落' : '不再自動跳過'); });
 $('#noLyricsBtn').addEventListener('click', openLyricsSheet);
 $('#recBtn').addEventListener('click', recToggle);
 $('#retakeBtn').addEventListener('click', () => { if(punch){ undoPunch(); return; } retake(); });
-$('#doneBtn').addEventListener('click', () => { if(punch){ closeStage(); return; } finishTake(); });
+$('#doneBtn').addEventListener('click', () => { if(punch){ openEditorFromStage(); return; } finishTake(); });
 $('#monBtn').addEventListener('click', e => {
   state.monitor = !state.monitor; e.currentTarget.setAttribute('aria-pressed', state.monitor); saveMeta();
   if(playing && playing.cap) playing.cap.setMonitor(state.monitor);
@@ -2386,17 +2394,19 @@ $('#verbRange').addEventListener('input', e => { state.reverb = +e.target.value;
 $('#lySave').addEventListener('click', () => { saveLyricsFromSheet(); closeSheet('#lyricsSheet'); toast(state.lyrics.length ? '歌詞已儲存' : '歌詞已清空'); });
 let syncFromHere = false;
 $('#lyFromHere').addEventListener('click', e => { syncFromHere = !syncFromHere; e.currentTarget.setAttribute('aria-pressed', syncFromHere); });
-$('#lySync').addEventListener('click', () => startSync(false, syncFromHere));
-$('#lySyncWord').addEventListener('click', () => startSync(true, syncFromHere));
+$('#lySync').addEventListener('click', () => startSync(syncFromHere));
 $('#syncSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setSyncRate(+b.dataset.r); });
 $('#lyFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if(f) $('#lyText').value = await f.text(); });
 
+$('#duetAllMe').addEventListener('click', () => { state.lyrics.forEach(l => l.who = 'me'); saveMeta(); renderDuet(); });
+$('#duetAllOther').addEventListener('click', () => { state.lyrics.forEach(l => l.who = 'other'); saveMeta(); renderDuet(); });
+$('#duetClear').addEventListener('click', () => { state.lyrics.forEach(l => delete l.who); saveMeta(); renderDuet(); });
 $('#syncTap').addEventListener('click', syncTap);
 $('#syncBack').addEventListener('click', syncBack);
 $('#syncEnd').addEventListener('click', () => endSync(false));
 
 $('#doneHarmony').addEventListener('click', () => { closeSheet('#doneSheet'); setStageMode('idle'); updateStage(true); beginRec(); });
-$('#doneStudio').addEventListener('click', () => { closeSheet('#doneSheet'); closeStage(); });
+$('#doneStudio').addEventListener('click', () => { closeSheet('#doneSheet'); openEditorFromStage(); });
 
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawAll(); if(!$('#warm').hidden) wSize(); if(stageOpen()) updateStage(true); }, 150); });
 
