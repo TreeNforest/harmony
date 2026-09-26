@@ -223,11 +223,10 @@ body[data-view="library"] .transport{display:none}
 #lyrics li.past{opacity:.55}
 #lyrics li.now{color:rgba(238,233,228,.82);font-size:1.75rem;font-weight:700;opacity:1}
 #lyrics li.untimed{cursor:default}
-#lyrics li.line-other:not(.now){opacity:.45}
-.who-dot{display:inline-block;width:.55em;height:.55em;border-radius:50%;margin-right:.4em;vertical-align:middle}
-.who-dot.who-me{background:#6FA8DC}
-.who-dot.who-other{background:#E2A94F}
-.who-dot.who-both{background:linear-gradient(135deg,#6FA8DC 50%,#E2A94F 50%)}
+#lyrics li.colored{color:var(--lc);opacity:.6}
+#lyrics li.colored.past{opacity:.35}
+#lyrics li.colored.now{color:var(--lc);opacity:1}
+#lyrics li.notmine:not(.now){opacity:.22}
 #lyrics li.inrange{color:var(--hl);background:rgba(231,150,140,.12);border-radius:8px}
 .stage.punch .st-info .take{color:var(--hl)}
 .no-lyrics{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--s-dim);padding:0 48px}
@@ -270,10 +269,14 @@ body[data-view="library"] .transport{display:none}
 .duet-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:700;font-size:.95rem}
 .duet-list{list-style:none;margin:10px 0 0;padding:0;max-height:32vh;overflow-y:auto}
 .duet-list li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid var(--line);font-size:.92rem}
-.duet-dot{width:26px;height:26px;flex:none;border-radius:50%;border:2px solid var(--line);background:var(--paper);cursor:pointer}
-.duet-dot[data-who="me"]{background:#6FA8DC;border-color:#6FA8DC}
-.duet-dot[data-who="other"]{background:#E2A94F;border-color:#E2A94F}
-.duet-dot[data-who="both"]{background:linear-gradient(135deg,#6FA8DC 50%,#E2A94F 50%);border-color:var(--muted)}
+.duet-list li{cursor:pointer}
+.duet-list li .ptag{flex:none;min-width:2.8em;text-align:center;font-size:.78rem;font-weight:700;border-radius:999px;padding:2px 6px;border:1px solid var(--line);color:var(--muted)}
+.duet-list li.has .ptag{color:#fff;border-color:transparent;background:var(--lc)}
+.duet-list li.has .ltxt{color:var(--lc)}
+.partpick{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 4px}
+.partbtn{width:44px;height:44px;border-radius:50%;border:2px solid var(--pc);background:transparent;color:var(--pc);font-weight:700;font-size:1.05rem;cursor:pointer}
+.partbtn[aria-pressed="true"]{background:var(--pc);color:#fff}
+.partpick .sel{font-size:.85rem;color:var(--muted)}
 .keyrow{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:.9rem;color:var(--muted)}
 .keyrow button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--paper);font-size:1.2rem;cursor:pointer}
 .keyrow button:disabled{opacity:.4}
@@ -494,14 +497,19 @@ body[data-view="library"] .transport{display:none}
     </div>
     <div class="duet" id="duetBox" hidden>
       <div class="duet-head">
-        <span>對唱分工（可選）</span>
+        <span>聲部分工（可選）</span>
         <div class="row" style="gap:6px">
-          <button class="chip2" id="duetAllMe" type="button">全部：我</button>
-          <button class="chip2" id="duetAllOther" type="button">全部：對方</button>
-          <button class="chip2" id="duetClear" type="button">清除</button>
+          <button class="chip2" id="duetAll" type="button">整首套用</button>
+          <button class="chip2" id="duetClear" type="button">清除全部</button>
         </div>
       </div>
-      <p class="hint">男女對唱的歌可以這樣分工。點每一句前面的圓點切換：不分工 → 我 → 對方 → 合唱。錄音時會用顏色標出每句是誰唱的，也可以只錄自己的部分、自動跳過對方的段落。</p>
+      <p class="hint">先選聲部（可以複選，複選就是合唱），再點下面的句子套用；同一句再點一次會取消。錄音時每句會用該聲部的顏色顯示。</p>
+      <div class="partpick" id="partPick" role="group" aria-label="選擇聲部">
+        <button class="partbtn" type="button" data-p="A" aria-pressed="true">A</button>
+        <button class="partbtn" type="button" data-p="B" aria-pressed="false">B</button>
+        <button class="partbtn" type="button" data-p="C" aria-pressed="false">C</button>
+        <span class="sel" id="partSel"></span>
+      </div>
       <ol class="duet-list" id="duetList"></ol>
     </div>
   </div>
@@ -573,7 +581,7 @@ body[data-view="library"] .transport{display:none}
 const $ = s => document.querySelector(s);
 const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
 const BACKING_COLOR = '#8A8D84';
-const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, micId: '', micMode: 'raw', skipIntro: true, skipOther: false, title: '新歌曲', artist: '', lang: '', order: 0, created: 0, cover: false };
+const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, micId: '', micMode: 'raw', skipIntro: true, recPart: '', title: '新歌曲', artist: '', lang: '', order: 0, created: 0, cover: false };
 let songId = null, songs = [];
 const GUIDE_COLOR = '#8E86AE';
 let ctx = null, micStream = null, playing = null;
@@ -615,7 +623,7 @@ function saveMeta(){
   metaTimer = setTimeout(() => {
     kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', lib: { lang: libLang, sort: libSort, group: libGroup } });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, skipOther: !!state.skipOther, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     writeIndex();
@@ -711,7 +719,10 @@ async function loadSong(id){
   state.title = sg.title || '新歌曲'; state.artist = sg.artist || '';
   state.lang = sg.lang || (Array.isArray(sg.tags) && sg.tags[0]) || ''; state.order = sg.order || 0; state.created = sg.created || Date.now(); state.cover = !!sg.cover;
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
-  state.skipOther = !!sg.skipOther;
+  state.recPart = sg.recPart || '';
+  // 舊版的「我／對方／合唱」轉成 A／B／A+B
+  const WHO = { me: ['A'], other: ['B'], both: ['A', 'B'] };
+  state.lyrics.forEach(l => { if(l.who){ if(!l.parts) l.parts = WHO[l.who] || []; delete l.who; } });
   state.reverb = typeof sg.reverb === 'number' ? sg.reverb : 0;
   for(const m of sg.tracks || []){
     let buf = null, hasOrig = false;
@@ -1116,7 +1127,7 @@ async function openSong(id){
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; state.skipOther = false;
+  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; state.recPart = '';
   saveMeta();
   $('#songTitle').value = state.title; $('#songArtist').value = ''; renderLang(); renderCover();
   showView('studio'); render(); updateClock();
@@ -1140,7 +1151,7 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, skipOther: !!state.skipOther, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }
@@ -1363,27 +1374,43 @@ function openLyricsSheet(){
 }
 function saveLyricsFromSheet(){
   const old = state.lyrics, next = parseLyrics($('#lyText').value);
-  if(old.length === next.length) next.forEach((l, i) => { if(old[i] && old[i].who) l.who = old[i].who; });
+  if(old.length === next.length) next.forEach((l, i) => { if(old[i] && old[i].parts) l.parts = old[i].parts; });
   state.lyrics = next; saveMeta(); renderLyrics(); updateStudioLabels(); renderDuet();
 }
 
 /* ---------- 對唱分工 ---------- */
-const DUET_ORDER = [undefined, 'me', 'other', 'both'];
-const duetLabel = w => w === 'me' ? '我' : w === 'other' ? '對方' : w === 'both' ? '合唱' : '不分工';
+const PARTS = ['A', 'B', 'C'];
+const PART_COLOR = { A: '#EF7F8A', B: '#6FA8DC', C: '#7CC49A' };
+const CHORUS_COLOR = '#E6B54F';
+const partsOf = l => Array.isArray(l.parts) ? l.parts.filter(p => PARTS.includes(p)) : [];
+const partLabel = ps => ps.length ? (ps.length > 1 ? ps.join('+') + ' 合唱' : ps[0]) : '—';
+function lineColor(l){ const ps = partsOf(l); return !ps.length ? null : ps.length > 1 ? CHORUS_COLOR : PART_COLOR[ps[0]]; }
+let partSel = ['A'];
+function renderPartPick(){
+  document.querySelectorAll('#partPick .partbtn').forEach(b => {
+    b.style.setProperty('--pc', PART_COLOR[b.dataset.p]);
+    b.setAttribute('aria-pressed', partSel.includes(b.dataset.p));
+  });
+  $('#partSel').textContent = partSel.length ? '目前：' + partLabel(partSel) : '先選一個聲部';
+}
+function refreshStageParts(){ updateDuetUI(); if(stageOpen()){ renderLyrics(); updateStage(true); setStageMode(stageMode); } }
 function renderDuet(){
   const box = $('#duetList'); box.innerHTML = '';
   $('#duetBox').hidden = !state.lyrics.length;
+  renderPartPick();
   state.lyrics.forEach(l => {
-    const li = document.createElement('li');
-    const dot = document.createElement('button'); dot.type = 'button'; dot.className = 'duet-dot';
-    dot.dataset.who = l.who || ''; dot.setAttribute('aria-label', duetLabel(l.who));
-    dot.addEventListener('click', () => {
-      const cur = DUET_ORDER.indexOf(l.who); l.who = DUET_ORDER[(cur + 1) % DUET_ORDER.length];
-      dot.dataset.who = l.who || ''; dot.setAttribute('aria-label', duetLabel(l.who));
-      saveMeta();
+    const li = document.createElement('li'), c = lineColor(l);
+    if(c){ li.classList.add('has'); li.style.setProperty('--lc', c); }
+    const tag = document.createElement('span'); tag.className = 'ptag'; tag.textContent = partLabel(partsOf(l));
+    const span = document.createElement('span'); span.className = 'ltxt'; span.textContent = l.text || '♪';
+    li.appendChild(tag); li.appendChild(span);
+    li.addEventListener('click', () => {
+      if(!partSel.length){ toast('先在上面選聲部'); return; }
+      const cur = partsOf(l).slice().sort().join(), want = partSel.slice().sort().join();
+      if(cur === want) delete l.parts; else l.parts = partSel.slice().sort();
+      saveMeta(); renderDuet(); refreshStageParts();
     });
-    const span = document.createElement('span'); span.textContent = l.text || '♪';
-    li.appendChild(dot); li.appendChild(span); box.appendChild(li);
+    box.appendChild(li);
   });
 }
 
@@ -1452,7 +1479,7 @@ function setStageMode(m){
   const hasTake = !!(take && (take.segs.length || m === 'rec'));
   $('#retakeBtn').disabled = !hasTake; $('#doneBtn').disabled = !hasTake;
   $('#stLyrics').disabled = m === 'rec'; $('#stEditor').disabled = m === 'rec';
-  $('#stTake').textContent = m === 'sync' ? '對時中' : '正在錄：' + nextVoiceName();
+  $('#stTake').textContent = m === 'sync' ? '對時中' : '正在錄：' + (state.recPart ? state.recPart + ' 聲部' : nextVoiceName());
   updateDuetUI();
 }
 function lineIndexAt(pos, look){
@@ -1493,7 +1520,9 @@ function renderLyrics(){
   $('#noLyrics').hidden = state.lyrics.length > 0;
   state.lyrics.forEach(l => {
     const li = document.createElement('li');
-    if(l.who){ const d = document.createElement('span'); d.className = 'who-dot who-' + l.who; li.appendChild(d); li.classList.add('line-' + l.who); }
+    const c = lineColor(l);
+    if(c){ li.classList.add('colored'); li.style.setProperty('--lc', c); }
+    if(state.recPart && partsOf(l).length && !partsOf(l).includes(state.recPart)) li.classList.add('notmine');
     li.appendChild(document.createTextNode(l.text || '♪'));
     if(l.t === null) li.classList.add('untimed');
     li.addEventListener('click', () => {
@@ -1545,13 +1574,18 @@ function introStart(){
   return (t !== null && t > 3.5) ? t - 3 : 0;
 }
 let skipGuardIdx = -1;
+const lineIsMine = l => !state.recPart || !partsOf(l).length || partsOf(l).includes(state.recPart);
 function updateDuetUI(){
-  const hasOther = state.lyrics.some(l => l.who === 'other');
-  $('#duetSkipBtn').hidden = !hasOther;
-  $('#duetSkipBtn').setAttribute('aria-pressed', !!state.skipOther);
+  const used = PARTS.filter(p => state.lyrics.some(l => partsOf(l).includes(p)));
+  if(state.recPart && !used.includes(state.recPart)) state.recPart = '';
+  const btn = $('#duetSkipBtn');
+  btn.hidden = used.length < 2;
+  btn.textContent = state.recPart ? '錄 ' + state.recPart + ' 聲部' : '錄：全部';
+  btn.setAttribute('aria-pressed', !!state.recPart);
+  if(state.recPart) btn.style.setProperty('--hl', PART_COLOR[state.recPart]); else btn.style.removeProperty('--hl');
 }
 function nextRecordableTime(fromIdx){
-  const nxt = state.lyrics.slice(fromIdx + 1).find(l => l.t !== null && l.who !== 'other');
+  const nxt = state.lyrics.slice(fromIdx + 1).find(l => l.t !== null && lineIsMine(l));
   return nxt ? nxt.t : songLength();
 }
 function skipAheadDuringRec(target){
@@ -1636,7 +1670,7 @@ function finishTake(){
   const buf = new AudioBuffer({ length: m.data.length, numberOfChannels: 1, sampleRate: sr });
   buf.copyToChannel(m.data, 0);
   const voices = state.tracks.filter(t => t.kind === 'voice').length;
-  const t = { id: uid(), kind: 'voice', name: nextVoiceName(), color: PALETTE[voices % PALETTE.length], vol: 1, pan: 0, mute: false, offset: m.offset, nudgeMs: 0, buffer: buf };
+  const t = { id: uid(), kind: 'voice', name: state.recPart ? state.recPart + ' 聲部' : nextVoiceName(), color: PALETTE[voices % PALETTE.length], vol: 1, pan: 0, mute: false, offset: m.offset, nudgeMs: 0, buffer: buf };
   state.tracks.push(t); saveAudio(t); saveMeta();
   take = null; state.pos = 0;
   setStageMode('idle'); updateStage(true);
@@ -1994,9 +2028,9 @@ function loop(){
       stageMeter(playing.cap.level);
       if(take && take.punch && state.pos > take.r1 + 0.45){ applyPunch(); return; }
       if(!(take && take.punch) && backing() && state.pos > songLength() + 0.8){ pauseRec(); toast('歌曲結束了，可以按「完成」'); return; }
-      if(!(take && take.punch) && state.skipOther){
+      if(!(take && take.punch) && state.recPart){
         const idx = lineIndexAt(state.pos);
-        if(idx >= 0 && state.lyrics[idx].who === 'other' && idx !== skipGuardIdx){
+        if(idx >= 0 && !lineIsMine(state.lyrics[idx]) && idx !== skipGuardIdx){
           skipGuardIdx = idx;
           const target = nextRecordableTime(idx) - 1.2;   // 提前 1.2 秒落地，好準備
           if(target > state.pos + 0.5) skipAheadDuringRec(target);
@@ -2127,7 +2161,7 @@ async function zipReader(file){
 async function flushSong(){
   if(!songId) return;
   clearTimeout(metaTimer);
-  await kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, skipOther: !!state.skipOther, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+  await kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
   songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
   await writeIndex();
 }
@@ -2377,7 +2411,14 @@ $('#guideFile').addEventListener('change', e => { importGuide(e.target.files[0])
 $('#stClose').addEventListener('click', closeStage);
 $('#stLyrics').addEventListener('click', () => { if(stageMode === 'sync' || stageMode === 'rec') return; openLyricsSheet(); });
 $('#stEditor').addEventListener('click', () => { if(stageMode === 'sync' || stageMode === 'rec') return; openEditorFromStage(); });
-$('#duetSkipBtn').addEventListener('click', e => { state.skipOther = !state.skipOther; e.currentTarget.setAttribute('aria-pressed', state.skipOther); saveMeta(); toast(state.skipOther ? '會自動跳過標記為「對方」的段落' : '不再自動跳過'); });
+$('#duetSkipBtn').addEventListener('click', () => {
+  if(take || playing) return;
+  const used = PARTS.filter(p => state.lyrics.some(l => partsOf(l).includes(p)));
+  const order = ['', ...used], i = order.indexOf(state.recPart || '');
+  state.recPart = order[(i + 1) % order.length];
+  saveMeta(); updateDuetUI(); renderLyrics(); updateStage(true); setStageMode(stageMode);
+  toast(state.recPart ? '只錄 ' + state.recPart + ' 聲部，其他聲部的段落會自動跳過' : '整首都錄');
+});
 $('#noLyricsBtn').addEventListener('click', openLyricsSheet);
 $('#recBtn').addEventListener('click', recToggle);
 $('#retakeBtn').addEventListener('click', () => { if(punch){ undoPunch(); return; } retake(); });
@@ -2391,16 +2432,21 @@ $('#mixBtn').addEventListener('click', openMixer);
 $('#mixClose').addEventListener('click', () => { closeSheet('#mixSheet'); render(); });
 $('#verbRange').addEventListener('input', e => { state.reverb = +e.target.value; $('#verbOut').textContent = Math.round(state.reverb * 100) + '%'; liveReverb(); saveMeta(); });
 
-$('#lySave').addEventListener('click', () => { saveLyricsFromSheet(); closeSheet('#lyricsSheet'); toast(state.lyrics.length ? '歌詞已儲存' : '歌詞已清空'); });
+$('#lySave').addEventListener('click', () => { saveLyricsFromSheet(); updateDuetUI(); closeSheet('#lyricsSheet'); toast(state.lyrics.length ? '歌詞已儲存' : '歌詞已清空'); });
 let syncFromHere = false;
 $('#lyFromHere').addEventListener('click', e => { syncFromHere = !syncFromHere; e.currentTarget.setAttribute('aria-pressed', syncFromHere); });
 $('#lySync').addEventListener('click', () => startSync(syncFromHere));
 $('#syncSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setSyncRate(+b.dataset.r); });
 $('#lyFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if(f) $('#lyText').value = await f.text(); });
 
-$('#duetAllMe').addEventListener('click', () => { state.lyrics.forEach(l => l.who = 'me'); saveMeta(); renderDuet(); });
-$('#duetAllOther').addEventListener('click', () => { state.lyrics.forEach(l => l.who = 'other'); saveMeta(); renderDuet(); });
-$('#duetClear').addEventListener('click', () => { state.lyrics.forEach(l => delete l.who); saveMeta(); renderDuet(); });
+$('#duetAll').addEventListener('click', () => { if(!partSel.length){ toast('先在上面選聲部'); return; } state.lyrics.forEach(l => l.parts = partSel.slice().sort()); saveMeta(); renderDuet(); refreshStageParts(); });
+$('#duetClear').addEventListener('click', () => { state.lyrics.forEach(l => delete l.parts); saveMeta(); renderDuet(); refreshStageParts(); });
+$('#partPick').addEventListener('click', e => {
+  const b = e.target.closest('.partbtn'); if(!b) return;
+  const p = b.dataset.p;
+  partSel = partSel.includes(p) ? partSel.filter(x => x !== p) : [...partSel, p].sort();
+  renderPartPick();
+});
 $('#syncTap').addEventListener('click', syncTap);
 $('#syncBack').addEventListener('click', syncBack);
 $('#syncEnd').addEventListener('click', () => endSync(false));
