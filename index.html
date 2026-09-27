@@ -128,6 +128,16 @@ body[data-view="library"] .transport{display:none}
 .sec{font-size:1.05rem;margin:36px 0 4px;color:var(--muted);font-weight:700;letter-spacing:.1em}
 #songList{list-style:none;margin:18px 0 0;padding:0}
 .song{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 4px;border:none;border-bottom:1px solid var(--line);background:none;cursor:pointer;min-height:64px}
+#songList li.swipe{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+#songList li.swipe .song{border-bottom:none}
+.swipe-actions{position:absolute;top:0;right:0;bottom:0;display:flex;gap:8px;align-items:center;padding:0 2px 0 10px}
+.sa{width:72px;height:calc(100% - 22px);min-height:46px;border:none;border-radius:14px;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.sa.edit{background:var(--v1)}
+.sa.del{background:var(--rec)}
+.sa.del.armed{background:#7E2233}
+.swipe-front{position:relative;z-index:1;display:flex;align-items:center;gap:8px;background:var(--paper);transition:transform .22s ease;touch-action:pan-y}
+.swipe-front.dragging{transition:none}
+@media (prefers-reduced-motion:reduce){.swipe-front{transition:none}}
 .song:hover .st{color:var(--v1)}
 .song .st{font-size:1.15rem;font-weight:700;display:block}
 .song .ss{font-size:.85rem;color:var(--muted);display:block}
@@ -243,6 +253,20 @@ body[data-view="library"] .transport{display:none}
 .st-ctl .big span{position:absolute;clip:rect(0 0 0 0);width:1px;height:1px;overflow:hidden}
 .sync-ctl{display:none;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:10px 14px 16px}
 .stage.sync .st-ctl{display:none}
+.mvbox{position:relative;width:100%;aspect-ratio:16/9;max-height:34vh;background:#000;margin-top:6px}
+.mvbox iframe,.mvbox #mvPlayer{position:absolute;inset:0;width:100%;height:100%;border:0}
+.mv-ctl{display:none;grid-template-columns:repeat(5,1fr);align-items:center;padding:10px 6px 14px;position:relative;z-index:2}
+.mv-ctl button{background:none;border:none;color:var(--s-ink);display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.8rem;cursor:pointer;min-height:56px;justify-content:center}
+.mv-ctl button svg{width:26px;height:26px}
+.mv-ctl .big-t{font-size:1.5rem;line-height:1}
+.mv-ctl .big{justify-self:center;width:78px;height:78px;border-radius:50%;background:var(--s-red)}
+.mv-ctl .big svg{width:32px;height:32px}
+.mv-ctl .big span{position:absolute;clip:rect(0 0 0 0);width:1px;height:1px;overflow:hidden}
+.stage.mv .st-ctl{display:none}
+.stage.mv .mv-ctl{display:grid}
+.stage.mv.sync .mv-ctl{display:none}
+.stage.mv #skipBtn,.stage.mv #duetSkipBtn{display:none}
+.stage.mv #lyrics{padding:22vh 0}
 .stage.sync .sync-ctl{display:grid}
 .sync-ctl .tap{width:auto;min-width:170px;height:78px;border-radius:40px;border:none;background:var(--hl);color:#2A2224;font-size:1.15rem;font-weight:700;cursor:pointer}
 .sync-ctl .ghost{background:none;border:1px solid rgba(255,255,255,.25);color:var(--s-ink);border-radius:999px;min-height:44px;cursor:pointer}
@@ -368,6 +392,7 @@ body[data-view="library"] .transport{display:none}
     <div class="songmeta">
       <input id="songTitle" class="song-title" aria-label="歌名" maxlength="60">
       <input id="songArtist" class="song-artist" aria-label="歌手" maxlength="60" placeholder="歌手／演唱者">
+      <input id="songYt" class="song-artist" aria-label="YouTube MV 連結" placeholder="YouTube MV 連結（可選）" inputmode="url">
     </div>
   </div>
   <div class="tagrow" id="langRow" role="group" aria-label="分類"></div>
@@ -447,7 +472,8 @@ body[data-view="library"] .transport{display:none}
     </button>
   </div>
   <div class="st-prog"><i id="stProg"></i></div>
-  <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><button type="button" class="chip" id="duetSkipBtn" aria-pressed="false" hidden>只錄我的部分</button><span class="take" id="stTake"></span></div>
+  <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><button type="button" class="chip" id="duetSkipBtn" aria-pressed="false" hidden>只錄我的部分</button><button type="button" class="chip" id="mvBtn" aria-pressed="false" hidden>MV 模式</button><span class="take" id="stTake"></span></div>
+  <div class="mvbox" id="mvBox" hidden><div id="mvPlayer"></div></div>
   <div class="st-body">
     <div class="st-meter"><div class="bar" id="stMeter"><i></i></div>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0M12 17v4"/></svg></div>
@@ -459,6 +485,13 @@ body[data-view="library"] .transport{display:none}
     </div>
   </div>
   <p class="sync-tip">每一句開始唱的瞬間，點一下「這句開始」。</p>
+  <nav class="mv-ctl" aria-label="MV 播放控制">
+    <button type="button" id="mvEarly" aria-label="字幕提早"><span class="big-t">−</span>字幕早</button>
+    <button type="button" id="mvBack" aria-label="倒轉 5 秒"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg>−5 秒</button>
+    <button type="button" class="big" id="mvPlay"><svg id="mvPlayIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg><span>播放</span></button>
+    <button type="button" id="mvFwd" aria-label="快轉 5 秒"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/></svg>+5 秒</button>
+    <button type="button" id="mvLate" aria-label="字幕延後"><span class="big-t">＋</span>字幕晚</button>
+  </nav>
   <nav class="st-ctl" aria-label="錄音控制">
     <button type="button" id="monBtn" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 15v-3a8 8 0 0116 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>耳返</button>
@@ -581,7 +614,7 @@ body[data-view="library"] .transport{display:none}
 const $ = s => document.querySelector(s);
 const PALETTE = ['#4F7D7A','#B27D74','#8277A3','#A2934F','#5F85AA','#9A6C8E'];
 const BACKING_COLOR = '#8A8D84';
-const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, micId: '', micMode: 'raw', skipIntro: true, recPart: '', title: '新歌曲', artist: '', lang: '', order: 0, created: 0, cover: false };
+const state = { tracks: [], latencyMs: 0, pos: 0, lyrics: [], reverb: 0, monitor: false, micId: '', micMode: 'raw', skipIntro: true, recPart: '', yt: '', mvOffset: 0, title: '新歌曲', artist: '', lang: '', order: 0, created: 0, cover: false };
 let songId = null, songs = [];
 const GUIDE_COLOR = '#8E86AE';
 let ctx = null, micStream = null, playing = null;
@@ -616,14 +649,14 @@ const trackMeta = t => { const { id, kind, name, color, vol, pan, mute, offset, 
 function songSummary(id, title, tracks, artist, x){
   x = x || {};
   const voices = tracks.filter(t => t.kind === 'voice');
-  return { id, title, artist: artist || '', cover: !!x.cover, lang: x.lang || (Array.isArray(x.tags) && x.tags[0]) || '', order: x.order || 0, created: x.created || Date.now(), updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length };
+  return { id, title, artist: artist || '', cover: !!x.cover, mv: !!x.yt, lang: x.lang || (Array.isArray(x.tags) && x.tags[0]) || '', order: x.order || 0, created: x.created || Date.now(), updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length };
 }
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
     kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', lib: { lang: libLang, sort: libSort, group: libGroup } });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     writeIndex();
@@ -720,6 +753,7 @@ async function loadSong(id){
   state.lang = sg.lang || (Array.isArray(sg.tags) && sg.tags[0]) || ''; state.order = sg.order || 0; state.created = sg.created || Date.now(); state.cover = !!sg.cover;
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.recPart = sg.recPart || '';
+  state.yt = sg.yt || ''; state.mvOffset = sg.mvOffset || 0;
   // 舊版的「我／對方／合唱」轉成 A／B／A+B
   const WHO = { me: ['A'], other: ['B'], both: ['A', 'B'] };
   state.lyrics.forEach(l => { if(l.who){ if(!l.parts) l.parts = WHO[l.who] || []; delete l.who; } });
@@ -1067,18 +1101,32 @@ function renderCover(){
   if(state.cover) coverUrl(songId).then(u => { if(u && state.cover){ box.style.backgroundImage = 'url(' + u + ')'; box.classList.add('has'); } });
 }
 function songRow(sg, list){
-  const li = document.createElement('li');
+  const li = document.createElement('li'); li.className = 'swipe';
+  const actions = document.createElement('div'); actions.className = 'swipe-actions';
+  const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'sa edit'; ed.textContent = '編輯';
+  const del = document.createElement('button'); del.type = 'button'; del.className = 'sa del'; del.textContent = '刪除';
+  actions.appendChild(ed); actions.appendChild(del);
+  const front = document.createElement('div'); front.className = 'swipe-front';
+  li.appendChild(actions); li.appendChild(front);
+  ed.addEventListener('click', () => { closeSwipe(); openSong(sg.id, true); });
+  let armed = null;
+  del.addEventListener('click', () => {
+    if(!armed){ del.textContent = '確定？'; del.classList.add('armed'); armed = setTimeout(() => { armed = null; del.textContent = '刪除'; del.classList.remove('armed'); }, 3000); return; }
+    clearTimeout(armed); openSwipe = null; deleteSongById(sg.id);
+  });
+  li.addEventListener('swipeclose', () => { clearTimeout(armed); armed = null; del.textContent = '刪除'; del.classList.remove('armed'); });
   const b = document.createElement('button'); b.type = 'button'; b.className = 'song';
   const parts = []; if(sg.artist && !libGroup) parts.push(sg.artist);
   if(!sg.backing) parts.push('還沒有伴奏');
   else { parts.push(sg.voices ? sg.voices + ' 軌人聲' : '還沒錄音'); if(sg.guide) parts.push('有導唱'); }
+  if(sg.mv) parts.push('有 MV');
   if(sg.lang && !libLang) parts.push(sg.lang);
   b.innerHTML = '<span class="txt"><span class="st"></span><span class="ss"></span></span>';
   b.prepend(coverEl(sg));
   b.querySelector('.st').textContent = sg.title || '未命名歌曲';
   b.querySelector('.ss').textContent = parts.join(' · ') || '還沒有伴奏';
-  b.addEventListener('click', () => openSong(sg.id));
-  li.appendChild(b);
+  front.appendChild(b);
+  makeSwipe(li, front, actions, e => { if(e.target.closest('.movebtns')) return; openSong(sg.id); });
   if(libSort === 'custom'){
     const nav = document.createElement('div'); nav.className = 'movebtns';
     const up = document.createElement('button'); up.type = 'button'; up.textContent = '↑'; up.setAttribute('aria-label', '往上移');
@@ -1086,8 +1134,8 @@ function songRow(sg, list){
     up.disabled = list.indexOf(sg) === 0; dn.disabled = list.indexOf(sg) === list.length - 1;
     up.addEventListener('click', () => moveSong(sg, -1, list)); dn.addEventListener('click', () => moveSong(sg, 1, list));
     nav.appendChild(up); nav.appendChild(dn);
-    b.style.flex = '1'; li.style.display = 'flex'; li.style.alignItems = 'center'; li.style.gap = '8px';
-    li.appendChild(nav);
+    b.style.flex = '1';
+    front.appendChild(nav);
   }
   return li;
 }
@@ -1116,20 +1164,64 @@ function renderLibrary(){
   }
 }
 
-async function openSong(id){
+async function openSong(id, edit){
   if(playing) haltPlayback();
   toast('載入中…');
   await loadSong(id);
-  $('#songTitle').value = state.title; $('#songArtist').value = state.artist; renderLang(); renderCover();
+  $('#songTitle').value = state.title; $('#songArtist').value = state.artist; $('#songYt').value = state.yt || ''; renderLang(); renderCover();
   render(); updateClock();
   const b = backing(); if(b && b.key) applyKey();
-  openStage();
+  if(edit) showView('studio'); else openStage();
+}
+async function deleteSongById(id){
+  const sg = songs.find(x => x.id === id), doc = await kvGet('song:' + id);
+  if(doc) for(const t of doc.tracks || []){ await kvDel('audio:' + t.id); await kvDel('orig:' + t.id); }
+  await kvDel('song:' + id); await kvDel('cover:' + id); dropCover(id);
+  removedIds.add(id); songs = songs.filter(x => x.id !== id); await kvSet('songs', songs);
+  if(songId === id){ songId = null; state.tracks = []; }
+  renderLibrary(); toast('已刪除「' + ((sg && sg.title) || '歌曲') + '」');
+}
+// ---- 左滑顯示「編輯／刪除」 ----
+let openSwipe = null;
+function closeSwipe(){ if(openSwipe){ openSwipe.front.style.transform = ''; openSwipe.reset(); openSwipe = null; } }
+function makeSwipe(li, front, actions, onTap){
+  const W = () => actions.offsetWidth;
+  let x0 = 0, y0 = 0, dx = 0, drag = false, decided = false, base = 0, moved = false;
+  front.addEventListener('pointerdown', e => {
+    x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; decided = false; moved = false;
+    base = openSwipe && openSwipe.front === front ? -W() : 0;
+  });
+  front.addEventListener('pointermove', e => {
+    if(e.buttons === 0 && e.pointerType === 'mouse') return;
+    const mx = e.clientX - x0, my = e.clientY - y0;
+    if(!decided){
+      if(Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+      decided = true; drag = Math.abs(mx) > Math.abs(my);
+      if(drag){ front.setPointerCapture(e.pointerId); front.classList.add('dragging'); if(openSwipe && openSwipe.front !== front) closeSwipe(); }
+    }
+    if(!drag) return;
+    moved = true; dx = Math.max(-W() - 24, Math.min(0, base + mx));
+    front.style.transform = 'translateX(' + dx + 'px)';
+  });
+  const end = () => {
+    front.classList.remove('dragging');
+    if(!drag) return;
+    drag = false;
+    if(dx < -W() / 2){ front.style.transform = 'translateX(' + (-W()) + 'px)'; openSwipe = { front, reset: () => li.dispatchEvent(new Event('swipeclose')) }; }
+    else { front.style.transform = ''; if(openSwipe && openSwipe.front === front) openSwipe = null; li.dispatchEvent(new Event('swipeclose')); }
+  };
+  front.addEventListener('pointerup', end); front.addEventListener('pointercancel', end);
+  front.addEventListener('click', e => {
+    if(moved){ e.preventDefault(); e.stopPropagation(); moved = false; return; }
+    if(openSwipe){ e.preventDefault(); e.stopPropagation(); closeSwipe(); return; }
+    onTap(e);
+  }, true);
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; state.recPart = '';
+  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; state.recPart = ''; state.yt = ''; state.mvOffset = 0;
   saveMeta();
-  $('#songTitle').value = state.title; $('#songArtist').value = ''; renderLang(); renderCover();
+  $('#songTitle').value = state.title; $('#songArtist').value = ''; $('#songYt').value = ''; renderLang(); renderCover();
   showView('studio'); render(); updateClock();
   $('#songTitle').select();
 }
@@ -1151,7 +1243,7 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }
@@ -1374,7 +1466,7 @@ function openLyricsSheet(){
 }
 function saveLyricsFromSheet(){
   const old = state.lyrics, next = parseLyrics($('#lyText').value);
-  if(old.length === next.length) next.forEach((l, i) => { if(old[i] && old[i].parts) l.parts = old[i].parts; });
+  if(old.length === next.length) next.forEach((l, i) => { if(old[i] && old[i].parts) l.parts = old[i].parts; if(old[i] && typeof old[i].mt === 'number') l.mt = old[i].mt; });
   state.lyrics = next; saveMeta(); renderLyrics(); updateStudioLabels(); renderDuet();
 }
 
@@ -1433,6 +1525,7 @@ function openStage(opts){
   $('#monBtn').setAttribute('aria-pressed', state.monitor);
   $('#skipBtn').setAttribute('aria-pressed', state.skipIntro);
   renderLyrics(); setStageMode('idle'); updateStage(true); updateDuetUI();
+  $('#mvBtn').hidden = !ytId(state.yt) || !!punch;
   if(punch){
     if(!state.lyrics.some(l => l.t !== null)){ toast('要先有對過時的歌詞，才能一句一句修'); punch = null; $('#stage').classList.remove('punch'); setStageMode('idle'); return; }
     toast('點一句歌詞選起來，再按「錄這一句」');
@@ -1446,7 +1539,8 @@ function stageTeardown(after){
   clearTimeout(closeArmed); closeArmed = null;
   cancelCountdown(); stopMic(); punch = null; $('#stage').classList.remove('punch');
   if(playing && playing.mode === 'rec'){ const p = playing; playing = null; stopNodes(p.nodes); p.cap.stop(); releaseWake(); }
-  if(playing && playing.mode === 'sync') endSync(false);
+  if(sync) endSync(false);
+  if(mvOn) exitMV();
   take = null; state.pos = 0;
   $('#stage').hidden = true; document.body.style.overflow = '';
   after();
@@ -1478,23 +1572,103 @@ function setStageMode(m){
   rec.setAttribute('aria-label', $('#recText').textContent);
   const hasTake = !!(take && (take.segs.length || m === 'rec'));
   $('#retakeBtn').disabled = !hasTake; $('#doneBtn').disabled = !hasTake;
-  $('#stLyrics').disabled = m === 'rec'; $('#stEditor').disabled = m === 'rec';
-  $('#stTake').textContent = m === 'sync' ? '對時中' : '正在錄：' + (state.recPart ? state.recPart + ' 聲部' : nextVoiceName());
+  $('#stLyrics').disabled = m === 'rec'; $('#stEditor').disabled = m === 'rec'; $('#mvBtn').disabled = m !== 'idle' || !!take;
+  $('#stTake').textContent = mvOn ? (m === 'sync' ? 'MV 對時中' : 'MV 練唱') : m === 'sync' ? '對時中' : '正在錄：' + (state.recPart ? state.recPart + ' 聲部' : nextVoiceName());
   updateDuetUI();
 }
+/* ---------- MV 模式 ---------- */
+let mvOn = false, ytPlayer = null, ytApi = null, mvRaf = 0, mvPlaying = false;
+function ytId(u){
+  u = (u || '').trim(); if(!u) return '';
+  if(/^[\w-]{11}$/.test(u)) return u;
+  const m = u.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
+  return m ? m[1] : '';
+}
+function mvTime(l){ return typeof l.mt === 'number' ? l.mt : (l.t !== null ? l.t + (state.mvOffset || 0) : null); }
+const lt = l => mvOn ? mvTime(l) : l.t;
+function loadYT(){
+  if(ytApi) return ytApi;
+  ytApi = new Promise((res, rej) => {
+    if(window.YT && YT.Player) return res();
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if(prev) prev(); res(); };
+    const el = document.createElement('script'); el.src = 'https://www.youtube.com/iframe_api';
+    el.onerror = () => { ytApi = null; rej(new Error('無法載入 YouTube 播放器')); };
+    document.head.appendChild(el);
+    setTimeout(() => { if(!(window.YT && YT.Player)){ ytApi = null; rej(new Error('YouTube 播放器載入逾時')); } }, 12000);
+  });
+  return ytApi;
+}
+async function ensurePlayer(){
+  const id = ytId(state.yt); if(!id) throw new Error('YouTube 連結看不懂，請貼完整網址');
+  await loadYT();
+  if(ytPlayer && ytPlayer._vid === id) return;
+  if(ytPlayer && ytPlayer.cueVideoById){ ytPlayer.cueVideoById(id); ytPlayer._vid = id; return; }
+  await new Promise(res => {
+    ytPlayer = new YT.Player('mvPlayer', {
+      videoId: id, width: '100%', height: '100%',
+      playerVars: { playsinline: 1, rel: 0, modestbranding: 1, fs: 0 },
+      events: {
+        onReady: () => res(),
+        onStateChange: e => { mvPlaying = e.data === 1; mvPlayIcon(); },
+        onError: e => toast(e.data === 101 || e.data === 150 ? '這支影片不允許嵌入播放，換一支試試' : '影片無法播放（錯誤 ' + e.data + '）')
+      }
+    });
+    ytPlayer._vid = id;
+  });
+}
+function mvPlayIcon(){
+  $('#mvPlayIcon').innerHTML = mvPlaying ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>' : '<path d="M7 4v16l13-8z"/>';
+  $('#mvPlay').setAttribute('aria-label', mvPlaying ? '暫停' : '播放');
+}
+const mvNow = () => (ytPlayer && ytPlayer.getCurrentTime) ? ytPlayer.getCurrentTime() || 0 : 0;
+const mvDur = () => (ytPlayer && ytPlayer.getDuration) ? ytPlayer.getDuration() || 0 : 0;
+function mvSeek(t){ if(ytPlayer && ytPlayer.seekTo){ ytPlayer.seekTo(Math.max(0, t), true); state.pos = Math.max(0, t); updateStage(true); } }
+function mvLoop(){
+  if(!mvOn) return;
+  state.pos = mvNow();
+  updateStage();
+  mvRaf = requestAnimationFrame(mvLoop);
+}
+function mvOffsetLabel(){ const o = state.mvOffset || 0; return (o > 0 ? '+' : '') + o.toFixed(2) + ' 秒'; }
+async function enterMV(){
+  if(take || playing || stageMode !== 'idle') return;
+  mvOn = true; $('#stage').classList.add('mv'); $('#mvBox').hidden = false;
+  $('#mvBtn').setAttribute('aria-pressed', 'true');
+  state.pos = 0; renderLyrics(); updateStage(true);
+  try{ await ensurePlayer(); }
+  catch(e){ toast(e.message || String(e)); exitMV(); return; }
+  cancelAnimationFrame(mvRaf); mvLoop();
+  const hasMt = state.lyrics.some(l => typeof l.mt === 'number');
+  toast(hasMt ? 'MV 模式：字幕照 MV 對時的時間走' : 'MV 模式：字幕時間若對不上，用「字幕早／晚」調整，或重新用 MV 對時');
+}
+function exitMV(){
+  if(ytPlayer && ytPlayer.pauseVideo) try{ ytPlayer.pauseVideo(); }catch(e){}
+  mvOn = false; mvPlaying = false; cancelAnimationFrame(mvRaf);
+  $('#stage').classList.remove('mv'); $('#mvBox').hidden = true;
+  $('#mvBtn').setAttribute('aria-pressed', 'false');
+  state.pos = 0; renderLyrics(); updateStage(true);
+}
+function nudgeOffset(d){
+  state.mvOffset = Math.round(((state.mvOffset || 0) + d) * 100) / 100; saveMeta();
+  lastIdx = -2; updateStage(true);
+  const onlyMt = state.lyrics.length && state.lyrics.every(l => typeof l.mt === 'number');
+  toast(onlyMt ? '這首已經用 MV 對過時，位移不影響' : '字幕位移：' + mvOffsetLabel());
+}
+
 function lineIndexAt(pos, look){
   look = look === undefined ? 0.05 : look;
   let idx = -1;
-  state.lyrics.forEach((l, i) => { if(l.t !== null && l.t <= pos + look) idx = i; });
+  state.lyrics.forEach((l, i) => { const t = lt(l); if(t !== null && t <= pos + look) idx = i; });
   return idx;
 }
 function updateStage(force){
-  const len = Math.max(songLength(), state.pos);
+  const len = Math.max(mvOn ? mvDur() : songLength(), state.pos);
   $('#stClock').textContent = fmtShort(state.pos) + ' / ' + fmtShort(len);
   $('#stProg').style.width = (len ? Math.min(100, state.pos / len * 100) : 0) + '%';
   let idx;
   if(sync) idx = sync.i;
-  else idx = lineIndexAt(state.pos, playing ? 0.05 : 1.6);
+  else idx = lineIndexAt(state.pos, (playing || (mvOn && mvPlaying)) ? 0.05 : 1.6);
   if(idx !== lastIdx || force){
     lastIdx = idx;
     const items = $('#lyrics').children;
@@ -1524,10 +1698,11 @@ function renderLyrics(){
     if(c){ li.classList.add('colored'); li.style.setProperty('--lc', c); }
     if(state.recPart && partsOf(l).length && !partsOf(l).includes(state.recPart)) li.classList.add('notmine');
     li.appendChild(document.createTextNode(l.text || '♪'));
-    if(l.t === null) li.classList.add('untimed');
+    if(lt(l) === null) li.classList.add('untimed');
     li.addEventListener('click', () => {
       if(stageMode === 'rec' || stageMode === 'sync') return;
-      if(l.t === null){ toast('歌詞還沒對時：按右上角的歌詞圖示，再按「開始對時」'); return; }
+      if(lt(l) === null){ toast('歌詞還沒對時：按右上角的歌詞圖示，再按「開始對時」'); return; }
+      if(mvOn){ mvSeek(lt(l) - 1.5); return; }
       const i = state.lyrics.indexOf(l);
       if(punch){
         if(punch.a < 0 || i <= punch.a || i === punch.b){ punch.a = punch.b = i; }
@@ -1732,7 +1907,7 @@ function undoPunch(){
 /* ---------- 對時 ---------- */
 let syncRate = 1;
 function syncStartLine(){
-  const i = state.lyrics.findIndex(l => l.t === null || l.t >= state.pos - 0.05);
+  const i = state.lyrics.findIndex(l => lt(l) === null || lt(l) >= state.pos - 0.05);
   return i < 0 ? 0 : i;
 }
 function startSync(fromHere){
@@ -1740,10 +1915,22 @@ function startSync(fromHere){
   if(playing) return;
   saveLyricsFromSheet();
   if(!state.lyrics.length){ toast('先貼上歌詞再開始對時'); return; }
-  if(!state.tracks.length){ toast('對時需要先匯入伴奏'); return; }
+  if(!mvOn && !state.tracks.length){ toast('對時需要先匯入伴奏'); return; }
   closeSheet('#lyricsSheet');
   if(!stageOpen()) openStage();
   const from = fromHere ? syncStartLine() : 0;
+  if(mvOn){
+    state.lyrics.forEach((l, i) => { if(i >= from) delete l.mt; });
+    renderLyrics();
+    const prev = from > 0 ? state.lyrics[from - 1] : null;
+    const sp = from > 0 ? Math.max(0, (prev && lt(prev) !== null ? lt(prev) : state.pos) - 1.5) : 0;
+    sync = { i: from, mv: true };
+    $('#syncSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.r === syncRate));
+    $('.sync-tip').textContent = '看著 MV，唱到框起來的那一句時點「對上了」。';
+    if(ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(syncRate);
+    mvSeek(sp); ytPlayer.playVideo();
+    holdWake(); setStageMode('sync'); updateStage(true); return;
+  }
   state.lyrics.forEach((l, i) => { if(i >= from) l.t = null; });
   renderLyrics();
   const prev = from > 0 ? state.lyrics[from - 1] : null;
@@ -1756,9 +1943,9 @@ function startSync(fromHere){
   holdWake(); setStageMode('sync'); updateStage(true); loop();
 }
 function syncTap(){
-  if(!sync || !playing) return;
+  if(!sync || (!playing && !sync.mv)) return;
   const l = state.lyrics[sync.i]; if(!l) return;
-  l.t = +state.pos.toFixed(2);
+  if(sync.mv) l.mt = +state.pos.toFixed(2); else l.t = +state.pos.toFixed(2);
   $('#lyrics').children[sync.i].classList.remove('untimed');
   sync.i++;
   if(sync.i >= state.lyrics.length) endSync(true); else updateStage(true);
@@ -1766,6 +1953,7 @@ function syncTap(){
 function setSyncRate(r){
   syncRate = r;
   $('#syncSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.r === r));
+  if(sync && sync.mv){ if(ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(r); return; }
   if(!(playing && playing.mode === 'sync')) return;
   const c = ac(), keep = state.pos;
   stopNodes(playing.nodes);
@@ -1774,14 +1962,17 @@ function setSyncRate(r){
 }
 function syncBack(){
   if(!sync || sync.i === 0) return;
-  sync.i--; state.lyrics[sync.i].t = null;
+  sync.i--;
+  if(sync.mv) delete state.lyrics[sync.i].mt; else state.lyrics[sync.i].t = null;
   updateStage(true);
 }
 function endSync(done){
   if(playing && playing.mode === 'sync'){ stopNodes(playing.nodes); playing = null; }
-  const stamped = state.lyrics.filter(l => l.t !== null).length;
+  const wasMv = sync && sync.mv;
+  if(wasMv && ytPlayer){ try{ ytPlayer.pauseVideo(); if(ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(1); }catch(e){} }
+  const stamped = state.lyrics.filter(l => (wasMv ? typeof l.mt === 'number' : l.t !== null)).length;
   sync = null; releaseWake();
-  saveMeta(); state.pos = 0; renderLyrics(); setStageMode('idle'); updateStage(true); updateStudioLabels();
+  saveMeta(); if(!wasMv) state.pos = 0; renderLyrics(); setStageMode('idle'); updateStage(true); updateStudioLabels();
   toast(done ? '對時完成，歌詞會跟著捲動了' : '已結束對時，對好的 ' + stamped + ' 句會保留，其餘維持原樣');
 }
 
@@ -2161,7 +2352,7 @@ async function zipReader(file){
 async function flushSong(){
   if(!songId) return;
   clearTimeout(metaTimer);
-  await kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+  await kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
   songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
   await writeIndex();
 }
@@ -2409,6 +2600,18 @@ $('#micBox').addEventListener('toggle', e => { if(e.target.open) refreshMics(); 
 $('#guideFile').addEventListener('change', e => { importGuide(e.target.files[0]); e.target.value = ''; });
 
 $('#stClose').addEventListener('click', closeStage);
+$('#mvBtn').addEventListener('click', () => { if(mvOn) exitMV(); else enterMV(); setStageMode(stageMode); });
+$('#mvPlay').addEventListener('click', () => { if(!ytPlayer || !ytPlayer.playVideo) return; if(mvPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); });
+$('#mvBack').addEventListener('click', () => mvSeek(mvNow() - 5));
+$('#mvFwd').addEventListener('click', () => mvSeek(mvNow() + 5));
+$('#mvEarly').addEventListener('click', () => nudgeOffset(-0.25));
+$('#mvLate').addEventListener('click', () => nudgeOffset(0.25));
+$('#songYt').addEventListener('change', e => {
+  const v = e.target.value.trim();
+  if(v && !ytId(v)){ toast('看不懂這個連結，請貼 YouTube 影片的網址'); return; }
+  state.yt = v; saveMeta(); songs = songs.map(x => x.id === songId ? { ...x, mv: !!v } : x);
+  toast(v ? '已設定 MV，錄音畫面會出現「MV 模式」' : '已移除 MV');
+});
 $('#stLyrics').addEventListener('click', () => { if(stageMode === 'sync' || stageMode === 'rec') return; openLyricsSheet(); });
 $('#stEditor').addEventListener('click', () => { if(stageMode === 'sync' || stageMode === 'rec') return; openEditorFromStage(); });
 $('#duetSkipBtn').addEventListener('click', () => {
