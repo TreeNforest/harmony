@@ -192,9 +192,14 @@ body[data-view="library"] .transport{display:none}
 /* ---------- 錄音畫面 ---------- */
 .stage{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;
   --s-ink:#EEE9E4; --s-dim:rgba(238,233,228,.58); --hl:#E7968C; --s-red:#E0607A;
-  background:linear-gradient(180deg,#3C3639 0%,#2D2A2C 50%,#222022 100%);color:var(--s-ink);
+  background:radial-gradient(120% 70% at 50% 28%,#3B5D5A 0%,#2D4546 45%,#1E2530 100%);color:var(--s-ink);
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .stage[hidden]{display:none}
+.st-bg{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.st-bg i{position:absolute;inset:-12%;background-size:cover;background-position:center;filter:blur(38px) saturate(1.15);opacity:0;transition:opacity .6s}
+.st-bg.has i{opacity:.75}
+.st-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,18,22,.55) 0%,rgba(14,18,22,.62) 45%,rgba(14,18,22,.86) 100%)}
+.stage > :not(.st-bg){position:relative;z-index:1}
 .st-top{display:grid;grid-template-columns:48px 1fr 48px 48px;align-items:center;padding:6px 6px 4px}
 .st-top .icon{color:var(--s-ink)}
 .st-title{min-width:0;display:flex;gap:.5em;justify-content:center;align-items:center;padding:2px 0}
@@ -219,11 +224,35 @@ body[data-view="library"] .transport{display:none}
 .st-info .dot{width:9px;height:9px;border-radius:50%;background:var(--s-dim)}
 .stage.rec .st-info .dot{background:var(--s-red);animation:blink 1s steps(2,start) infinite}
 @keyframes blink{to{visibility:hidden}}
-.st-info .take{margin-left:auto;color:var(--s-dim)}
+.st-info{flex-wrap:nowrap !important}
+.st-info .take{margin-left:auto;color:var(--s-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.st-info #skipBtn,.st-info #duetSkipBtn,.st-info #mvBtn,.st-info #mvAlignBtn{display:none !important}
+.st-opt{width:40px;height:40px;color:var(--s-ink);flex:none;margin-right:-8px;position:relative}
+.st-opt.mark::after{content:"";position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--hl)}
+.optrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.optrow > span{font-weight:700}
+.optrow small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+.switch{width:52px;height:30px;border-radius:999px;border:none;background:var(--line);position:relative;cursor:pointer;flex:none}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .18s}
+.switch[aria-pressed="true"]{background:var(--v1)}
+.switch[aria-pressed="true"]::after{left:25px}
+.switch:disabled{opacity:.4}
+.seg{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.seg button{min-width:44px;min-height:36px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font-weight:700;padding:0 12px}
+.seg button[aria-pressed="true"]{background:var(--pc,var(--v1));border-color:transparent;color:#fff}
 .st-body{flex:1;min-height:0;display:grid;grid-template-columns:34px 1fr 34px;grid-template-rows:minmax(0,1fr);position:relative;overflow:hidden}
 .st-ctl,.sync-ctl,.sync-tip{position:relative;z-index:2}
 .count{position:absolute;inset:0;display:grid;place-items:center;font-size:6rem;font-weight:700;color:var(--hl);background:rgba(34,32,34,.55);z-index:3;pointer-events:none}
 .count[hidden]{display:none}
+.cue{height:26px;display:flex;align-items:center;justify-content:center;gap:10px;opacity:0;transition:opacity .25s;margin-top:6px}
+.cue.on{opacity:1}
+.cue-label{font-size:.82rem;color:var(--s-dim);font-variant-numeric:tabular-nums}
+.cue-label:empty{display:none}
+.cue-dots{display:flex;gap:9px}
+.cue-dots i{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.18);transition:background .15s,transform .15s}
+.cue-dots i.lit{background:var(--cue,var(--hl));transform:scale(1.1);box-shadow:0 0 10px var(--cue,var(--hl))}
+.cue.label-only .cue-dots{display:none}
+@media (prefers-reduced-motion:reduce){.cue,.cue-dots i{transition:none}}
 .st-meter{align-self:center;justify-self:center;display:flex;flex-direction:column;align-items:center;gap:6px}
 .st-meter .bar{width:7px;height:34vh;max-height:240px;border-radius:4px;background:rgba(255,255,255,.14);display:flex;align-items:flex-end;overflow:hidden}
 .st-meter .bar i{display:block;width:100%;height:0;background:#7FCB93;transition:height .05s linear}
@@ -474,6 +503,7 @@ body[data-view="library"] .transport{display:none}
 </div>
 
 <section class="stage" id="stage" hidden aria-label="錄音畫面">
+  <div class="st-bg" id="stBg" aria-hidden="true"><i></i></div>
   <div class="st-top">
     <button class="icon" id="stClose" type="button" aria-label="關閉錄音畫面">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -487,8 +517,9 @@ body[data-view="library"] .transport{display:none}
     </button>
   </div>
   <div class="st-prog"><i id="stProg"></i></div>
-  <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><button type="button" class="chip" id="duetSkipBtn" aria-pressed="false" hidden>只錄我的部分</button><button type="button" class="chip" id="mvBtn" aria-pressed="false" hidden>MV 模式</button><button type="button" class="chip" id="mvAlignBtn">字幕對齊</button><span class="take" id="stTake"></span></div>
+  <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><button type="button" class="chip" id="duetSkipBtn" aria-pressed="false" hidden>只錄我的部分</button><button type="button" class="chip" id="mvBtn" aria-pressed="false" hidden>MV 模式</button><button type="button" class="chip" id="mvAlignBtn">字幕對齊</button><span class="take" id="stTake"></span><button type="button" class="icon st-opt" id="stOptBtn" aria-label="錄音選項"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
   <div class="mvbox" id="mvBox" hidden><div id="mvPlayer"></div></div>
+  <div class="cue" id="cue" aria-hidden="true"><span class="cue-label" id="cueLabel"></span><span class="cue-dots"><i></i><i></i><i></i></span></div>
   <div class="st-body">
     <div class="st-meter"><div class="bar" id="stMeter"><i></i></div>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0M12 17v4"/></svg></div>
@@ -622,6 +653,17 @@ body[data-view="library"] .transport{display:none}
     <p class="ed-hint" id="wHint">上方會顯示你現在唱的音和偏差，綠色代表準。下面的線是你的音高軌跡。</p>
   </div>
 </section>
+
+<div class="back" id="optSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="optTitle">
+    <h2 id="optTitle">錄音選項</h2>
+    <div class="optrow"><span>跳過前奏<small>從第一句前 3 秒開始播</small></span><button type="button" class="switch" id="optSkip" aria-label="跳過前奏" aria-pressed="false"></button></div>
+    <div class="optrow" id="optPartRow"><span>錄哪個聲部<small>其他聲部的段落會自動跳過</small></span><div class="seg" id="optPart"></div></div>
+    <div class="optrow" id="optMvRow"><span>MV 模式<small>看著 MV 練唱（不能錄音）</small></span><button type="button" class="switch" id="optMv" aria-label="MV 模式" aria-pressed="false"></button></div>
+    <div class="optrow" id="optAlignRow"><span>字幕對齊 MV<small>設定第一句和中間段落的時間</small></span><button type="button" class="btn sm" id="optAlign">調整</button></div>
+    <div class="row" style="margin-top:14px"><button class="btn primary" id="optDone" type="button" style="margin-left:auto">好了</button></div>
+  </div>
+</div>
 
 <div class="back" id="alignSheet" hidden>
   <div class="sheet align-sheet" role="dialog" aria-modal="true" aria-labelledby="alignTitle">
@@ -1555,10 +1597,13 @@ function openStage(opts){
   $('#stage').hidden = false; document.body.style.overflow = 'hidden';
   state.pos = 0; take = null;
   $('#stTitle').textContent = state.title || '未命名歌曲'; $('#stArtist').textContent = state.artist || '';
+  const bg = $('#stBg'), bgi = bg.querySelector('i'); bg.classList.remove('has'); bgi.style.backgroundImage = '';
+  if(state.cover && songId){ const sid = songId; coverUrl(sid).then(u => { if(u && sid === songId){ bgi.style.backgroundImage = 'url(' + u + ')'; bg.classList.add('has'); } }); }
   $('#monBtn').setAttribute('aria-pressed', state.monitor);
   $('#skipBtn').setAttribute('aria-pressed', state.skipIntro);
   renderLyrics(); setStageMode('idle'); updateStage(true); updateDuetUI();
   $('#mvBtn').hidden = !ytId(state.yt) || !!punch;
+  markOptBtn();
   if(punch){
     if(!state.lyrics.some(l => l.t !== null)){ toast('要先有對過時的歌詞，才能一句一句修'); punch = null; $('#stage').classList.remove('punch'); setStageMode('idle'); return; }
     toast('點一句歌詞選起來，再按「錄這一句」');
@@ -1755,7 +1800,53 @@ function lineIndexAt(pos, look){
   state.lyrics.forEach((l, i) => { const t = lt(l); if(t !== null && t <= pos + look) idx = i; });
   return idx;
 }
+function renderOpts(){
+  $('#optSkip').setAttribute('aria-pressed', !!state.skipIntro);
+  $('#optSkip').disabled = mvOn;
+  const used = PARTS.filter(p => state.lyrics.some(l => partsOf(l).includes(p)));
+  $('#optPartRow').hidden = used.length < 2 || mvOn;
+  const seg = $('#optPart'); seg.innerHTML = '';
+  ['', ...used].forEach(p => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = p || '全部';
+    if(p) b.style.setProperty('--pc', PART_COLOR[p]);
+    b.setAttribute('aria-pressed', (state.recPart || '') === p);
+    b.addEventListener('click', () => {
+      state.recPart = p; saveMeta(); updateDuetUI(); renderLyrics(); updateStage(true); setStageMode(stageMode); renderOpts();
+    });
+    seg.appendChild(b);
+  });
+  $('#optMvRow').hidden = !ytId(state.yt) || !!punch;
+  $('#optMv').setAttribute('aria-pressed', mvOn);
+  $('#optAlignRow').hidden = !mvOn;
+  markOptBtn();
+}
+function markOptBtn(){ $('#stOptBtn').classList.toggle('mark', !!(mvOn || state.recPart || !state.skipIntro)); }
+function updateCue(){
+  const el = $('#cue'), active = !!playing || (mvOn && mvPlaying);
+  if(!active || (sync && !sync.mv && false)){ el.classList.remove('on'); return; }
+  const pos = state.pos, L = state.lyrics;
+  let ni = -1; for(let i = 0; i < L.length; i++){ const t = lt(L[i]); if(t !== null && t > pos){ ni = i; break; } }
+  if(ni < 0){ el.classList.remove('on'); return; }
+  let pi = -1; for(let i = ni - 1; i >= 0; i--){ if(lt(L[i]) !== null){ pi = i; break; } }
+  const tn = lt(L[ni]), tp = pi >= 0 ? lt(L[pi]) : null, left = tn - pos;
+  const longGap = tp === null || tn - tp >= 7;
+  if(!longGap){ el.classList.remove('on'); return; }
+  const c = lineColor(L[ni]); el.style.setProperty('--cue', c || 'var(--hl)');
+  const dots = el.querySelectorAll('.cue-dots i');
+  if(left <= 3.2){
+    el.classList.add('on'); el.classList.remove('label-only');
+    $('#cueLabel').textContent = '';
+    dots.forEach((d, k) => d.classList.toggle('lit', left > k * 1.05));
+  } else if(tp !== null && pos - tp > 5){
+    el.classList.add('on', 'label-only');
+    $('#cueLabel').textContent = '間奏 ' + Math.ceil(left) + ' 秒';
+  } else if(tp === null){
+    el.classList.add('on', 'label-only');
+    $('#cueLabel').textContent = '前奏 ' + Math.ceil(left) + ' 秒';
+  } else el.classList.remove('on');
+}
 function updateStage(force){
+  updateCue();
   const len = Math.max(mvOn ? mvDur() : songLength(), state.pos);
   $('#stClock').textContent = fmtShort(state.pos) + ' / ' + fmtShort(len);
   $('#stProg').style.width = (len ? Math.min(100, state.pos / len * 100) : 0) + '%';
@@ -2693,6 +2784,11 @@ $('#micBox').addEventListener('toggle', e => { if(e.target.open) refreshMics(); 
 $('#guideFile').addEventListener('change', e => { importGuide(e.target.files[0]); e.target.value = ''; });
 
 $('#stClose').addEventListener('click', closeStage);
+$('#stOptBtn').addEventListener('click', () => { if(stageMode === 'rec' || stageMode === 'sync' || counting || take) { toast('錄音中不能改選項，先暫停或完成這一次'); return; } renderOpts(); openSheet('#optSheet'); });
+$('#optDone').addEventListener('click', () => closeSheet('#optSheet'));
+$('#optSkip').addEventListener('click', () => { $('#skipBtn').click(); renderOpts(); });
+$('#optMv').addEventListener('click', async () => { closeSheet('#optSheet'); if(mvOn) exitMV(); else await enterMV(); setStageMode(stageMode); markOptBtn(); });
+$('#optAlign').addEventListener('click', () => { closeSheet('#optSheet'); openAlign(); });
 $('#mvBtn').addEventListener('click', () => { if(mvOn) exitMV(); else enterMV(); setStageMode(stageMode); });
 $('#mvPlay').addEventListener('click', () => { if(!ytPlayer || !ytPlayer.playVideo) return; if(mvPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); });
 $('#mvBack').addEventListener('click', () => mvSeek(mvNow() - 5));
