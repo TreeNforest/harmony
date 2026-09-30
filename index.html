@@ -270,6 +270,7 @@ body[data-view="library"] .transport{display:none}
   -webkit-mask-image:linear-gradient(transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(transparent,#000 18%,#000 82%,transparent)}
 #lyrics::-webkit-scrollbar{display:none}
 #lyrics li{position:relative;font-size:1.3rem;line-height:1.5;margin:0 0 1.15em;color:var(--s-dim);transition:color .2s,font-size .2s;cursor:pointer;padding:0 6px}
+.stage.sync #lyrics li{cursor:pointer}
 .stage.sync #lyrics li.now{box-shadow:0 0 0 2px var(--hl);border-radius:12px;background:rgba(231,150,140,.12);padding:8px 12px}
 #lyrics li.past{opacity:.55}
 #lyrics li.now{color:rgba(238,233,228,.82);font-size:1.75rem;font-weight:700;opacity:1}
@@ -300,7 +301,11 @@ body[data-view="library"] .transport{display:none}
 .st-ctl .big.record{background:var(--s-red)}
 .st-ctl .big svg{width:32px;height:32px}
 .st-ctl .big span{position:absolute;clip:rect(0 0 0 0);width:1px;height:1px;overflow:hidden}
-.sync-ctl{display:none;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:10px 14px 16px}
+.sync-ctl{display:none;grid-template-columns:repeat(5,1fr);align-items:center;padding:10px 6px 14px}
+.sync-ctl button{background:none;border:none;color:var(--s-ink);display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.8rem;cursor:pointer;min-height:56px;justify-content:center}
+.sync-ctl button svg{width:26px;height:26px}
+.sync-ctl .big{justify-self:center;width:78px;height:78px;border-radius:50%;background:var(--hl);color:#2A2224}
+.sync-ctl .big svg{width:32px;height:32px}
 .stage.sync .st-ctl{display:none}
 .mvbox{position:relative;width:100%;aspect-ratio:16/9;max-height:34vh;background:#000;margin-top:6px}
 .mvbox iframe,.mvbox #mvPlayer{position:absolute;inset:0;width:100%;height:100%;border:0}
@@ -319,8 +324,6 @@ body[data-view="library"] .transport{display:none}
 .stage.mv:not(.sync) #mvAlignBtn{display:inline-block}
 .stage.mv #lyrics{padding:22vh 0}
 .stage.sync .sync-ctl{display:grid}
-.sync-ctl .tap{width:auto;min-width:170px;height:78px;border-radius:40px;border:none;background:var(--hl);color:#2A2224;font-size:1.15rem;font-weight:700;cursor:pointer}
-.sync-ctl .ghost{background:none;border:1px solid rgba(255,255,255,.25);color:var(--s-ink);border-radius:999px;min-height:44px;cursor:pointer}
 .sync-tip{display:none;text-align:center;font-size:.9rem;color:var(--s-dim);padding:0 20px;margin:0}
 .stage.sync .sync-tip{display:block}
 .sync-speed{display:none;justify-content:center;align-items:center;gap:8px;font-size:.85rem;color:var(--s-dim);padding:6px 0 0;position:relative;z-index:2}
@@ -575,9 +578,11 @@ body[data-view="library"] .transport{display:none}
     <button type="button" class="chip" data-r="1" aria-pressed="true">1×</button>
   </div>
   <div class="sync-ctl">
-    <button type="button" class="ghost" id="syncBack">退一句</button>
-    <button type="button" class="tap" id="syncTap">對上了</button>
-    <button type="button" class="ghost" id="syncEnd">結束</button>
+    <button type="button" id="syncBack" aria-label="復原上一次"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg>復原</button>
+    <button type="button" id="syncRew" aria-label="倒轉 3 秒"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg>−3 秒</button>
+    <button type="button" class="big" id="syncPlay" aria-label="暫停"><svg id="syncPlayIcon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
+    <button type="button" id="syncFwd" aria-label="快轉 3 秒"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/></svg>+3 秒</button>
+    <button type="button" id="syncEnd" aria-label="結束對時"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>完成</button>
   </div>
 </section>
 
@@ -1626,11 +1631,64 @@ function applyLyExtras(){
   }
 }
 let jaTok = null;
-function loadKuromoji(){
+const DICT_BASE = window.HARMONIA_DICT_BASE || 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/';
+const DICT_FILES = ['base.dat.gz', 'check.dat.gz', 'tid.dat.gz', 'tid_pos.dat.gz', 'tid_map.dat.gz', 'cc.dat.gz',
+  'unk.dat.gz', 'unk_pos.dat.gz', 'unk_map.dat.gz', 'unk_char.dat.gz', 'unk_compat.dat.gz', 'unk_invoke.dat.gz'];
+const DICT_CACHE = 'harmonia-ja-dict-v1';
+// 自己下載字典：顯示進度，並存進瀏覽器快取，第二次起不用再下載
+async function fetchDict(onProg){
+  const cache = ('caches' in window) ? await caches.open(DICT_CACHE).catch(() => null) : null;
+  const out = {}, need = [];
+  for(const f of DICT_FILES){
+    const hit = cache && await cache.match(DICT_BASE + f);
+    if(hit) out[f] = await hit.arrayBuffer(); else need.push(f);
+  }
+  if(!need.length){ onProg(-1); return out; }
+  let loaded = 0;
+  const one = async f => {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 90000);
+    try{
+      const res = await fetch(DICT_BASE + f, { signal: ctl.signal });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      let ab;
+      if(res.body && res.body.getReader){
+        const rd = res.body.getReader(), parts = [];
+        for(;;){ const { done, value } = await rd.read(); if(done) break; parts.push(value); loaded += value.length; onProg(loaded); }
+        ab = await new Blob(parts).arrayBuffer();
+      } else { ab = await res.arrayBuffer(); loaded += ab.byteLength; onProg(loaded); }
+      const h = new Uint8Array(ab, 0, 2);
+      // 若 CDN 已經幫忙解壓縮，就重新包成 gzip，字典程式才讀得懂
+      if(!(h[0] === 0x1f && h[1] === 0x8b) && 'CompressionStream' in window)
+        ab = await new Response(new Blob([ab]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+      out[f] = ab;
+      if(cache) cache.put(DICT_BASE + f, new Response(ab, { headers: { 'Content-Type': 'application/gzip' } })).catch(() => {});
+    } finally { clearTimeout(timer); }
+  };
+  // 一次下載 4 個檔案
+  const queue = need.slice();
+  await Promise.all(Array.from({ length: 4 }, async () => { while(queue.length) await one(queue.shift()); }));
+  return out;
+}
+function loadKuromoji(onProg){
   if(jaTok) return jaTok;
   jaTok = (async () => {
     if(!window.kuromoji) await loadScript('https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/build/kuromoji.js');
-    return await new Promise((res, rej) => kuromoji.builder({ dicPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/' }).build((err, tk) => err ? rej(err) : res(tk)));
+    const files = await fetchDict(onProg || (() => {}));
+    if(onProg) onProg(-2);
+    // 字典程式用 XHR 讀檔，這裡暫時改成直接交給它已下載的資料
+    const Real = window.XMLHttpRequest;
+    function DictXHR(){}
+    DictXHR.prototype.open = function(m, u){ this._f = String(u).split('/').pop(); };
+    DictXHR.prototype.send = function(){
+      const ab = files[this._f];
+      setTimeout(() => {
+        if(!ab){ this.status = 404; this.statusText = 'missing ' + this._f; if(this.onerror) this.onerror(new Error(this.statusText)); return; }
+        this.status = 200; this.response = ab.slice(0); if(this.onload) this.onload.call(this);
+      }, 0);
+    };
+    window.XMLHttpRequest = DictXHR;
+    try{ return await new Promise((res, rej) => kuromoji.builder({ dicPath: DICT_BASE }).build((err, tk) => err ? rej(err) : res(tk))); }
+    finally{ window.XMLHttpRequest = Real; }
   })();
   jaTok.catch(() => { jaTok = null; });
   return jaTok;
@@ -1653,9 +1711,13 @@ async function autoRuby(){
   const cur = parseLyrics($('#lyText').value);
   if(!cur.some(l => hasKanji(l.text || ''))){ toast('這首歌詞裡沒有漢字'); return; }
   const st = $('#rbStatus'), btn = $('#rbAuto');
-  btn.disabled = true; st.textContent = '下載日文字典中…（第一次比較久）';
+  btn.disabled = true; st.textContent = '準備日文字典…';
   try{
-    const tk = await loadKuromoji();
+    const tk = await loadKuromoji(n => {
+      if(n === -1) st.textContent = '使用已存的字典…';
+      else if(n === -2) st.textContent = '載入字典中…';
+      else st.textContent = '下載字典 ' + (n / 1048576).toFixed(1) + ' / 約 17 MB（只需要下載一次）';
+    });
     st.textContent = '產生中…';
     $('#rbText').value = cur.map(l => annotate(tk, l.text || '')).join('\n');
     lyTabDirty.rb = true; st.textContent = '完成，檢查一下再按儲存';
@@ -1821,7 +1883,7 @@ async function ensurePlayer(){
       playerVars: { playsinline: 1, rel: 0, modestbranding: 1, fs: 0 },
       events: {
         onReady: () => res(),
-        onStateChange: e => { mvPlaying = e.data === 1; mvPlayIcon(); },
+        onStateChange: e => { mvPlaying = e.data === 1; mvPlayIcon(); if(sync && sync.mv) syncPlayIcon(); },
         onError: e => toast(e.data === 101 || e.data === 150 ? '這支影片不允許嵌入播放，換一支試試' : '影片無法播放（錯誤 ' + e.data + '）')
       }
     });
@@ -2080,7 +2142,8 @@ function renderLyrics(){
     if(!(l.text || '').trim()) li.classList.add('gapline');
     if(lt(l) === null) li.classList.add('untimed');
     li.addEventListener('click', () => {
-      if(stageMode === 'rec' || stageMode === 'sync') return;
+      if(stageMode === 'sync'){ stampLine(state.lyrics.indexOf(l)); return; }
+      if(stageMode === 'rec') return;
       if(lt(l) === null){ toast('歌詞還沒對時：按右上角的歌詞圖示，再按「開始對時」'); return; }
       if(mvOn){ mvSeek(lt(l) - 1.5); return; }
       const i = state.lyrics.indexOf(l);
@@ -2307,10 +2370,10 @@ function startSync(fromHere){
     const sp = from > 0 ? Math.max(0, (prev && lt(prev) !== null ? lt(prev) : state.pos) - 1.5) : 0;
     sync = { i: from, mv: true };
     $('#syncSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.r === syncRate));
-    $('.sync-tip').textContent = '看著 MV，唱到框起來的那一句時點「對上了」。';
+    $('.sync-tip').textContent = '看著 MV，唱到哪一句就點那句歌詞；框起來的是下一句。';
     if(ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(syncRate);
     mvSeek(sp); ytPlayer.playVideo();
-    holdWake(); setStageMode('sync'); updateStage(true); return;
+    holdWake(); setStageMode('sync'); updateStage(true); setTimeout(syncPlayIcon, 300); return;
   }
   state.lyrics.forEach((l, i) => { if(i >= from) l.t = null; });
   renderLyrics();
@@ -2318,18 +2381,57 @@ function startSync(fromHere){
   const startPos = from > 0 ? Math.max(0, (prev && prev.t !== null ? prev.t : state.pos) - 1.5) : 0;
   const c = ac(); state.pos = startPos; sync = { i: from };
   $('#syncSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.r === syncRate));
-  $('.sync-tip').textContent = '唱到框起來的那一句時，點一下「對上了」。';
+  $('.sync-tip').textContent = '唱到哪一句，就直接點那句歌詞；框起來的是下一句。';
   const startAt = c.currentTime + 0.4;
   playing = { mode: 'sync', startAt, pos0: startPos, rate: syncRate, nodes: buildGraph(c, startAt, startPos, syncRate) };
-  holdWake(); setStageMode('sync'); updateStage(true); loop();
+  holdWake(); setStageMode('sync'); updateStage(true); loop(); syncPlayIcon();
 }
-function syncTap(){
-  if(!sync || (!playing && !sync.mv)) return;
-  const l = state.lyrics[sync.i]; if(!l) return;
-  if(sync.mv) l.mt = +state.pos.toFixed(2); else l.t = +state.pos.toFixed(2);
-  $('#lyrics').children[sync.i].classList.remove('untimed');
-  sync.i++;
-  if(sync.i >= state.lyrics.length) endSync(true); else updateStage(true);
+function stampLine(i){
+  if(!sync || i < 0) return;
+  const l = state.lyrics[i]; if(!l) return;
+  const now = +state.pos.toFixed(2);
+  (sync.hist || (sync.hist = [])).push({ i, t: l.t, mt: l.mt, next: sync.i });
+  if(sync.mv) l.mt = now; else l.t = now;
+  const el = $('#lyrics').children[i]; if(el) el.classList.remove('untimed');
+  sync.i = i + 1;
+  const tOf = x => sync.mv ? (typeof x.mt === 'number' ? x.mt : null) : x.t;
+  const before = state.lyrics.slice(0, i).map(tOf).filter(x => x !== null && x !== undefined);
+  const after = state.lyrics.slice(i + 1).map(tOf).filter(x => x !== null && x !== undefined);
+  if((before.length && before[before.length - 1] > now) || (after.length && after[0] < now)) toast('這一句的時間排在前後句之外，確認一下有沒有點錯');
+  else if(sync.i >= state.lyrics.length){ sync.i = state.lyrics.length - 1; toast('最後一句也對好了，檢查沒問題就按「完成」'); }
+  if(sync.i >= state.lyrics.length) sync.i = state.lyrics.length - 1;
+  lastIdx = -2; updateStage(true);
+}
+function syncTap(){ if(sync) stampLine(sync.i); }
+const syncIsPlaying = () => !!sync && (sync.mv ? mvPlaying : !!(playing && playing.mode === 'sync'));
+function syncPlayIcon(){
+  const on = syncIsPlaying();
+  $('#syncPlayIcon').innerHTML = on ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>' : '<path d="M7 4v16l13-8z"/>';
+  $('#syncPlay').setAttribute('aria-label', on ? '暫停' : '播放');
+}
+function syncStartAudio(pos){
+  const c = ac(), startAt = c.currentTime + 0.12;
+  playing = { mode: 'sync', startAt, pos0: pos, rate: syncRate, nodes: buildGraph(c, startAt, pos, syncRate) };
+  loop();
+}
+function syncToggle(){
+  if(!sync) return;
+  if(sync.mv){ if(mvPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); setTimeout(syncPlayIcon, 150); return; }
+  if(playing && playing.mode === 'sync'){
+    const p = playing; playing = null; stopNodes(p.nodes);
+    state.pos = p.pos0 + Math.max(0, ctx.currentTime - p.startAt) * (p.rate || 1);
+    updateStage(true);
+  } else syncStartAudio(state.pos);
+  syncPlayIcon();
+}
+function syncJump(d){
+  if(!sync) return;
+  const t = Math.max(0, state.pos + d);
+  if(sync.mv){ mvSeek(t); return; }
+  const was = playing && playing.mode === 'sync';
+  if(was){ const p = playing; playing = null; stopNodes(p.nodes); }
+  state.pos = Math.min(t, songLength()); updateStage(true);
+  if(was) syncStartAudio(state.pos);
 }
 function setSyncRate(r){
   syncRate = r;
@@ -2342,10 +2444,11 @@ function setSyncRate(r){
   playing = { mode: 'sync', startAt, pos0: keep, rate: r, nodes: buildGraph(c, startAt, keep, r) };
 }
 function syncBack(){
-  if(!sync || sync.i === 0) return;
-  sync.i--;
-  if(sync.mv) delete state.lyrics[sync.i].mt; else state.lyrics[sync.i].t = null;
-  updateStage(true);
+  if(!sync || !sync.hist || !sync.hist.length){ toast('沒有可以復原的'); return; }
+  const h = sync.hist.pop(), l = state.lyrics[h.i];
+  if(sync.mv){ if(typeof h.mt === 'number') l.mt = h.mt; else delete l.mt; }
+  else l.t = h.t === undefined ? null : h.t;
+  sync.i = h.next; lastIdx = -2; renderLyrics(); updateStage(true);
 }
 function endSync(done){
   if(playing && playing.mode === 'sync'){ stopNodes(playing.nodes); playing = null; }
@@ -2614,7 +2717,7 @@ function loop(){
         }
       }
     }
-    if(mode === 'sync' && state.pos > songLength() + 0.3){ endSync(false); return; }
+    if(mode === 'sync' && state.pos > songLength() + 0.3){ const p = playing; playing = null; stopNodes(p.nodes); state.pos = songLength(); syncPlayIcon(); updateStage(true); toast('歌曲播完了，檢查一下再按「完成」'); return; }
     updateStage();
   }
   requestAnimationFrame(loop);
@@ -3062,7 +3165,9 @@ $('#partPick').addEventListener('click', e => {
   partSel = partSel.includes(p) ? partSel.filter(x => x !== p) : [...partSel, p].sort();
   renderPartPick();
 });
-$('#syncTap').addEventListener('click', syncTap);
+$('#syncPlay').addEventListener('click', syncToggle);
+$('#syncRew').addEventListener('click', () => syncJump(-3));
+$('#syncFwd').addEventListener('click', () => syncJump(3));
 $('#syncBack').addEventListener('click', syncBack);
 $('#syncEnd').addEventListener('click', () => endSync(false));
 
