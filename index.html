@@ -218,8 +218,9 @@ body[data-view="library"] .transport{display:none}
 .badge{font-size:.8rem;padding:2px 9px;border-radius:999px;background:var(--paper);color:var(--muted);white-space:nowrap}
 .mix-row .t .mm{margin-left:auto;min-height:36px;padding:.2em .9em;font-size:.85rem}
 .mix-row .t .mm[aria-pressed="true"]{color:var(--rec);border-color:var(--rec)}
-.st-prog{height:3px;background:rgba(255,255,255,.12)}
-.st-prog i{display:block;height:100%;width:0;background:var(--hl)}
+.st-map{height:22px;margin:0 14px;touch-action:none;cursor:pointer}
+.st-map canvas{display:block;width:100%;height:100%}
+.st-map.locked{cursor:default}
 .st-info{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;padding:8px 18px 0;font-variant-numeric:tabular-nums;font-size:.95rem}
 .st-info .dot{width:9px;height:9px;border-radius:50%;background:var(--s-dim)}
 .stage.rec .st-info .dot{background:var(--s-red);animation:blink 1s steps(2,start) infinite}
@@ -244,6 +245,13 @@ body[data-view="library"] .transport{display:none}
 .st-ctl,.sync-ctl,.sync-tip{position:relative;z-index:2}
 .count{position:absolute;inset:0;display:grid;place-items:center;font-size:6rem;font-weight:700;color:var(--hl);background:rgba(34,32,34,.55);z-index:3;pointer-events:none}
 .count[hidden]{display:none}
+.st-tracks{display:flex;gap:6px;overflow-x:auto;padding:8px 18px 0;scrollbar-width:none}
+.st-tracks::-webkit-scrollbar{display:none}
+.st-tracks:empty{display:none}
+.st-tracks button{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:var(--s-ink);border-radius:999px;font-size:.78rem;padding:3px 11px;min-height:30px;cursor:pointer}
+.st-tracks button i{width:8px;height:8px;border-radius:50%;background:var(--tc)}
+.st-tracks button[aria-pressed="false"]{opacity:.45;text-decoration:line-through}
+.st-tracks .now{border-color:var(--hl);color:var(--hl);background:none;cursor:default;text-decoration:none;opacity:1}
 .cue{height:26px;display:flex;align-items:center;justify-content:center;gap:10px;opacity:0;transition:opacity .25s;margin-top:6px}
 .cue.on{opacity:1}
 .cue-label{font-size:.82rem;color:var(--s-dim);font-variant-numeric:tabular-nums}
@@ -266,6 +274,7 @@ body[data-view="library"] .transport{display:none}
 #lyrics li.past{opacity:.55}
 #lyrics li.now{color:rgba(238,233,228,.82);font-size:1.75rem;font-weight:700;opacity:1}
 #lyrics li.untimed{cursor:default}
+#lyrics li.gapline{font-size:1rem;letter-spacing:.3em}
 #lyrics li.colored{color:var(--lc);opacity:.6}
 #lyrics li.colored.past{opacity:.35}
 #lyrics li.colored.now{color:var(--lc);opacity:1}
@@ -280,7 +289,10 @@ body[data-view="library"] .transport{display:none}
 .st-ctl button:disabled{opacity:.35;cursor:not-allowed}
 .st-ctl button svg{width:28px;height:28px}
 .st-ctl button[aria-pressed="true"]{color:var(--hl)}
-.st-ctl .big{justify-self:center;width:78px;height:78px;border-radius:50%;background:rgba(255,255,255,.16)}
+.st-ctl .big{justify-self:center;width:78px;height:78px;border-radius:50%;background:rgba(255,255,255,.16);
+  box-shadow:0 0 0 calc(var(--lv,0) * 16px) rgba(224,96,122,calc(.18 + var(--lv,0) * .25)),0 0 calc(var(--lv,0) * 34px) rgba(224,96,122,.45);transition:box-shadow .06s linear}
+.st-ctl .big.clip{box-shadow:0 0 0 14px rgba(230,181,79,.45),0 0 30px rgba(230,181,79,.6)}
+.st-meter{visibility:hidden}
 .st-ctl .big.record{background:var(--s-red)}
 .st-ctl .big svg{width:32px;height:32px}
 .st-ctl .big span{position:absolute;clip:rect(0 0 0 0);width:1px;height:1px;overflow:hidden}
@@ -516,9 +528,10 @@ body[data-view="library"] .transport{display:none}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>
     </button>
   </div>
-  <div class="st-prog"><i id="stProg"></i></div>
+  <div class="st-map" id="stMap"><canvas id="stMapCv"></canvas><i id="stProg" hidden></i></div>
   <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><button type="button" class="chip" id="duetSkipBtn" aria-pressed="false" hidden>只錄我的部分</button><button type="button" class="chip" id="mvBtn" aria-pressed="false" hidden>MV 模式</button><button type="button" class="chip" id="mvAlignBtn">字幕對齊</button><span class="take" id="stTake"></span><button type="button" class="icon st-opt" id="stOptBtn" aria-label="錄音選項"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
   <div class="mvbox" id="mvBox" hidden><div id="mvPlayer"></div></div>
+  <div class="st-tracks" id="stTracks" role="group" aria-label="已錄的音軌（點一下切換要不要聽到）"></div>
   <div class="cue" id="cue" aria-hidden="true"><span class="cue-label" id="cueLabel"></span><span class="cue-dots"><i></i><i></i><i></i></span></div>
   <div class="st-body">
     <div class="st-meter"><div class="bar" id="stMeter"><i></i></div>
@@ -1601,7 +1614,7 @@ function openStage(opts){
   if(state.cover && songId){ const sid = songId; coverUrl(sid).then(u => { if(u && sid === songId){ bgi.style.backgroundImage = 'url(' + u + ')'; bg.classList.add('has'); } }); }
   $('#monBtn').setAttribute('aria-pressed', state.monitor);
   $('#skipBtn').setAttribute('aria-pressed', state.skipIntro);
-  renderLyrics(); setStageMode('idle'); updateStage(true); updateDuetUI();
+  renderLyrics(); setStageMode('idle'); updateStage(true); updateDuetUI(); renderTrackStrip();
   $('#mvBtn').hidden = !ytId(state.yt) || !!punch;
   markOptBtn();
   if(punch){
@@ -1811,7 +1824,7 @@ function renderOpts(){
     if(p) b.style.setProperty('--pc', PART_COLOR[p]);
     b.setAttribute('aria-pressed', (state.recPart || '') === p);
     b.addEventListener('click', () => {
-      state.recPart = p; saveMeta(); updateDuetUI(); renderLyrics(); updateStage(true); setStageMode(stageMode); renderOpts();
+      state.recPart = p; saveMeta(); updateDuetUI(); renderLyrics(); updateStage(true); setStageMode(stageMode); renderOpts(); renderTrackStrip();
     });
     seg.appendChild(b);
   });
@@ -1821,6 +1834,69 @@ function renderOpts(){
   markOptBtn();
 }
 function markOptBtn(){ $('#stOptBtn').classList.toggle('mark', !!(mvOn || state.recPart || !state.skipIntro)); }
+let mapLen = 0;
+function drawMap(len){
+  const cv = $('#stMapCv'); if(!cv) return;
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if(!w) return;
+  if(cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)){ cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  mapLen = len;
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const cy = h / 2, X = t => len ? Math.max(0, Math.min(w, t / len * w)) : 0;
+  g.fillStyle = 'rgba(255,255,255,.14)'; rrect(g, 0, cy - 3, w, 6, 3); g.fill();
+  const L = state.lyrics;
+  // 每句一段：有聲部就用聲部顏色，只錄某聲部時其他聲部變暗
+  L.forEach((l, i) => {
+    const t = lt(l); if(t === null) return;
+    let e = null; for(let k = i + 1; k < L.length; k++){ const u = lt(L[k]); if(u !== null){ e = u; break; } }
+    if(e === null) e = Math.min(len, t + 4);
+    if(!(l.text || '').trim()) return;
+    const c = lineColor(l);
+    g.globalAlpha = c ? (state.recPart && !lineIsMine(l) ? .25 : .75) : .3;
+    g.fillStyle = c || '#EEE9E4';
+    g.fillRect(X(t), cy - 3, Math.max(1.5, X(e) - X(t) - 1), 6);
+  });
+  g.globalAlpha = 1;
+  g.fillStyle = 'rgba(255,255,255,.55)';
+  L.forEach(l => { const t = lt(l); if(t !== null && (l.text || '').trim()) g.fillRect(X(t) - .5, cy - 6, 1, 3); });
+  const px = X(state.pos);
+  g.fillStyle = 'rgba(231,150,140,.35)'; rrect(g, 0, cy - 3, px, 6, 3); g.fill();
+  g.fillStyle = stageMode === 'rec' ? '#E0607A' : '#EEE9E4';
+  g.beginPath(); g.arc(Math.max(5, Math.min(w - 5, px)), cy, 5, 0, Math.PI * 2); g.fill();
+  $('#stMap').classList.toggle('locked', !mapSeekable());
+}
+const mapSeekable = () => (mvOn && !sync) || (!playing && !counting && (stageMode === 'idle' || stageMode === 'paused'));
+function mapSeek(e){
+  if(!mapSeekable() || !mapLen) return;
+  const r = $('#stMapCv').getBoundingClientRect();
+  const t = Math.max(0, Math.min(mapLen, (e.clientX - r.left) / r.width * mapLen));
+  if(mvOn){ mvSeek(t); return; }
+  state.pos = t; updateStage(true);
+}
+function renderTrackStrip(){
+  const box = $('#stTracks'); box.innerHTML = '';
+  const list = state.tracks.filter(t => t.kind === 'voice' || t.kind === 'guide');
+  if(!list.length) return;
+  list.forEach(t => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.style.setProperty('--tc', t.color);
+    b.innerHTML = '<i></i><span></span>';
+    b.querySelector('span').textContent = t.kind === 'guide' ? '導唱' : t.name;
+    b.setAttribute('aria-pressed', !t.mute);
+    b.setAttribute('aria-label', (t.kind === 'guide' ? '導唱' : t.name) + (t.mute ? '（已靜音）' : '（播放中）'));
+    b.addEventListener('click', () => {
+      t.mute = !t.mute; const n = liveNode(t.id); if(n) n.g.gain.value = t.mute ? 0 : t.vol;
+      saveMeta(); renderTrackStrip();
+      toast((t.kind === 'guide' ? '導唱' : t.name) + (t.mute ? '：錄音時不會聽到' : '：錄音時會一起播'));
+    });
+    box.appendChild(b);
+  });
+  if(!mvOn && !punch){
+    const cur = document.createElement('button'); cur.type = 'button'; cur.className = 'now'; cur.tabIndex = -1;
+    cur.textContent = '＋ ' + (state.recPart ? state.recPart + ' 聲部' : nextVoiceName());
+    box.appendChild(cur);
+  }
+}
 function updateCue(){
   const el = $('#cue'), active = !!playing || (mvOn && mvPlaying);
   if(!active || (sync && !sync.mv && false)){ el.classList.remove('on'); return; }
@@ -1829,7 +1905,9 @@ function updateCue(){
   if(ni < 0){ el.classList.remove('on'); return; }
   let pi = -1; for(let i = ni - 1; i >= 0; i--){ if(lt(L[i]) !== null){ pi = i; break; } }
   const tn = lt(L[ni]), tp = pi >= 0 ? lt(L[pi]) : null, left = tn - pos;
-  const longGap = tp === null || tn - tp >= 7;
+  // 空白的時間碼行＝這裡開始間奏（LRC 常見寫法），間隔 4 秒以上就提示
+  const marked = pi >= 0 && !(L[pi].text || '').trim();
+  const longGap = tp === null || tn - tp >= (marked ? 4 : 7);
   if(!longGap){ el.classList.remove('on'); return; }
   const c = lineColor(L[ni]); el.style.setProperty('--cue', c || 'var(--hl)');
   const dots = el.querySelectorAll('.cue-dots i');
@@ -1837,7 +1915,7 @@ function updateCue(){
     el.classList.add('on'); el.classList.remove('label-only');
     $('#cueLabel').textContent = '';
     dots.forEach((d, k) => d.classList.toggle('lit', left > k * 1.05));
-  } else if(tp !== null && pos - tp > 5){
+  } else if(tp !== null && (marked || pos - tp > 5)){
     el.classList.add('on', 'label-only');
     $('#cueLabel').textContent = '間奏 ' + Math.ceil(left) + ' 秒';
   } else if(tp === null){
@@ -1849,7 +1927,7 @@ function updateStage(force){
   updateCue();
   const len = Math.max(mvOn ? mvDur() : songLength(), state.pos);
   $('#stClock').textContent = fmtShort(state.pos) + ' / ' + fmtShort(len);
-  $('#stProg').style.width = (len ? Math.min(100, state.pos / len * 100) : 0) + '%';
+  drawMap(len);
   let idx;
   if(sync) idx = sync.i;
   else idx = lineIndexAt(state.pos, (playing || (mvOn && mvPlaying)) ? 0.05 : 1.6);
@@ -1882,6 +1960,7 @@ function renderLyrics(){
     if(c){ li.classList.add('colored'); li.style.setProperty('--lc', c); }
     if(state.recPart && partsOf(l).length && !partsOf(l).includes(state.recPart)) li.classList.add('notmine');
     li.appendChild(document.createTextNode(l.text || '♪'));
+    if(!(l.text || '').trim()) li.classList.add('gapline');
     if(lt(l) === null) li.classList.add('untimed');
     li.addEventListener('click', () => {
       if(stageMode === 'rec' || stageMode === 'sync') return;
@@ -2034,6 +2113,7 @@ function finishTake(){
   take = null; state.pos = 0;
   setStageMode('idle'); updateStage(true);
   $('#doneText').textContent = '「' + t.name + '」已經存進工作室。要接著疊下一軌合音，還是先回去聽聽看？';
+  renderTrackStrip();
   openSheet('#doneSheet');
 }
 
@@ -2189,9 +2269,14 @@ function detectLive(d, sr){
 const circ = (a, b) => { const d = (((a - b) % 12) + 12) % 12; return Math.min(d, 12 - d); };
 const circSigned = (a, b) => { const d = (((a - b) % 12) + 12) % 12; return d > 6 ? d - 12 : d; };
 /* ---------- 錄音音量 ---------- */
+let lvSmooth = 0;
 function stageMeter(level){
   const b = $('#stMeter'); b.firstElementChild.style.height = Math.min(100, level * 100) + '%';
   b.classList.toggle('hot', level > 0.95);
+  lvSmooth = level > lvSmooth ? level : lvSmooth * 0.9 + level * 0.1;
+  const rb = $('#recBtn');
+  rb.style.setProperty('--lv', Math.min(1, lvSmooth * 1.6).toFixed(3));
+  rb.classList.toggle('clip', level > 0.95);
 }
 
 /* ---------- 升降 Key（WSOLA 風格的顆粒移調，長度不變） ---------- */
@@ -2784,10 +2869,14 @@ $('#micBox').addEventListener('toggle', e => { if(e.target.open) refreshMics(); 
 $('#guideFile').addEventListener('change', e => { importGuide(e.target.files[0]); e.target.value = ''; });
 
 $('#stClose').addEventListener('click', closeStage);
+{ const m = $('#stMap'); let down = false;
+  m.addEventListener('pointerdown', e => { if(!mapSeekable()){ if(stageMode === 'rec') toast('錄音中不能跳轉，先暫停'); return; } down = true; m.setPointerCapture(e.pointerId); mapSeek(e); });
+  m.addEventListener('pointermove', e => { if(down) mapSeek(e); });
+  m.addEventListener('pointerup', () => down = false); m.addEventListener('pointercancel', () => down = false); }
 $('#stOptBtn').addEventListener('click', () => { if(stageMode === 'rec' || stageMode === 'sync' || counting || take) { toast('錄音中不能改選項，先暫停或完成這一次'); return; } renderOpts(); openSheet('#optSheet'); });
 $('#optDone').addEventListener('click', () => closeSheet('#optSheet'));
 $('#optSkip').addEventListener('click', () => { $('#skipBtn').click(); renderOpts(); });
-$('#optMv').addEventListener('click', async () => { closeSheet('#optSheet'); if(mvOn) exitMV(); else await enterMV(); setStageMode(stageMode); markOptBtn(); });
+$('#optMv').addEventListener('click', async () => { closeSheet('#optSheet'); if(mvOn) exitMV(); else await enterMV(); setStageMode(stageMode); markOptBtn(); renderTrackStrip(); });
 $('#optAlign').addEventListener('click', () => { closeSheet('#optSheet'); openAlign(); });
 $('#mvBtn').addEventListener('click', () => { if(mvOn) exitMV(); else enterMV(); setStageMode(stageMode); });
 $('#mvPlay').addEventListener('click', () => { if(!ytPlayer || !ytPlayer.playVideo) return; if(mvPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); });
@@ -2827,7 +2916,7 @@ $('#monBtn').addEventListener('click', e => {
   toast(state.monitor ? '耳返已開啟：請戴耳機，聲音會有一點延遲' : '耳返已關閉');
 });
 $('#mixBtn').addEventListener('click', openMixer);
-$('#mixClose').addEventListener('click', () => { closeSheet('#mixSheet'); render(); });
+$('#mixClose').addEventListener('click', () => { closeSheet('#mixSheet'); render(); if(stageOpen()) renderTrackStrip(); });
 $('#verbRange').addEventListener('input', e => { state.reverb = +e.target.value; $('#verbOut').textContent = Math.round(state.reverb * 100) + '%'; liveReverb(); saveMeta(); });
 
 $('#lySave').addEventListener('click', () => { saveLyricsFromSheet(); updateDuetUI(); closeSheet('#lyricsSheet'); toast(state.lyrics.length ? '歌詞已儲存' : '歌詞已清空'); });
