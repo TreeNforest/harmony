@@ -353,12 +353,16 @@ body[data-view="library"] .transport{display:none}
 .mix-row .g{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:.9rem;color:var(--muted)}
 .mix-row output{float:right;color:var(--ink)}
 .lytabs{display:flex;gap:6px;margin:0 0 10px}
-.side-head{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;color:var(--muted);margin-bottom:4px}
-.side-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
-.side-orig,.side-body textarea{font:inherit;font-size:.86rem;line-height:1.9;padding:8px 10px;margin:0}
-.side-orig .sline{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
-.side-orig .sline.miss{color:var(--rec)}
-.side-body textarea{border:none;border-left:1px solid var(--line);background:transparent;color:var(--ink);resize:none;min-height:100%;overflow:hidden;white-space:pre}
+.bulk-hint{font-size:.85rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:7px 10px;margin-bottom:6px;min-height:2.4em;line-height:1.4}
+.bulk-hint b{color:var(--v1);margin-right:.4em;font-variant-numeric:tabular-nums}
+.bulk-hint.over b{color:var(--rec)}
+.bulk-box{display:flex;height:42vh;border:1px solid var(--line);border-radius:10px;background:var(--paper);overflow:hidden}
+.bulk-num{flex:none;min-width:2.8em;padding:8px 6px;text-align:right;font-size:.8rem;line-height:1.75rem;font-variant-numeric:tabular-nums;color:var(--muted);border-right:1px solid var(--line);overflow:hidden;user-select:none}
+.bulk-num span{display:block;height:1.75rem;line-height:1.75rem}
+.bulk-num span.miss{color:var(--rec);font-weight:700}
+.bulk-num span.over{color:var(--rec);text-decoration:line-through}
+.bulk-box textarea{flex:1;min-width:0;border:none;background:transparent;color:var(--ink);resize:none;font:inherit;font-size:.9rem;line-height:1.75rem;padding:8px 10px;margin:0;white-space:pre;overflow:auto}
+.bulk-box textarea:focus{outline:none}
 .pair{list-style:none;margin:0;padding:0;max-height:42vh;overflow-y:auto;border-top:1px solid var(--line)}
 .pair li{padding:8px 2px 10px;border-bottom:1px solid var(--line)}
 .pair .orig{font-size:.88rem;color:var(--muted);margin-bottom:5px;display:flex;gap:8px}
@@ -626,18 +630,18 @@ body[data-view="library"] .transport{display:none}
     <textarea id="lyText" spellcheck="false" placeholder="[00:12.30]第一句歌詞&#10;[00:16.80]第二句歌詞&#10;&#10;或是每行一句的純文字"></textarea>
     </div>
     <div class="lypane" data-pane="tr" hidden>
-      <p>按「複製原文」貼到翻譯工具，翻好後<strong>直接貼進第一句的翻譯欄</strong>，會自動一句一句往下填；或切到「左右對照」整段貼上，邊貼邊看有沒有對齊。</p>
+      <p>按「複製原文」貼到翻譯工具，翻好後<strong>直接貼進第一句的翻譯欄</strong>，會自動一句一句往下填；也可以切到「整段編輯」，每行前面都有句數編號，游標停在哪一行，上方就會顯示那一句的原文。</p>
       <div class="row" style="margin:0 0 8px;gap:8px">
         <button class="btn sm" id="trCopy" type="button">複製原文</button>
-        <button class="chip2" id="trBulk" type="button" aria-pressed="false">左右對照</button>
+        <button class="chip2" id="trBulk" type="button" aria-pressed="false">整段編輯</button>
         <span class="hint" id="trCount" style="margin:0 0 0 auto"></span>
       </div>
       <ol class="pair" id="trList"></ol>
-      <div class="side" id="trSide" hidden>
-        <div class="side-head"><span>原文</span><span>翻譯（一行一句，直接整段貼上）</span></div>
-        <div class="side-body">
-          <div class="side-orig" id="trOrig"></div>
-          <textarea id="trText" spellcheck="false" wrap="off" placeholder="第一句的翻譯&#10;第二句的翻譯"></textarea>
+      <div class="bulk" id="trSide" hidden>
+        <div class="bulk-hint" id="trCaret"></div>
+        <div class="bulk-box">
+          <div class="bulk-num" id="trNums" aria-hidden="true"></div>
+          <textarea id="trText" spellcheck="false" wrap="off" aria-label="整段翻譯，一行一句" placeholder="一行一句，直接整段貼上"></textarea>
         </div>
         <p class="hint" id="trSideNote" style="margin:6px 0 0"></p>
       </div>
@@ -1760,18 +1764,36 @@ function setTrBulk(on){
   if(on){
     const idx = textIdx();
     $('#trText').value = idx.map(i => work.tr[i] || '').join('\n');
-    drawSide(); autoGrowTr(); $('#trText').focus();
+    drawSide(); $('#trText').focus(); $('#trText').setSelectionRange(0, 0); caretHint();
   } else renderTrList();
 }
+// 整段模式：每一行前面標「第幾句」，游標所在那行上方顯示對應的原文
 function drawSide(){
   const idx = textIdx(), rows = $('#trText').value.split(/\r?\n/);
-  const box = $('#trOrig'); box.innerHTML = '';
-  idx.forEach((li, k) => {
-    const d = document.createElement('div'); d.className = 'sline' + ((rows[k] || '').trim() ? '' : ' miss');
-    d.textContent = (k + 1) + '. ' + (work.lines[li].text || ''); box.appendChild(d);
-  });
-  const extra = rows.length - idx.length;
-  $('#trSideNote').textContent = extra > 0 && rows.slice(idx.length).some(r => r.trim()) ? '翻譯比原文多了 ' + extra + ' 行，檢查是不是有空行或多翻了一句' : '原文 ' + idx.length + ' 句，翻譯 ' + rows.filter(r => r.trim()).length + ' 句';
+  const n = Math.max(idx.length, rows.length), box = $('#trNums'); box.innerHTML = '';
+  for(let k = 0; k < n; k++){
+    const sp = document.createElement('span'); sp.textContent = k + 1;
+    if(k >= idx.length){ if((rows[k] || '').trim()) sp.className = 'over'; }
+    else if(!(rows[k] || '').trim()) sp.className = 'miss';
+    box.appendChild(sp);
+  }
+  box.scrollTop = $('#trText').scrollTop;
+  const filled = rows.slice(0, idx.length).filter(r => r.trim()).length, extra = rows.slice(idx.length).filter(r => r.trim()).length;
+  const missing = idx.map((li, k) => (rows[k] || '').trim() ? 0 : k + 1).filter(Boolean);
+  $('#trSideNote').textContent = '原文 ' + idx.length + ' 句，已填 ' + filled + ' 句' +
+    (missing.length ? '；空著的：第 ' + missing.slice(0, 8).join('、') + (missing.length > 8 ? '…' : '') + ' 句' : '') +
+    (extra ? '；多出 ' + extra + ' 行（編號劃線的那幾行）' : '');
+  caretHint();
+}
+function caretHint(){
+  const ta = $('#trText'), idx = textIdx();
+  const k = ta.value.slice(0, ta.selectionStart).split('\n').length - 1;
+  const el = $('#trCaret'); el.innerHTML = '';
+  const b = document.createElement('b'); b.textContent = '第 ' + (k + 1) + ' 句';
+  const t = document.createElement('span');
+  if(k < idx.length){ t.textContent = work.lines[idx[k]].text || ''; el.classList.remove('over'); }
+  else { t.textContent = '超出原文句數，這行不會被用到'; el.classList.add('over'); }
+  el.appendChild(b); el.appendChild(t);
 }
 function readBulk(){
   if($('#trSide').hidden) return;
@@ -3319,8 +3341,9 @@ $('#optTr').addEventListener('click', () => { state.showTr = !state.showTr; save
 $('#optRb').addEventListener('click', () => { state.showRb = !state.showRb; saveMeta(); renderLyrics(); updateStage(true); renderOpts(); });
 document.querySelectorAll('.lytabs [data-tab]').forEach(b => b.addEventListener('click', () => showLyTab(b.dataset.tab)));
 $('#trBulk').addEventListener('click', () => setTrBulk($('#trBulk').getAttribute('aria-pressed') !== 'true'));
-$('#trText').addEventListener('input', () => { autoGrowTr(); drawSide(); });
-function autoGrowTr(){ const t = $('#trText'); t.style.height = 'auto'; t.style.height = Math.max(t.scrollHeight, $('#trOrig').scrollHeight) + 'px'; }
+$('#trText').addEventListener('input', drawSide);
+$('#trText').addEventListener('scroll', () => { $('#trNums').scrollTop = $('#trText').scrollTop; });
+['click', 'keyup', 'select', 'focus'].forEach(ev => $('#trText').addEventListener(ev, caretHint));
 $('#rbAuto').addEventListener('click', autoRuby);
 $('#trCopy').addEventListener('click', async () => {
   const txt = parseLyrics($('#lyText').value).map(l => (l.text || '').trim()).filter(Boolean).join('\n');
