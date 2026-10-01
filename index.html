@@ -169,6 +169,10 @@ body[data-view="library"] .transport{display:none}
 .song-title:hover,.song-title:focus{background:var(--surface)}
 .song-artist{display:block;width:100%;border:none;background:transparent;color:var(--muted);font-size:1rem;padding:4px 6px;margin:-10px 0 16px;border-radius:8px}
 .song-artist:hover,.song-artist:focus{background:var(--surface)}
+.artists{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 0}
+.artists .song-artist{flex:1;min-width:7em;width:auto;margin:0}
+.achip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:var(--surface);border:1px solid var(--line);padding:2px 4px 2px 10px;font-size:.92rem;color:var(--ink)}
+.achip button{width:24px;height:24px;border-radius:50%;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:1rem;line-height:1}
 .tagrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-6px 0 16px}
 .tagrow input{min-height:36px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:.85rem;padding:0 12px;width:9em}
 .tagfilter{display:flex;gap:6px;overflow-x:auto;margin-top:12px;padding-bottom:4px;scrollbar-width:none}
@@ -349,6 +353,12 @@ body[data-view="library"] .transport{display:none}
 .mix-row .g{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:.9rem;color:var(--muted)}
 .mix-row output{float:right;color:var(--ink)}
 .lytabs{display:flex;gap:6px;margin:0 0 10px}
+.side-head{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;color:var(--muted);margin-bottom:4px}
+.side-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.side-orig,.side-body textarea{font:inherit;font-size:.86rem;line-height:1.9;padding:8px 10px;margin:0}
+.side-orig .sline{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.side-orig .sline.miss{color:var(--rec)}
+.side-body textarea{border:none;border-left:1px solid var(--line);background:transparent;color:var(--ink);resize:none;min-height:100%;overflow:hidden;white-space:pre}
 .pair{list-style:none;margin:0;padding:0;max-height:42vh;overflow-y:auto;border-top:1px solid var(--line)}
 .pair li{padding:8px 2px 10px;border-bottom:1px solid var(--line)}
 .pair .orig{font-size:.88rem;color:var(--muted);margin-bottom:5px;display:flex;gap:8px}
@@ -473,7 +483,7 @@ body[data-view="library"] .transport{display:none}
     </div>
     <div class="songmeta">
       <input id="songTitle" class="song-title" aria-label="歌名" maxlength="60">
-      <input id="songArtist" class="song-artist" aria-label="歌手" maxlength="60" placeholder="歌手／演唱者">
+      <div class="artists" id="artistBox"><input id="songArtist" class="song-artist" aria-label="新增歌手" maxlength="60" placeholder="歌手／演唱者"></div>
       <input id="songYt" class="song-artist" aria-label="YouTube MV 連結" placeholder="YouTube MV 連結（可選）" inputmode="url">
     </div>
   </div>
@@ -616,14 +626,21 @@ body[data-view="library"] .transport{display:none}
     <textarea id="lyText" spellcheck="false" placeholder="[00:12.30]第一句歌詞&#10;[00:16.80]第二句歌詞&#10;&#10;或是每行一句的純文字"></textarea>
     </div>
     <div class="lypane" data-pane="tr" hidden>
-      <p>每句原文下面直接輸入翻譯。也可以按「複製原文」貼到翻譯工具，翻好後用「整段貼上」一次貼回來（一行對應一句）。</p>
+      <p>按「複製原文」貼到翻譯工具，翻好後<strong>直接貼進第一句的翻譯欄</strong>，會自動一句一句往下填；或切到「左右對照」整段貼上，邊貼邊看有沒有對齊。</p>
       <div class="row" style="margin:0 0 8px;gap:8px">
         <button class="btn sm" id="trCopy" type="button">複製原文</button>
-        <button class="chip2" id="trBulk" type="button" aria-pressed="false">整段貼上</button>
+        <button class="chip2" id="trBulk" type="button" aria-pressed="false">左右對照</button>
         <span class="hint" id="trCount" style="margin:0 0 0 auto"></span>
       </div>
       <ol class="pair" id="trList"></ol>
-      <textarea id="trText" spellcheck="false" hidden placeholder="第一句的翻譯&#10;第二句的翻譯"></textarea>
+      <div class="side" id="trSide" hidden>
+        <div class="side-head"><span>原文</span><span>翻譯（一行一句，直接整段貼上）</span></div>
+        <div class="side-body">
+          <div class="side-orig" id="trOrig"></div>
+          <textarea id="trText" spellcheck="false" wrap="off" placeholder="第一句的翻譯&#10;第二句的翻譯"></textarea>
+        </div>
+        <p class="hint" id="trSideNote" style="margin:6px 0 0"></p>
+      </div>
     </div>
     <div class="lypane" data-pane="rb" hidden>
       <p>日文歌可以在漢字上方顯示讀音。按「自動產生」會用日文字典幫每句加上讀音（第一次要下載約 17 MB 的字典）。讀錯的地方可以直接改：寫法是 <code>漢字{よみ}</code>，例如 <code>笑顔{えがお}</code>；漢字和假名混在一起時用 <code>[取り扱い]{とりあつかい}</code>。</p>
@@ -789,14 +806,15 @@ const trackMeta = t => { const { id, kind, name, color, vol, pan, mute, offset, 
 function songSummary(id, title, tracks, artist, x){
   x = x || {};
   const voices = tracks.filter(t => t.kind === 'voice');
-  return { id, title, artist: artist || '', cover: !!x.cover, mv: !!x.yt, lang: x.lang || (Array.isArray(x.tags) && x.tags[0]) || '', order: x.order || 0, created: x.created || Date.now(), updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length };
+  const artists = Array.isArray(x.artists) && x.artists.length ? x.artists.slice() : (artist ? [artist] : []);
+  return { id, title, artist: artists.join('、') || artist || '', artists, cover: !!x.cover, mv: !!x.yt, lang: x.lang || (Array.isArray(x.tags) && x.tags[0]) || '', order: x.order || 0, created: x.created || Date.now(), updated: Date.now(), backing: tracks.some(t => t.kind === 'backing'), guide: tracks.some(t => t.kind === 'guide'), voices: voices.length };
 }
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
     kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', lib: { lang: libLang, sort: libSort, group: libGroup } });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     writeIndex();
@@ -889,7 +907,9 @@ async function initStore(){
 async function loadSong(id){
   const sg = (await kvGet('song:' + id)) || {};
   songId = id; state.tracks = []; state.pos = 0;
-  state.title = sg.title || '新歌曲'; state.artist = sg.artist || '';
+  state.title = sg.title || '新歌曲';
+  state.artists = Array.isArray(sg.artists) && sg.artists.length ? sg.artists.slice() : (sg.artist ? [sg.artist] : []);
+  state.artist = state.artists.join('、');
   state.lang = sg.lang || (Array.isArray(sg.tags) && sg.tags[0]) || ''; state.order = sg.order || 0; state.created = sg.created || Date.now(); state.cover = !!sg.cover;
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.recPart = sg.recPart || '';
@@ -1285,7 +1305,7 @@ function renderLibrary(){
   storageInfo(); renderLangFilter(); renderSortBar();
   const ul = $('#songList'); ul.innerHTML = '';
   const q = ($('#songSearch').value || '').trim().toLowerCase();
-  const list = songs.filter(sg => (!libLang || langKey(sg) === libLang) && (!q || (sg.title || '').toLowerCase().includes(q) || (sg.artist || '').toLowerCase().includes(q) || (sg.lang || '').toLowerCase().includes(q)));
+  const list = songs.filter(sg => (!libLang || langKey(sg) === libLang) && (!q || (sg.title || '').toLowerCase().includes(q) || (sg.artists && sg.artists.length ? sg.artists : [sg.artist || '']).some(a => a.toLowerCase().includes(q)) || (sg.lang || '').toLowerCase().includes(q)));
   $('#songSearch').hidden = songs.length < 3;
   $('#libEmpty').hidden = songs.length > 0;
   $('#libEmpty').textContent = songs.length ? '' : '歌曲庫還是空的。按「新增」，放進伴奏就可以開始唱。';
@@ -1293,7 +1313,7 @@ function renderLibrary(){
   if(songs.length && !list.length){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = libLang ? '這個分類裡沒有符合的歌曲。' : '找不到符合的歌曲。'; ul.appendChild(li); }
   if(libGroup){
     const groups = new Map();
-    list.forEach(sg => { const k = sg.artist || '未填歌手'; (groups.get(k) || groups.set(k, []).get(k)).push(sg); });
+    list.forEach(sg => { const ks = sg.artists && sg.artists.length ? sg.artists : [sg.artist || '未填歌手']; ks.forEach(k => (groups.get(k) || groups.set(k, []).get(k)).push(sg)); });
     [...groups.keys()].sort((a, b) => a.localeCompare(b, 'zh-Hant', { sensitivity: 'base' })).forEach(k => {
       const head = document.createElement('li'); head.className = 'grouphead'; head.textContent = k + '（' + groups.get(k).length + '）';
       ul.appendChild(head);
@@ -1310,7 +1330,7 @@ async function openSong(id, edit){
   if(playing) haltPlayback();
   toast('載入中…');
   await loadSong(id);
-  $('#songTitle').value = state.title; $('#songArtist').value = state.artist; $('#songYt').value = state.yt || ''; renderLang(); renderCover();
+  $('#songTitle').value = state.title; renderArtists(); $('#songYt').value = state.yt || ''; renderLang(); renderCover();
   render(); updateClock();
   const b = backing(); if(b && b.key) applyKey();
   if(edit) showView('studio'); else openStage();
@@ -1361,9 +1381,9 @@ function makeSwipe(li, front, actions, onTap){
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; state.recPart = ''; state.yt = ''; state.mvOffset = 0; state.mvAnchors = []; state.showTr = true; state.showRb = true;
+  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.artists = []; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; state.recPart = ''; state.yt = ''; state.mvOffset = 0; state.mvAnchors = []; state.showTr = true; state.showRb = true;
   saveMeta();
-  $('#songTitle').value = state.title; $('#songArtist').value = ''; $('#songYt').value = ''; renderLang(); renderCover();
+  $('#songTitle').value = state.title; renderArtists(); $('#songYt').value = ''; renderLang(); renderCover();
   showView('studio'); render(); updateClock();
   $('#songTitle').select();
 }
@@ -1385,7 +1405,7 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }
@@ -1628,8 +1648,24 @@ function toLrc(L){
   }).join('\n');
 }
 const timed = () => state.lyrics.some(l => l.t !== null);
+// 歌詞文字框和聲部分工保持同步：分工改了，文字框裡的 A:／B:／& 也跟著改，按儲存才不會被舊文字蓋回去
+let lyTextBase = '';
+function setLyText(v){ $('#lyText').value = v; lyTextBase = v; }
+function syncLyTextFromState(){
+  const ta = $('#lyText');
+  if(!ta || $('#lyricsSheet').hidden) return;
+  if(ta.value === lyTextBase){ setLyText(toLrc(state.lyrics)); return; }
+  const cur = parseLyrics(ta.value);
+  if(cur.length !== state.lyrics.length){ setLyText(toLrc(state.lyrics)); toast('歌詞文字和分工對不上，已改用目前的分工重新顯示'); return; }
+  cur.forEach((l, i) => {
+    const s0 = state.lyrics[i];
+    if(s0.parts && s0.parts.length) l.parts = s0.parts.slice(); else delete l.parts;
+    if(s0.with) l.with = true; else delete l.with;
+  });
+  normalizeGroups(cur); setLyText(toLrc(cur));
+}
 function openLyricsSheet(){
-  $('#lyText').value = toLrc(state.lyrics);
+  setLyText(toLrc(state.lyrics));
   fillLyExtras(); showLyTab('lyr');
   const n = syncStartLine() + 1;
   $('#lyFromHere').textContent = '從第 ' + n + ' 句開始';
@@ -1663,6 +1699,14 @@ function syncWork(){
   });
   work = { lines: cur, tr, rb, ready: true };
 }
+const textIdx = () => work.lines.map((l, i) => (l.text || '').trim() ? i : -1).filter(i => i >= 0);
+function distributeTr(startPos, text){
+  const rows = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean), idx = textIdx();
+  rows.forEach((r, k) => { const li = idx[startPos + k]; if(li !== undefined) work.tr[li] = r; });
+  const left = idx.length - startPos;
+  if(rows.length !== left) toast('貼上 ' + rows.length + ' 行，從這句往下有 ' + left + ' 句' + (rows.length > left ? '，多的已忽略' : '，後面的還空著'));
+  else toast('已填入 ' + rows.length + ' 句翻譯');
+}
 function renderTrList(){
   const box = $('#trList'); box.innerHTML = '';
   work.lines.forEach((l, i) => {
@@ -1672,8 +1716,15 @@ function renderTrList(){
     const t = document.createElement('span'); t.textContent = l.text || '（間奏）';
     o.appendChild(n); o.appendChild(t); li.appendChild(o);
     if((l.text || '').trim()){
-      const inp = document.createElement('input'); inp.value = work.tr[i] || ''; inp.placeholder = '翻譯';
+      const inp = document.createElement('input'); inp.value = work.tr[i] || ''; inp.placeholder = '翻譯（可以直接貼上整段）';
       inp.addEventListener('input', () => { work.tr[i] = inp.value; });
+      inp.addEventListener('paste', e => {
+        const txt = (e.clipboardData || window.clipboardData).getData('text');
+        if(!/\n/.test(txt.trim())) return;
+        e.preventDefault();
+        distributeTr(textIdx().indexOf(i), txt); renderTrList();
+        const ins = $('#trList').querySelectorAll('input'); const me = ins[textIdx().indexOf(i)]; if(me) me.focus();
+      });
       inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); const nx = box.querySelectorAll('input')[[...box.querySelectorAll('input')].indexOf(inp) + 1]; if(nx) nx.focus(); else inp.blur(); } });
       li.appendChild(inp);
     }
@@ -1701,18 +1752,31 @@ function renderRbList(){
   });
   if(!any){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = '這首歌詞裡沒有漢字，不需要讀音。'; box.appendChild(li); }
 }
+// 整段模式：左邊原文、右邊翻譯，一行對一行，邊貼邊看對齊
 function setTrBulk(on){
   if(!on) readBulk();
   $('#trBulk').setAttribute('aria-pressed', on);
-  $('#trText').hidden = !on; $('#trList').hidden = on;
-  if(on){ $('#trText').value = work.lines.map((l, i) => work.tr[i] || '').join('\n'); $('#trText').focus(); }
-  else renderTrList();
+  $('#trSide').hidden = !on; $('#trList').hidden = on;
+  if(on){
+    const idx = textIdx();
+    $('#trText').value = idx.map(i => work.tr[i] || '').join('\n');
+    drawSide(); autoGrowTr(); $('#trText').focus();
+  } else renderTrList();
+}
+function drawSide(){
+  const idx = textIdx(), rows = $('#trText').value.split(/\r?\n/);
+  const box = $('#trOrig'); box.innerHTML = '';
+  idx.forEach((li, k) => {
+    const d = document.createElement('div'); d.className = 'sline' + ((rows[k] || '').trim() ? '' : ' miss');
+    d.textContent = (k + 1) + '. ' + (work.lines[li].text || ''); box.appendChild(d);
+  });
+  const extra = rows.length - idx.length;
+  $('#trSideNote').textContent = extra > 0 && rows.slice(idx.length).some(r => r.trim()) ? '翻譯比原文多了 ' + extra + ' 行，檢查是不是有空行或多翻了一句' : '原文 ' + idx.length + ' 句，翻譯 ' + rows.filter(r => r.trim()).length + ' 句';
 }
 function readBulk(){
-  if($('#trText').hidden) return;
-  const rows = $('#trText').value.split(/\r?\n/);
-  work.lines.forEach((l, i) => { work.tr[i] = (rows[i] || '').trim(); });
-  if(rows.filter(x => x.trim()).length && Math.abs(rows.length - work.lines.length) > 1) toast('貼上 ' + rows.length + ' 行、歌詞有 ' + work.lines.length + ' 句，可能沒對齊，請切回逐句檢查');
+  if($('#trSide').hidden) return;
+  const rows = $('#trText').value.split(/\r?\n/), idx = textIdx();
+  idx.forEach((li, k) => { work.tr[li] = (rows[k] || '').trim(); });
 }
 function showLyTab(tab){
   document.querySelectorAll('.lytabs [data-tab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === tab));
@@ -1870,7 +1934,7 @@ function renderDuet(){
       w.addEventListener('click', e => {
         e.stopPropagation();
         if(l.with) delete l.with; else l.with = true;
-        normalizeGroups(); saveMeta(); renderDuet(); refreshStageParts();
+        normalizeGroups(); saveMeta(); renderDuet(); refreshStageParts(); syncLyTextFromState();
         toast(l.with ? '這句和上一句同時唱，會一起亮起' : '已取消同時唱');
       });
       li.appendChild(w);
@@ -1879,7 +1943,7 @@ function renderDuet(){
       if(!partSel.length){ toast('先在上面選聲部'); return; }
       const cur = partsOf(l).slice().sort().join(), want = partSel.slice().sort().join();
       if(cur === want) delete l.parts; else l.parts = partSel.slice().sort();
-      saveMeta(); renderDuet(); refreshStageParts();
+      saveMeta(); renderDuet(); refreshStageParts(); syncLyTextFromState();
     });
     box.appendChild(li);
   });
@@ -2969,7 +3033,7 @@ async function zipReader(file){
 async function flushSong(){
   if(!songId) return;
   clearTimeout(metaTimer);
-  await kvSet('song:' + songId, { title: state.title, artist: state.artist, cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+  await kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
   songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
   await writeIndex();
 }
@@ -3203,7 +3267,35 @@ $('#songSearch').addEventListener('input', renderLibrary);
 $('#toLibrary').addEventListener('click', backToLibrary);
 $('#delSong').addEventListener('click', deleteSong);
 $('#songTitle').addEventListener('change', e => { state.title = e.target.value.trim() || '未命名歌曲'; e.target.value = state.title; saveMeta(); });
-$('#songArtist').addEventListener('change', e => { state.artist = e.target.value.trim(); saveMeta(); });
+function renderArtists(){
+  const box = $('#artistBox'), inp = $('#songArtist');
+  box.querySelectorAll('.achip').forEach(x => x.remove());
+  (state.artists || []).forEach((a, i) => {
+    const c = document.createElement('span'); c.className = 'achip';
+    const t = document.createElement('span'); t.textContent = a;
+    const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', '移除 ' + a);
+    x.addEventListener('click', () => { state.artists.splice(i, 1); artistsChanged(); });
+    c.appendChild(t); c.appendChild(x); box.insertBefore(c, inp);
+  });
+  inp.placeholder = (state.artists || []).length ? '＋ 再加一位' : '歌手／演唱者（可以加好幾位）';
+}
+function artistsChanged(){
+  state.artist = (state.artists || []).join('、');
+  songs = songs.map(x => x.id === songId ? { ...x, artist: state.artist, artists: state.artists.slice() } : x);
+  saveMeta(); renderArtists();
+}
+function addArtistFromInput(){
+  const inp = $('#songArtist'), v = inp.value.trim(); if(!v) return;
+  if(!state.artists) state.artists = [];
+  v.split(/[、,，]/).map(x => x.trim()).filter(Boolean).forEach(n => { if(!state.artists.includes(n)) state.artists.push(n); });
+  inp.value = ''; artistsChanged();
+}
+$('#songArtist').addEventListener('keydown', e => {
+  if(e.key === 'Enter' || e.key === ',' || e.key === '、'){ e.preventDefault(); addArtistFromInput(); }
+  else if(e.key === 'Backspace' && !e.target.value && (state.artists || []).length){ state.artists.pop(); artistsChanged(); }
+});
+$('#songArtist').addEventListener('change', addArtistFromInput);
+$('#songArtist').addEventListener('blur', addArtistFromInput);
 $('#skipBtn').addEventListener('click', e => { state.skipIntro = !state.skipIntro; e.currentTarget.setAttribute('aria-pressed', state.skipIntro); saveMeta(); applySkip(); toast(state.skipIntro ? '會從第一句前 3 秒開始' : '會從頭開始'); });
 $('#exportBtn').addEventListener('click', exportMix);
 $('#calBtn').addEventListener('click', calibrate);
@@ -3227,9 +3319,11 @@ $('#optTr').addEventListener('click', () => { state.showTr = !state.showTr; save
 $('#optRb').addEventListener('click', () => { state.showRb = !state.showRb; saveMeta(); renderLyrics(); updateStage(true); renderOpts(); });
 document.querySelectorAll('.lytabs [data-tab]').forEach(b => b.addEventListener('click', () => showLyTab(b.dataset.tab)));
 $('#trBulk').addEventListener('click', () => setTrBulk($('#trBulk').getAttribute('aria-pressed') !== 'true'));
+$('#trText').addEventListener('input', () => { autoGrowTr(); drawSide(); });
+function autoGrowTr(){ const t = $('#trText'); t.style.height = 'auto'; t.style.height = Math.max(t.scrollHeight, $('#trOrig').scrollHeight) + 'px'; }
 $('#rbAuto').addEventListener('click', autoRuby);
 $('#trCopy').addEventListener('click', async () => {
-  const txt = parseLyrics($('#lyText').value).map(l => l.text || '').join('\n');
+  const txt = parseLyrics($('#lyText').value).map(l => (l.text || '').trim()).filter(Boolean).join('\n');
   try{ await navigator.clipboard.writeText(txt); toast('已複製 ' + txt.split('\n').length + ' 行原文'); }
   catch(e){ toast('無法存取剪貼簿，請長按原文手動複製'); }
 });
@@ -3284,8 +3378,8 @@ $('#lySync').addEventListener('click', () => startSync(syncFromHere));
 $('#syncSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setSyncRate(+b.dataset.r); });
 $('#lyFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if(f) $('#lyText').value = await f.text(); });
 
-$('#duetAll').addEventListener('click', () => { if(!partSel.length){ toast('先在上面選聲部'); return; } state.lyrics.forEach(l => l.parts = partSel.slice().sort()); saveMeta(); renderDuet(); refreshStageParts(); });
-$('#duetClear').addEventListener('click', () => { state.lyrics.forEach(l => delete l.parts); saveMeta(); renderDuet(); refreshStageParts(); });
+$('#duetAll').addEventListener('click', () => { if(!partSel.length){ toast('先在上面選聲部'); return; } state.lyrics.forEach(l => { if((l.text || '').trim()) l.parts = partSel.slice().sort(); }); saveMeta(); renderDuet(); refreshStageParts(); syncLyTextFromState(); });
+$('#duetClear').addEventListener('click', () => { state.lyrics.forEach(l => delete l.parts); saveMeta(); renderDuet(); refreshStageParts(); syncLyTextFromState(); });
 $('#partPick').addEventListener('click', e => {
   const b = e.target.closest('.partbtn'); if(!b) return;
   const p = b.dataset.p;
