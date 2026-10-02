@@ -634,6 +634,7 @@ body[data-view="library"] .transport{display:none}
       <div class="row" style="margin:0 0 8px;gap:8px">
         <button class="btn sm" id="trCopy" type="button">複製原文</button>
         <button class="chip2" id="trBulk" type="button" aria-pressed="false">整段編輯</button>
+        <button class="chip2" id="trClear" type="button">清除</button>
         <span class="hint" id="trCount" style="margin:0 0 0 auto"></span>
       </div>
       <ol class="pair" id="trList"></ol>
@@ -1759,6 +1760,7 @@ function renderRbList(){
 // 整段模式：左邊原文、右邊翻譯，一行對一行，邊貼邊看對齊
 function setTrBulk(on){
   if(!on) readBulk();
+  bulkOpen = !!on;
   $('#trBulk').setAttribute('aria-pressed', on);
   $('#trSide').hidden = !on; $('#trList').hidden = on;
   if(on){
@@ -1796,7 +1798,7 @@ function caretHint(){
   el.appendChild(b); el.appendChild(t);
 }
 function readBulk(){
-  if($('#trSide').hidden) return;
+  if(!bulkOpen || !work.ready) return;
   const rows = $('#trText').value.split(/\r?\n/), idx = textIdx();
   idx.forEach((li, k) => { work.tr[li] = (rows[k] || '').trim(); });
 }
@@ -1810,7 +1812,11 @@ function showLyTab(tab){
 function fillLyExtras(){
   work = { lines: [], tr: [], rb: [], ready: false };
   $('#rbStatus').textContent = '';
+  // 清掉上一首歌留下的整段編輯內容，免得被當成這首的翻譯
+  bulkOpen = false; $('#trText').value = ''; $('#trSide').hidden = true; $('#trList').hidden = false;
+  $('#trBulk').setAttribute('aria-pressed', 'false'); $('#trList').innerHTML = ''; $('#rbList').innerHTML = '';
 }
+let bulkOpen = false;
 function applyLyExtras(){
   readBulk();
   if(!work.ready) return;
@@ -3340,6 +3346,15 @@ $('#optDone').addEventListener('click', () => closeSheet('#optSheet'));
 $('#optTr').addEventListener('click', () => { state.showTr = !state.showTr; saveMeta(); renderLyrics(); updateStage(true); renderOpts(); });
 $('#optRb').addEventListener('click', () => { state.showRb = !state.showRb; saveMeta(); renderLyrics(); updateStage(true); renderOpts(); });
 document.querySelectorAll('.lytabs [data-tab]').forEach(b => b.addEventListener('click', () => showLyTab(b.dataset.tab)));
+let trClearArmed = null;
+$('#trClear').addEventListener('click', e => {
+  const b = e.currentTarget;
+  if(!trClearArmed){ b.textContent = '確定清除？'; trClearArmed = setTimeout(() => { trClearArmed = null; b.textContent = '清除'; }, 3000); return; }
+  clearTimeout(trClearArmed); trClearArmed = null; b.textContent = '清除';
+  syncWork(); work.tr = work.lines.map(() => '');
+  if(bulkOpen){ $('#trText').value = ''; drawSide(); } else renderTrList();
+  toast('翻譯已清空，按「儲存」後生效');
+});
 $('#trBulk').addEventListener('click', () => setTrBulk($('#trBulk').getAttribute('aria-pressed') !== 'true'));
 $('#trText').addEventListener('input', drawSide);
 $('#trText').addEventListener('scroll', () => { $('#trNums').scrollTop = $('#trText').scrollTop; });
