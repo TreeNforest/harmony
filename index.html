@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Harmonia 和聲本</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="creamfont-3.3.otf" as="font" type="font/otf" crossorigin>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -34,8 +35,9 @@
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:inherit}
 [hidden]{display:none !important}
+@font-face{font-family:"CreamFont";src:url("creamfont-3.3.otf") format("opentype");font-display:swap}
 body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:"LXGW WenKai TC","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  font-family:"CreamFont","LXGW WenKai TC","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
   font-size:17px;line-height:1.65;-webkit-text-size-adjust:100%}
 main{max-width:720px;margin:0 auto;padding:28px 18px 190px}
 h1{margin:0;line-height:1}
@@ -767,9 +769,13 @@ body[data-view="library"] .transport{display:none}
       <button class="chip2" type="button" data-wm="ex" aria-pressed="false">音階跟唱</button>
     </div>
     <div class="wrange" id="wRange">
-      <button class="btn sm" id="wRangeGo" type="button">測我的音域</button>
       <span id="wRangeTxt"></span>
-      <button class="btn sm primary" id="wRangeSave" type="button" hidden>存成我的音域</button>
+      <div class="row" style="gap:6px;width:100%">
+        <button class="btn sm" id="wRangeGo" type="button">測我的音域</button>
+        <button class="btn sm" id="wRangeLo" type="button" hidden>只測最低</button>
+        <button class="btn sm" id="wRangeHi" type="button" hidden>只測最高</button>
+        <button class="btn sm primary" id="wRangeSave" type="button" hidden>儲存</button>
+      </div>
     </div>
     <div id="wEx" hidden>
       <div class="row" style="gap:8px;margin-top:10px">
@@ -1095,7 +1101,9 @@ function wFrame(d, pt){
     const R = W.rng; R.buf.push({ t, m }); while(R.buf.length && t - R.buf[0].t > 0.35) R.buf.shift();
     if(R.buf.length > 12){
       const v = R.buf.map(q => q.m).sort((a, b) => a - b);
-      if(v[v.length - 1] - v[0] < 1){ const med = Math.round(v[v.length >> 1]); if(R.lo === null || med < R.lo) R.lo = med; if(R.hi === null || med > R.hi) R.hi = med; }
+      if(v[v.length - 1] - v[0] < 1){ const med = Math.round(v[v.length >> 1]);
+        if(R.only !== 'hi' && (R.lo === null || med < R.lo)) R.lo = med;
+        if(R.only !== 'lo' && (R.hi === null || med > R.hi)) R.hi = med; }
     }
   } else if(W.rng) W.rng.buf.length = 0;
   if(W.ex){
@@ -1136,9 +1144,25 @@ function wLatencyHint(){
   el.querySelector('span').textContent = state.latencyMs ? '延遲補償 ' + state.latencyMs + ' ms' : '還沒量過延遲，線條會慢半拍';
 }
 function wRangeUI(){
-  const R = W.rng, txt = $('#wRangeTxt');
-  if(R){ txt.textContent = '最低 ' + (R.lo === null ? '—' : noteName(R.lo)) + ' · 最高 ' + (R.hi === null ? '—' : noteName(R.hi)); $('#wRangeGo').textContent = '停止'; $('#wRangeSave').hidden = R.lo === null || R.hi === null || R.lo === R.hi; }
-  else { txt.textContent = typeof state.myLo === 'number' ? '我的音域：' + rangeTxt(state.myLo, state.myHi) : ''; $('#wRangeGo').textContent = '測我的音域'; $('#wRangeSave').hidden = true; }
+  const R = W.rng, txt = $('#wRangeTxt'), has = typeof state.myLo === 'number';
+  if(R){
+    const tag = (v, side) => (v === null ? '—' : noteName(v)) + (R.only && R.only !== side ? '（不變）' : '');
+    txt.textContent = (R.only === 'lo' ? '只測最低音｜' : R.only === 'hi' ? '只測最高音｜' : '') + '最低 ' + tag(R.lo, 'lo') + ' · 最高 ' + tag(R.hi, 'hi');
+    $('#wRangeGo').textContent = '停止'; $('#wRangeGo').hidden = false;
+    $('#wRangeLo').hidden = $('#wRangeHi').hidden = true;
+    const changed = R.only === 'lo' ? R.lo !== null && R.lo !== state.myLo : R.only === 'hi' ? R.hi !== null && R.hi !== state.myHi : R.lo !== null && R.hi !== null && R.lo !== R.hi;
+    $('#wRangeSave').hidden = !changed || R.lo === null || R.hi === null || R.lo >= R.hi;
+  } else {
+    txt.textContent = has ? '我的音域：' + rangeTxt(state.myLo, state.myHi) : '還沒測過音域';
+    $('#wRangeGo').textContent = has ? '全部重測' : '測我的音域';
+    $('#wRangeLo').hidden = $('#wRangeHi').hidden = !has;
+    $('#wRangeSave').hidden = true;
+  }
+}
+function wRangeStart(only){
+  W.rng = { lo: only === 'hi' ? state.myLo : null, hi: only === 'lo' ? state.myHi : null, only: only || null, buf: [] };
+  wRangeUI();
+  toast(only === 'lo' ? '慢慢往下唱，唱到你最低還舒服的音，唱住一下' : only === 'hi' ? '慢慢往上唱，唱到你最高還舒服的音，唱住一下' : '從你舒服的最低音慢慢唱到最高音，每個音唱住一下');
 }
 function wStartEx(){
   wStopEx();
@@ -3509,11 +3533,9 @@ $('#wUp').addEventListener('click', () => { W.start = Math.min(72, W.start + 1);
 $('#wSlow').addEventListener('click', () => { W.slow = !W.slow; wSyncControls(); saveMeta(); });
 $('#wAlong').addEventListener('click', () => { W.along = !W.along; wSyncControls(); saveMeta(); });
 $('#wCal').addEventListener('click', wCalibrate);
-$('#wRangeGo').addEventListener('click', () => {
-  if(W.rng){ W.rng = null; wRangeUI(); return; }
-  W.rng = { lo: null, hi: null, buf: [] }; wRangeUI();
-  toast('從你舒服的最低音慢慢唱到最高音，每個音唱住一下');
-});
+$('#wRangeGo').addEventListener('click', () => { if(W.rng){ W.rng = null; wRangeUI(); return; } wRangeStart(null); });
+$('#wRangeLo').addEventListener('click', () => wRangeStart('lo'));
+$('#wRangeHi').addEventListener('click', () => wRangeStart('hi'));
 $('#wRangeSave').addEventListener('click', () => {
   const R = W.rng; if(!R || R.lo === null || R.hi === null) return;
   state.myLo = R.lo; state.myHi = R.hi; W.rng = null; saveMeta(); wRangeUI();
