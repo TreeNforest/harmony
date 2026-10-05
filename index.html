@@ -128,6 +128,26 @@ body[data-view="library"] .transport{display:none}
 .tn-sub{font-size:.8rem;color:var(--muted);margin-top:6px;min-height:1.2em}
 .wrange{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:.88rem;color:var(--muted)}
 .wrange #wRangeTxt{font-variant-numeric:tabular-nums;color:var(--ink)}
+.expick{display:flex;align-items:center;gap:12px;width:100%;margin-top:10px;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:8px 12px;cursor:pointer;text-align:left;color:var(--ink)}
+.expick-t b{display:block;font-size:1rem}.expick-t small{display:block;color:var(--muted);font-size:.8rem}
+.expick .chev{margin-left:auto;color:var(--muted);font-size:1.3rem}
+.exshape{width:96px;height:40px;flex:none}
+.exshape rect{fill:var(--ink)}
+.exshape.big{width:100%;height:auto;max-height:120px}
+.ex-sheet{max-height:88vh}
+.exgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.excard{border:1px solid var(--line);background:var(--paper);border-radius:16px;padding:12px 10px 10px;cursor:pointer;text-align:left;color:var(--ink)}
+.excard .exshape{width:100%;height:auto;aspect-ratio:120/48}
+.excard b{display:block;margin-top:6px;font-size:.92rem}
+.excard small{color:var(--muted);font-size:.75rem}
+.excard[aria-pressed="true"]{border-color:var(--v1);box-shadow:0 0 0 2px var(--v1) inset}
+.exd-cat{text-align:center;color:var(--muted);font-size:.85rem;letter-spacing:.1em;margin-top:6px}
+.exd-card{border:1px solid var(--line);border-radius:16px;background:var(--paper);padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.exd-sec{margin-top:12px;text-align:center}
+.exd-sec b{display:block;color:var(--muted);font-size:.8rem;letter-spacing:.12em}
+.exd-sec p{margin:.3em 0 0;color:var(--ink)}
+.exf{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
+.exf .wsel{margin-top:4px}
 .wlat{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:.85rem;color:var(--muted)}
 .wlat span{margin-right:auto}
 .wsel{width:100%;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;padding:0 10px}
@@ -778,9 +798,11 @@ body[data-view="library"] .transport{display:none}
       </div>
     </div>
     <div id="wEx" hidden>
-      <div class="row" style="gap:8px;margin-top:10px">
-        <select id="wPattern" class="wsel" aria-label="練習內容"></select>
-      </div>
+      <button class="expick" id="wPick" type="button" aria-label="選擇練習">
+        <svg class="exshape" id="wPickShape" viewBox="0 0 120 48" aria-hidden="true"></svg>
+        <span class="expick-t"><b id="wPickName"></b><small id="wPickCat"></small></span>
+        <span class="chev">›</span>
+      </button>
       <div class="row" style="gap:8px;margin-top:8px">
         <span style="font-size:.9rem;color:var(--muted)">起始音</span>
         <button class="btn sm" id="wDown" type="button" aria-label="起始音降半音">−</button>
@@ -795,6 +817,45 @@ body[data-view="library"] .transport{display:none}
     <p class="ed-hint" id="wHint">上方會顯示你現在唱的音和偏差，綠色代表準。下面的線是你的音高軌跡。</p>
   </div>
 </section>
+
+<div class="back" id="exSheet" hidden>
+  <div class="sheet ex-sheet" role="dialog" aria-modal="true" aria-labelledby="exTitle">
+    <div id="exListPane">
+      <div class="row" style="align-items:center"><h2 id="exTitle" style="margin:0">練習庫</h2><button class="btn sm" id="exNew" type="button" style="margin-left:auto">＋ 自己做</button></div>
+      <div class="tagfilter" id="exCats" style="margin-top:10px"></div>
+      <div class="exgrid" id="exGrid"></div>
+    </div>
+    <div id="exDetailPane" hidden>
+      <button class="back-link" id="exBack" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>練習庫</button>
+      <div class="exd-cat" id="exdCat"></div>
+      <h2 id="exdName" style="text-align:center;margin:.1em 0 .6em"></h2>
+      <div class="exd-card"><svg class="exshape big" id="exdShape" viewBox="0 0 240 90" aria-hidden="true"></svg>
+        <button class="btn sm" id="exdPlay" type="button">▶ 預聽</button></div>
+      <div class="exd-sec"><b>目標</b><p id="exdGoal"></p></div>
+      <div class="exd-sec"><b>怎麼唱</b><p id="exdHow"></p></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn sm" id="exdEdit" type="button" hidden>編輯</button>
+        <button class="btn sm danger-sm" id="exdDel" type="button" hidden>刪除</button>
+        <button class="btn primary" id="exdUse" type="button" style="margin-left:auto">選這個練習</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="back" id="exEditSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="exeTitle">
+    <h2 id="exeTitle">自己做練習</h2>
+    <label class="exf">名稱<input id="exeName" class="wsel" maxlength="20" placeholder="例如：Mum 上下五音"></label>
+    <label class="exf">分類<select id="exeCat" class="wsel"></select></label>
+    <label class="exf">音（簡譜）<input id="exeNotes" class="wsel" spellcheck="false" placeholder="1 2 3 4 5 4 3 2 1-"></label>
+    <p class="hint" style="margin:2px 0 8px">用空白隔開：1～7 是 Do～Si，<code>1'</code> 高八度、<code>5,</code> 低八度，<code>#4</code>／<code>b7</code> 升降半音，<code>0</code> 是休止。後面加 <code>-</code> 多一拍（<code>5--</code> 三拍），加 <code>_</code> 變半拍。</p>
+    <label class="exf">發音<input id="exeSyl" class="wsel" placeholder="Mum（每個音不同就用空白隔開：Ma Me Mi Mo Mu）"></label>
+    <div class="exd-card" style="margin:10px 0"><svg class="exshape big" id="exeShape" viewBox="0 0 240 90" aria-hidden="true"></svg><span class="hint" id="exeInfo" style="margin:0"></span></div>
+    <label class="exf">目標<input id="exeGoal" class="wsel" maxlength="60" placeholder="這個練習想練什麼"></label>
+    <label class="exf">怎麼唱<textarea id="exeHow" class="wsel" rows="2" style="min-height:64px;padding:8px 10px" placeholder="唱的時候要注意什麼"></textarea></label>
+    <div class="row" style="margin-top:12px"><button class="btn" id="exeCancel" type="button">取消</button><button class="btn primary" id="exeSave" type="button" style="margin-left:auto">儲存</button></div>
+  </div>
+</div>
 
 <div class="back" id="optSheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="optTitle">
@@ -874,7 +935,7 @@ function songSummary(id, title, tracks, artist, x){
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
-    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', myLo: state.myLo ?? null, myHi: state.myHi ?? null, rangeFilter: !!rangeFilter, lib: { lang: libLang, artist: libArtist, sort: libSort } });
+    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, customEx: state.customEx || [], lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', myLo: state.myLo ?? null, myHi: state.myHi ?? null, rangeFilter: !!rangeFilter, lib: { lang: libLang, artist: libArtist, sort: libSort } });
     if(!songId) return;
     kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
@@ -912,7 +973,8 @@ function applySettings(st){
   state.myLo = typeof st.myLo === 'number' ? st.myLo : null; state.myHi = typeof st.myHi === 'number' ? st.myHi : null; rangeFilter = !!st.rangeFilter;
   state.gdClientId = st.gdClientId || ''; state.gdFileId = st.gdFileId || '';
   if(st.lib){ libLang = st.lib.lang || ''; libArtist = st.lib.artist || ''; libSort = st.lib.sort || 'name'; }
-  if(st.warm){ Object.assign(W, { start: st.warm.start ?? W.start, pattern: st.warm.pattern ?? 0, slow: !!st.warm.slow, along: !!st.warm.along }); }
+  if(st.warm){ Object.assign(W, { start: st.warm.start ?? W.start, pattern: st.warm.pattern ?? 'mum5', slow: !!st.warm.slow, along: !!st.warm.along }); if(typeof W.pattern === 'number') W.pattern = ['mum5', 'ah135', 'gug8', 'hoo', 'ya3'][W.pattern] || 'mum5'; }
+  state.customEx = Array.isArray(st.customEx) ? st.customEx : [];
 }
 let removedIds = new Set();
 async function writeIndex(){
@@ -1044,21 +1106,43 @@ const isBlack = m => [1, 3, 6, 8, 10].includes(((m % 12) + 12) % 12);
 function rrect(g, x, y, w, h, r){ r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
 /* ---------- 暖聲練習 ---------- */
-const W = { tick: true, cap: null, trail: [], recent: [], cur: null, sy: null, rowH: 22, lo: 33, hi: 88, pps: 70, mode: 'free', ex: null, shown: null, pattern: 0, start: 48, slow: false, along: false, raf: 0 };
-const PATTERNS = [
-  { name: '五音音階　1-2-3-4-5-4-3-2-1', s: [0, 2, 4, 5, 7, 5, 4, 2, 0] },
-  { name: '大三和弦　1-3-5-8-5-3-1', s: [0, 4, 7, 12, 7, 4, 0] },
-  { name: '八度跳音　1-8-1', s: [0, 12, 0], len: 1.2 },
-  { name: '長音穩定　1（每音 3 秒）', s: [0], len: 3 },
-  { name: '三度上行　1-3-2-4-3-5-4-2-1', s: [0, 4, 2, 5, 4, 7, 5, 2, 0] }
+const W = { pattern: 'mum5', tick: true, cap: null, trail: [], recent: [], cur: null, sy: null, rowH: 24, lo: 33, hi: 88, pps: 95, mode: 'free', ex: null, shown: null, pattern: 0, start: 48, slow: false, along: false, raf: 0 };
+// ---- 練習庫：每個練習＝音（半音位移）＋拍數＋發音 ----
+const EX_CATS = ['暖身', '音色', '音域', '靈活', '氣息', '我的'];
+const exN = (arr, y, b) => arr.map((v, i) => ({ s: v, b: Array.isArray(b) ? b[i] : (b || 1), y: Array.isArray(y) ? y[i % y.length] : y }));
+const EX_BUILTIN = [
+  { id: 'hum5', name: '閉口哼鳴', cat: '暖身', notes: exN([0, 2, 4, 5, 7, 5, 4, 2, 0], 'Mm', [1, 1, 1, 1, 1, 1, 1, 1, 2]),
+    goal: '用最輕鬆的方式把聲帶喚醒。', how: '嘴唇輕輕閉上哼，感覺鼻子和嘴唇附近有細細的振動，不要用力推聲音。' },
+  { id: 'trill', name: '唇顫滑音', cat: '暖身', notes: exN([0, 7, 12, 7, 0], 'Brr', [1, 1, 2, 1, 2]),
+    goal: '讓氣息和聲帶協調，平順地滑過高低音。', how: '雙唇放鬆、像小馬噴氣一樣「嘟嚕」，音和音之間用滑的連起來，不要斷開。' },
+  { id: 'mum5', name: 'Mum 上下五音', cat: '音色', notes: exN([0, 2, 4, 5, 7, 5, 4, 2, 0], 'Mum', [1, 1, 1, 1, 1, 1, 1, 1, 2]),
+    goal: '讓聲音集中在嘴唇前方，音色溫暖不緊繃。', how: '每個音都從閉口的 M 開始，再打開成 um，下巴保持放鬆，嘴唇有點麻麻的就對了。' },
+  { id: 'nay', name: 'Nay 明亮下行', cat: '音色', notes: exN([7, 5, 4, 2, 0], 'Nay', [1, 1, 1, 1, 2]),
+    goal: '找到明亮、往前的聲音位置。', how: '像小羊叫一樣有點鼻音地唱 Nay，往下走時保持同樣的亮度，不要越唱越暗。' },
+  { id: 'vowel', name: '五母音同音', cat: '音色', notes: exN([0, 0, 0, 0, 0], ['Ma', 'Me', 'Mi', 'Mo', 'Mu'], [1, 1, 1, 1, 2]),
+    goal: '讓每個母音的位置和音色一致。', how: '同一個音換五個母音，嘴型變化但喉嚨和聲音的位置不要跟著跑。' },
+  { id: 'ah135', name: 'Ah 大三和弦', cat: '音域', notes: exN([0, 4, 7, 12, 7, 4, 0], 'Ah', [1, 1, 1, 2, 1, 1, 2]),
+    goal: '平順地跨過換聲的地方，高音不卡。', how: '往上時想像聲音往後上方拋出去，不要把下巴抬高；最高音唱住一下再回來。' },
+  { id: 'gug8', name: 'Gug 八度跳', cat: '音域', notes: exN([0, 12, 7, 4, 0], 'Gug', [1, 2, 1, 1, 2]),
+    goal: '用 G 的阻力幫助聲帶閉合，穩定地接上高音。', how: '每個 Gug 都短短乾脆，跳到高音時不要用喊的，保持跟低音一樣的感覺。' },
+  { id: 'wee9', name: 'Wee 九度音階', cat: '音域', notes: exN([0, 2, 4, 5, 7, 9, 11, 12, 14, 12, 11, 9, 7, 5, 4, 2, 0], 'Wee', [.5, .5, .5, .5, .5, .5, .5, .5, 1, .5, .5, .5, .5, .5, .5, .5, 1.5]),
+    goal: '一口氣走完較大的音域，練習音和音的連貫。', how: '音很多，先開慢速；Wee 的嘴型窄，聲音比較容易保持在前面。' },
+  { id: 'ya3', name: 'Ya 三度跳進', cat: '靈活', notes: exN([0, 4, 2, 5, 4, 7, 5, 2, 0], 'Ya', [.5, .5, .5, .5, .5, .5, .5, .5, 1.5]),
+    goal: '讓音準在快速跳動時也能精準。', how: '每個 Ya 都清楚但不要重，想像在跳石頭過河，一顆一顆踩準。' },
+  { id: 'ha', name: 'Ha 斷奏', cat: '靈活', notes: exN([0, null, 4, null, 7, null, 4, null, 0], 'Ha', [.5, .5, .5, .5, .5, .5, .5, .5, 1]),
+    goal: '用腹部的推力讓每個音乾淨地開始。', how: '每個 Ha 用肚子輕輕彈一下，音和音之間要真的停住。' },
+  { id: 'hoo', name: 'Hoo 長音', cat: '氣息', notes: exN([0, 2, 4], 'Hoo', [4, 4, 4]),
+    goal: '讓氣息穩定，長音不晃。', how: '吸飽氣後慢慢放，盯著上面的線保持一條直線，音量從頭到尾一樣。' }
 ];
+const exAll = () => [...EX_BUILTIN, ...(state.customEx || [])];
+const exById = id => exAll().find(e => e.id === id) || EX_BUILTIN[0];
+const exLen = e => e.notes.reduce((a, n) => a + n.b, 0);
 let wCv = null, wG = null, wW = 0, wH = 0;
 async function wOpen(){
   if(playing) haltPlayback();
   $('#warm').hidden = false; document.body.style.overflow = 'hidden';
   wSize(); W.trail = []; W.recent = []; W.cur = null; W.sy = null; W.shown = null;
-  $('#wPattern').innerHTML = PATTERNS.map((p, i) => '<option value="' + i + '">' + p.name + '</option>').join('');
-  $('#wPattern').value = W.pattern; wSyncControls(); wLatencyHint(); $('#wTick').setAttribute('aria-pressed', W.tick !== false);
+  renderExPick(); wSyncControls(); wLatencyHint(); $('#wTick').setAttribute('aria-pressed', W.tick !== false);
   const c = ac();
   try{ const st = await getMic(); if($('#warm').hidden) return stopMic(); W.cap = startCapture(c, st, false, 512); W.cap.onFrame = wFrame; }
   catch(e){ micError(e); }
@@ -1164,24 +1248,145 @@ function wRangeStart(only){
   wRangeUI();
   toast(only === 'lo' ? '慢慢往下唱，唱到你最低還舒服的音，唱住一下' : only === 'hi' ? '慢慢往上唱，唱到你最高還舒服的音，唱住一下' : '從你舒服的最低音慢慢唱到最高音，每個音唱住一下');
 }
+function exShapeSVG(svg, E){
+  const W0 = +svg.viewBox.baseVal.width, H0 = +svg.viewBox.baseVal.height, pad = H0 * 0.12;
+  const ns = E.notes.filter(n => n.s !== null), total = exLen(E) || 1;
+  if(!ns.length){ svg.innerHTML = ''; return; }
+  const lo = Math.min(...ns.map(n => n.s)), hi = Math.max(...ns.map(n => n.s)), span = Math.max(4, hi - lo);
+  const bh = Math.max(3, H0 * 0.08); let x = 0, out = '';
+  E.notes.forEach(n => {
+    const w = n.b / total * (W0 - pad * 2);
+    if(n.s !== null){
+      const y = pad + (1 - (n.s - lo) / span) * (H0 - pad * 2 - bh);
+      out += '<rect x="' + (pad + x + 1).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + Math.max(2, w - 2).toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="' + (bh / 2).toFixed(1) + '"/>';
+    }
+    x += w;
+  });
+  svg.innerHTML = out;
+}
+function renderExPick(){
+  const E = exById(W.pattern);
+  $('#wPickName').textContent = E.name;
+  $('#wPickCat').textContent = E.cat + '・發音 ' + [...new Set(E.notes.map(n => n.y).filter(Boolean))].join(' ');
+  exShapeSVG($('#wPickShape'), E);
+}
+let exCat = '全部', exCur = null;
+function renderExGrid(){
+  const cats = $('#exCats'); cats.innerHTML = '';
+  ['全部', ...EX_CATS].forEach(c => {
+    if(c === '我的' && !(state.customEx || []).length) return;
+    chip(cats, c, exCat === c, () => { exCat = c; renderExGrid(); });
+  });
+  const grid = $('#exGrid'); grid.innerHTML = '';
+  exAll().filter(e => exCat === '全部' || (exCat === '我的' ? e.custom : e.cat === exCat)).forEach(E => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'excard';
+    b.setAttribute('aria-pressed', E.id === W.pattern);
+    b.innerHTML = '<svg class="exshape" viewBox="0 0 120 48" aria-hidden="true"></svg><b></b><small></small>';
+    exShapeSVG(b.querySelector('svg'), E);
+    b.querySelector('b').textContent = E.name; b.querySelector('small').textContent = E.cat + (E.custom ? '・自製' : '');
+    b.addEventListener('click', () => exDetail(E));
+    grid.appendChild(b);
+  });
+}
+function exDetail(E){
+  exCur = E;
+  $('#exListPane').hidden = true; $('#exDetailPane').hidden = false;
+  $('#exdCat').textContent = E.cat; $('#exdName').textContent = E.name;
+  exShapeSVG($('#exdShape'), E);
+  $('#exdGoal').textContent = E.goal || '—'; $('#exdHow').textContent = E.how || '—';
+  $('#exdEdit').hidden = $('#exdDel').hidden = !E.custom;
+  $('#exdDel').textContent = '刪除';
+}
+function exList(){ $('#exListPane').hidden = false; $('#exDetailPane').hidden = true; exStopPreview(); renderExGrid(); }
+let exPrev = [];
+function exStopPreview(){ exPrev.forEach(o => { try{ o.stop(); }catch(e){} }); exPrev = []; }
+function exPreview(E){
+  exStopPreview();
+  const c = ac(), beat = W.slow ? 0.75 : 0.5; let t = c.currentTime + 0.1;
+  E.notes.forEach(n => { const d = n.b * beat; if(n.s !== null) exPrev.push(...wTone(c, W.start + n.s, t, d * 0.95, 0.22)); t += d; });
+}
+// 簡譜解析：1~7、' 高八度、, 低八度、#/b、0 休止、- 加拍、_ 半拍
+const DEG = [0, 2, 4, 5, 7, 9, 11];
+function parseExNotes(str, syl){
+  const toks = str.trim().split(/\s+/).filter(Boolean), sy = syl.trim().split(/\s+/).filter(Boolean);
+  const out = []; let k = 0;
+  for(const tk of toks){
+    const m = tk.match(/^([#b♯♭]?)([0-7])(['’,]*)([-_]*)$/);
+    if(!m) throw new Error('看不懂「' + tk + '」');
+    let b = 1 + (m[4].match(/-/g) || []).length; const halves = (m[4].match(/_/g) || []).length; b = b / Math.pow(2, halves);
+    if(m[2] === '0'){ out.push({ s: null, b }); continue; }
+    let v = DEG[+m[2] - 1] + (m[1] === '#' || m[1] === '♯' ? 1 : m[1] ? -1 : 0);
+    v += 12 * ((m[3].match(/['’]/g) || []).length - (m[3].match(/,/g) || []).length);
+    out.push({ s: v, b, y: sy.length ? sy[Math.min(k, sy.length - 1)] : '' }); k++;
+  }
+  if(!out.some(n => n.s !== null)) throw new Error('至少要有一個音');
+  return out;
+}
+function toJianpu(notes){
+  return notes.map(n => {
+    const b = n.b >= 1 ? '-'.repeat(Math.round(n.b) - 1) : '_'.repeat(Math.round(Math.log2(1 / n.b)));
+    if(n.s === null) return '0' + b;
+    let v = n.s, oct = Math.floor(v / 12); v -= oct * 12;
+    let i = DEG.indexOf(v), acc = '';
+    if(i < 0){ i = DEG.indexOf(v - 1); acc = '#'; }
+    return acc + (i + 1) + (oct > 0 ? "'".repeat(oct) : ','.repeat(-oct)) + b;
+  }).join(' ');
+}
+function sylString(notes){
+  const ys = notes.filter(n => n.s !== null).map(n => n.y || '');
+  return ys.every(y => y === ys[0]) ? ys[0] : ys.join(' ');
+}
+let exEditing = null;
+function exEdit(E){
+  exEditing = E || null;
+  $('#exeTitle').textContent = E ? '編輯練習' : '自己做練習';
+  $('#exeCat').innerHTML = EX_CATS.filter(c => c !== '我的').map(c => '<option>' + c + '</option>').join('');
+  $('#exeName').value = E ? E.name : ''; $('#exeCat').value = E ? E.cat : '暖身';
+  $('#exeNotes').value = E ? toJianpu(E.notes) : '1 2 3 4 5 4 3 2 1-';
+  $('#exeSyl').value = E ? sylString(E.notes) : 'Mum';
+  $('#exeGoal').value = E ? E.goal || '' : ''; $('#exeHow').value = E ? E.how || '' : '';
+  closeSheet('#exSheet'); openSheet('#exEditSheet'); exEditPreview();
+}
+function exEditPreview(){
+  try{
+    const notes = parseExNotes($('#exeNotes').value, $('#exeSyl').value);
+    exShapeSVG($('#exeShape'), { notes });
+    const ns = notes.filter(n => n.s !== null), lo = Math.min(...ns.map(n => n.s)), hi = Math.max(...ns.map(n => n.s));
+    $('#exeInfo').textContent = ns.length + ' 個音・跨 ' + (hi - lo) + ' 個半音・' + exLen({ notes }) + ' 拍';
+    return notes;
+  }catch(e){ $('#exeInfo').textContent = e.message; $('#exeShape').innerHTML = ''; return null; }
+}
+function exEditSave(){
+  const notes = exEditPreview(); if(!notes){ toast('音的寫法有問題，看一下預覽下方的提示'); return; }
+  const name = $('#exeName').value.trim() || '我的練習';
+  const E = { id: exEditing ? exEditing.id : 'c' + Date.now().toString(36), name, cat: $('#exeCat').value, notes, goal: $('#exeGoal').value.trim(), how: $('#exeHow').value.trim(), custom: true };
+  state.customEx = (state.customEx || []).filter(x => x.id !== E.id).concat(E);
+  saveMeta(); closeSheet('#exEditSheet');
+  W.pattern = E.id; renderExPick(); toast('已儲存「' + name + '」');
+}
 function wStartEx(){
   wStopEx();
-  const c = ac(), P = PATTERNS[W.pattern], beat = P.len || (W.slow ? 0.75 : 0.5);
+  const c = ac(), E = exById(W.pattern), beat = W.slow ? 0.75 : 0.5;
   let t = c.currentTime + 0.8; const notes = [], oscs = [];
-  for(let r = 0; r < 6; r++){
+  const rounds = exLen(E) > 10 ? 4 : 6;
+  for(let r = 0; r < rounds; r++){
     const root = W.start + r;
     if(!W.along){
-      P.s.forEach(k => { oscs.push(...wTone(c, root + k, t, beat * 0.95, 0.22)); notes.push({ t0: t, t1: t + beat, m: root + k, demo: true }); t += beat; });
+      E.notes.forEach(n => { const d = n.b * beat; if(n.s !== null){ oscs.push(...wTone(c, root + n.s, t, d * 0.95, 0.22)); notes.push({ t0: t, t1: t + d, m: root + n.s, y: n.y, demo: true }); } t += d; });
       t += Math.max(0.5, beat);
     }
-    P.s.forEach(k => {
-      if(W.along) oscs.push(...wTone(c, root + k, t, beat * 0.95, 0.13));
-      else if(W.tick) oscs.push(wTick(c, t));
-      notes.push({ t0: t, t1: t + beat, m: root + k, demo: false, hit: 0, total: 0 }); t += beat;
+    E.notes.forEach(n => {
+      const d = n.b * beat;
+      if(n.s !== null){
+        if(W.along) oscs.push(...wTone(c, root + n.s, t, d * 0.95, 0.13));
+        else if(W.tick) oscs.push(wTick(c, t));
+        notes.push({ t0: t, t1: t + d, m: root + n.s, y: n.y, demo: false, hit: 0, total: 0 });
+      }
+      t += d;
     });
     t += Math.max(0.6, beat * 1.2);
   }
-  W.ex = { notes, oscs, end: t, P }; W.shown = W.ex;
+  W.ex = { notes, oscs, end: t, E }; W.shown = W.ex;
   $('#wGo').textContent = '停止'; $('#wResult').textContent = '';
 }
 function wStopEx(){
@@ -1239,10 +1444,11 @@ function wDraw(now, cur){
     for(const n of ex.notes){
       const x0 = X(n.t0), x1 = X(n.t1); if(x1 < GW || x0 > w) continue;
       const y = rowY(n.m) + 3, hh = W.rowH - 6;
-      if(n.demo){ g.strokeStyle = C('--muted'); g.lineWidth = 1.5; rrect(g, x0 + 1, y, x1 - x0 - 2, hh, 5); g.stroke(); continue; }
+      const sy = () => { if(!n.y || x1 - x0 < 22) return; g.save(); g.font = '600 11px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = n.demo ? C('--muted') : '#fff'; g.fillText(n.y, (x0 + x1) / 2, y + hh / 2 + .5); g.restore(); };
+      if(n.demo){ g.strokeStyle = C('--muted'); g.lineWidth = 1.5; rrect(g, x0 + 1, y, x1 - x0 - 2, hh, 5); g.stroke(); sy(); continue; }
       let col = C('--v1'), alpha = 0.55;
       if(n.t1 < now && n.total){ const r = n.hit / n.total; col = r >= 0.6 ? C('--v1') : C('--rec'); alpha = 0.9; }
-      g.globalAlpha = alpha; g.fillStyle = col; rrect(g, x0 + 1, y, x1 - x0 - 2, hh, 5); g.fill(); g.globalAlpha = 1;
+      g.globalAlpha = alpha; g.fillStyle = col; rrect(g, x0 + 1, y, x1 - x0 - 2, hh, 5); g.fill(); g.globalAlpha = 1; sy();
     }
   }
   g.strokeStyle = C('--ink'); g.lineWidth = 2.2; g.lineJoin = 'round'; g.beginPath();
@@ -3527,7 +3733,23 @@ $('#coverFile').addEventListener('change', e => { const f = e.target.files[0]; e
 $('#coverDel').addEventListener('click', removeCover);
 $('#wClose').addEventListener('click', wClose);
 document.querySelectorAll('[data-wm]').forEach(b => b.addEventListener('click', () => { W.mode = b.dataset.wm; if(W.mode === 'free') wStopEx(); wSyncControls(); }));
-$('#wPattern').addEventListener('change', e => { W.pattern = +e.target.value; saveMeta(); });
+$('#wPick').addEventListener('click', () => { if(W.ex) wStopEx(); exList(); openSheet('#exSheet'); });
+$('#exBack').addEventListener('click', exList);
+$('#exdPlay').addEventListener('click', () => exCur && exPreview(exCur));
+$('#exdUse').addEventListener('click', () => { if(!exCur) return; W.pattern = exCur.id; saveMeta(); renderExPick(); exStopPreview(); closeSheet('#exSheet'); toast('已選「' + exCur.name + '」，按開始練習'); });
+$('#exNew').addEventListener('click', () => exEdit(null));
+$('#exdEdit').addEventListener('click', () => exCur && exEdit(exCur));
+$('#exdDel').addEventListener('click', e => {
+  const b = e.currentTarget;
+  if(b.textContent !== '確定刪除？'){ b.textContent = '確定刪除？'; setTimeout(() => b.textContent = '刪除', 3000); return; }
+  state.customEx = (state.customEx || []).filter(x => x.id !== exCur.id);
+  if(W.pattern === exCur.id) W.pattern = 'mum5';
+  saveMeta(); renderExPick(); exList();
+});
+['#exeNotes', '#exeSyl'].forEach(id => $(id).addEventListener('input', exEditPreview));
+$('#exeSave').addEventListener('click', exEditSave);
+$('#exeCancel').addEventListener('click', () => { closeSheet('#exEditSheet'); openSheet('#exSheet'); exList(); });
+
 $('#wDown').addEventListener('click', () => { W.start = Math.max(36, W.start - 1); wSyncControls(); saveMeta(); });
 $('#wUp').addEventListener('click', () => { W.start = Math.min(72, W.start + 1); wSyncControls(); saveMeta(); });
 $('#wSlow').addEventListener('click', () => { W.slow = !W.slow; wSyncControls(); saveMeta(); });
