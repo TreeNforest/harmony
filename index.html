@@ -146,6 +146,13 @@ body[data-view="library"] .transport{display:none}
 .exd-sec{margin-top:12px;text-align:center}
 .exd-sec b{display:block;color:var(--muted);font-size:.8rem;letter-spacing:.12em}
 .exd-sec p{margin:.3em 0 0;color:var(--ink)}
+.linkbtn{border:none;background:none;color:var(--v1);font:inherit;font-size:.85rem;padding:6px 2px;cursor:pointer}
+.catlist{list-style:none;margin:0;padding:0}
+.catlist li{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--line)}
+.catlist input{flex:1;min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:inherit;padding:0 10px}
+.catlist .cnt{font-size:.78rem;color:var(--muted);min-width:3.2em;text-align:right}
+.catlist button{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;flex:none}
+.catlist button:disabled{opacity:.3}
 .exf{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
 .exf .wsel{margin-top:4px}
 .wlat{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:.85rem;color:var(--muted)}
@@ -823,7 +830,19 @@ body[data-view="library"] .transport{display:none}
     <div id="exListPane">
       <div class="row" style="align-items:center"><h2 id="exTitle" style="margin:0">練習庫</h2><button class="btn sm" id="exNew" type="button" style="margin-left:auto">＋ 自己做</button></div>
       <div class="tagfilter" id="exCats" style="margin-top:10px"></div>
+      <button class="linkbtn" id="exCatManage" type="button">管理分類</button>
       <div class="exgrid" id="exGrid"></div>
+    </div>
+    <div id="exCatPane" hidden>
+      <button class="back-link" id="exCatBack" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>練習庫</button>
+      <h2 style="margin:.4em 0 .2em">管理分類</h2>
+      <p class="hint" style="margin:0 0 8px">直接改名字；用箭頭調整順序。刪除分類時，裡面的練習會變成「未分類」，不會被刪掉。</p>
+      <ol class="catlist" id="exCatList"></ol>
+      <div class="row" style="gap:8px;margin-top:10px"><input id="exCatNew" class="wsel" maxlength="10" placeholder="新分類名稱" style="flex:1"><button class="btn sm" id="exCatAdd" type="button">新增</button></div>
+      <div class="row" style="gap:8px;margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+        <button class="btn sm" id="exRestore" type="button">找回內建練習</button>
+        <span class="hint" id="exRestoreInfo" style="margin:0"></span>
+      </div>
     </div>
     <div id="exDetailPane" hidden>
       <button class="back-link" id="exBack" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg>練習庫</button>
@@ -836,6 +855,7 @@ body[data-view="library"] .transport{display:none}
       <div class="row" style="margin-top:12px">
         <button class="btn sm" id="exdEdit" type="button" hidden>編輯</button>
         <button class="btn sm danger-sm" id="exdDel" type="button" hidden>刪除</button>
+        <button class="btn sm" id="exdReset" type="button" hidden>還原預設</button>
         <button class="btn primary" id="exdUse" type="button" style="margin-left:auto">選這個練習</button>
       </div>
     </div>
@@ -935,7 +955,7 @@ function songSummary(id, title, tracks, artist, x){
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
-    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, customEx: state.customEx || [], lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', myLo: state.myLo ?? null, myHi: state.myHi ?? null, rangeFilter: !!rangeFilter, lib: { lang: libLang, artist: libArtist, sort: libSort } });
+    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, exLib: state.exLib || null, exCats: state.exCats || null, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', myLo: state.myLo ?? null, myHi: state.myHi ?? null, rangeFilter: !!rangeFilter, lib: { lang: libLang, artist: libArtist, sort: libSort } });
     if(!songId) return;
     kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
@@ -975,6 +995,8 @@ function applySettings(st){
   if(st.lib){ libLang = st.lib.lang || ''; libArtist = st.lib.artist || ''; libSort = st.lib.sort || 'name'; }
   if(st.warm){ Object.assign(W, { start: st.warm.start ?? W.start, pattern: st.warm.pattern ?? 'mum5', slow: !!st.warm.slow, along: !!st.warm.along }); if(typeof W.pattern === 'number') W.pattern = ['mum5', 'ah135', 'gug8', 'hoo', 'ya3'][W.pattern] || 'mum5'; }
   state.customEx = Array.isArray(st.customEx) ? st.customEx : [];
+  state.exLib = Array.isArray(st.exLib) ? st.exLib : null;
+  state.exCats = Array.isArray(st.exCats) && st.exCats.length ? st.exCats : null;
 }
 let removedIds = new Set();
 async function writeIndex(){
@@ -1108,7 +1130,7 @@ function rrect(g, x, y, w, h, r){ r = Math.min(r, w / 2, h / 2); g.beginPath(); 
 /* ---------- 暖聲練習 ---------- */
 const W = { pattern: 'mum5', tick: true, cap: null, trail: [], recent: [], cur: null, sy: null, rowH: 24, lo: 33, hi: 88, pps: 95, mode: 'free', ex: null, shown: null, pattern: 0, start: 48, slow: false, along: false, raf: 0 };
 // ---- 練習庫：每個練習＝音（半音位移）＋拍數＋發音 ----
-const EX_CATS = ['暖身', '音色', '音域', '靈活', '氣息', '我的'];
+const EX_CATS_DEFAULT = ['暖身', '音色', '音域', '靈活', '氣息'];
 const exN = (arr, y, b) => arr.map((v, i) => ({ s: v, b: Array.isArray(b) ? b[i] : (b || 1), y: Array.isArray(y) ? y[i % y.length] : y }));
 const EX_BUILTIN = [
   { id: 'hum5', name: '閉口哼鳴', cat: '暖身', notes: exN([0, 2, 4, 5, 7, 5, 4, 2, 0], 'Mm', [1, 1, 1, 1, 1, 1, 1, 1, 2]),
@@ -1134,8 +1156,18 @@ const EX_BUILTIN = [
   { id: 'hoo', name: 'Hoo 長音', cat: '氣息', notes: exN([0, 2, 4], 'Hoo', [4, 4, 4]),
     goal: '讓氣息穩定，長音不晃。', how: '吸飽氣後慢慢放，盯著上面的線保持一條直線，音量從頭到尾一樣。' }
 ];
-const exAll = () => [...EX_BUILTIN, ...(state.customEx || [])];
-const exById = id => exAll().find(e => e.id === id) || EX_BUILTIN[0];
+const exClone = e => JSON.parse(JSON.stringify(e));
+function exLib(){
+  if(!Array.isArray(state.exLib)){
+    state.exLib = EX_BUILTIN.map(e => ({ ...exClone(e), builtin: true })).concat((state.customEx || []).map(exClone));
+  }
+  return state.exLib;
+}
+const exCats = () => (Array.isArray(state.exCats) && state.exCats.length ? state.exCats : (state.exCats = EX_CATS_DEFAULT.slice()));
+const exAll = () => exLib();
+const exById = id => exLib().find(e => e.id === id) || exLib()[0] || EX_BUILTIN[0];
+const exDefault = id => EX_BUILTIN.find(e => e.id === id);
+const exChanged = E => { const d = exDefault(E.id); if(!d) return false; const a = exClone(E); delete a.builtin; return JSON.stringify(a) !== JSON.stringify(d); };
 const exLen = e => e.notes.reduce((a, n) => a + n.b, 0);
 let wCv = null, wG = null, wW = 0, wH = 0;
 async function wOpen(){
@@ -1273,17 +1305,19 @@ function renderExPick(){
 let exCat = '全部', exCur = null;
 function renderExGrid(){
   const cats = $('#exCats'); cats.innerHTML = '';
-  ['全部', ...EX_CATS].forEach(c => {
-    if(c === '我的' && !(state.customEx || []).length) return;
-    chip(cats, c, exCat === c, () => { exCat = c; renderExGrid(); });
-  });
+  const list = exCats(), orphan = exAll().some(e => !list.includes(e.cat)), mine = exAll().some(e => !e.builtin);
+  const chipsList = ['全部', ...list, ...(orphan ? ['未分類'] : []), ...(mine ? ['自製'] : [])];
+  if(!chipsList.includes(exCat)) exCat = '全部';
+  chipsList.forEach(c => chip(cats, c, exCat === c, () => { exCat = c; renderExGrid(); }));
   const grid = $('#exGrid'); grid.innerHTML = '';
-  exAll().filter(e => exCat === '全部' || (exCat === '我的' ? e.custom : e.cat === exCat)).forEach(E => {
+  const shown = exAll().filter(e => exCat === '全部' || (exCat === '自製' ? !e.builtin : exCat === '未分類' ? !list.includes(e.cat) : e.cat === exCat));
+  if(!shown.length){ const p = document.createElement('p'); p.className = 'hint'; p.textContent = '這個分類還沒有練習。'; grid.appendChild(p); }
+  shown.forEach(E => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'excard';
     b.setAttribute('aria-pressed', E.id === W.pattern);
     b.innerHTML = '<svg class="exshape" viewBox="0 0 120 48" aria-hidden="true"></svg><b></b><small></small>';
     exShapeSVG(b.querySelector('svg'), E);
-    b.querySelector('b').textContent = E.name; b.querySelector('small').textContent = E.cat + (E.custom ? '・自製' : '');
+    b.querySelector('b').textContent = E.name; b.querySelector('small').textContent = (exCats().includes(E.cat) ? E.cat : '未分類') + (!E.builtin ? '・自製' : exChanged(E) ? '・已修改' : '');
     b.addEventListener('click', () => exDetail(E));
     grid.appendChild(b);
   });
@@ -1294,10 +1328,39 @@ function exDetail(E){
   $('#exdCat').textContent = E.cat; $('#exdName').textContent = E.name;
   exShapeSVG($('#exdShape'), E);
   $('#exdGoal').textContent = E.goal || '—'; $('#exdHow').textContent = E.how || '—';
-  $('#exdEdit').hidden = $('#exdDel').hidden = !E.custom;
+  $('#exdEdit').hidden = $('#exdDel').hidden = false;
   $('#exdDel').textContent = '刪除';
+  $('#exdReset').hidden = !(E.builtin && exChanged(E));
 }
-function exList(){ $('#exListPane').hidden = false; $('#exDetailPane').hidden = true; exStopPreview(); renderExGrid(); }
+function exList(){ $('#exListPane').hidden = false; $('#exDetailPane').hidden = true; $('#exCatPane').hidden = true; exStopPreview(); renderExGrid(); }
+function exCatPane(){
+  $('#exListPane').hidden = true; $('#exDetailPane').hidden = true; $('#exCatPane').hidden = false;
+  const ol = $('#exCatList'); ol.innerHTML = ''; const L = exCats();
+  L.forEach((c, i) => {
+    const li = document.createElement('li');
+    const inp = document.createElement('input'); inp.value = c; inp.maxLength = 10; inp.setAttribute('aria-label', '分類名稱');
+    inp.addEventListener('change', () => {
+      const v = inp.value.trim();
+      if(!v || (v !== c && L.includes(v))){ toast(v ? '已經有這個分類了' : '名稱不能空白'); inp.value = c; return; }
+      exLib().forEach(e => { if(e.cat === c) e.cat = v; });
+      L[i] = v; if(exCat === c) exCat = v; saveMeta(); exCatPane(); renderExPick();
+    });
+    const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = exLib().filter(e => e.cat === c).length + ' 個';
+    const up = document.createElement('button'); up.type = 'button'; up.textContent = '↑'; up.disabled = i === 0; up.setAttribute('aria-label', '往上');
+    up.addEventListener('click', () => { [L[i - 1], L[i]] = [L[i], L[i - 1]]; saveMeta(); exCatPane(); });
+    const dn = document.createElement('button'); dn.type = 'button'; dn.textContent = '↓'; dn.disabled = i === L.length - 1; dn.setAttribute('aria-label', '往下');
+    dn.addEventListener('click', () => { [L[i + 1], L[i]] = [L[i], L[i + 1]]; saveMeta(); exCatPane(); });
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = '×'; del.setAttribute('aria-label', '刪除分類');
+    del.addEventListener('click', () => {
+      if(del.dataset.armed !== '1'){ del.dataset.armed = '1'; del.textContent = '?'; toast('再按一次刪除「' + c + '」，裡面的練習會變成未分類'); setTimeout(() => { del.dataset.armed = ''; del.textContent = '×'; }, 3000); return; }
+      L.splice(i, 1); exLib().forEach(e => { if(e.cat === c) e.cat = '未分類'; }); saveMeta(); exCatPane(); renderExPick();
+    });
+    li.append(inp, cnt, up, dn, del); ol.appendChild(li);
+  });
+  const missing = EX_BUILTIN.filter(b => !exLib().some(e => e.id === b.id)).length;
+  $('#exRestore').disabled = !missing;
+  $('#exRestoreInfo').textContent = missing ? '有 ' + missing + ' 個內建練習被刪掉了' : '內建練習都在';
+}
 let exPrev = [];
 function exStopPreview(){ exPrev.forEach(o => { try{ o.stop(); }catch(e){} }); exPrev = []; }
 function exPreview(E){
@@ -1340,8 +1403,9 @@ let exEditing = null;
 function exEdit(E){
   exEditing = E || null;
   $('#exeTitle').textContent = E ? '編輯練習' : '自己做練習';
-  $('#exeCat').innerHTML = EX_CATS.filter(c => c !== '我的').map(c => '<option>' + c + '</option>').join('');
-  $('#exeName').value = E ? E.name : ''; $('#exeCat').value = E ? E.cat : '暖身';
+  const cl = exCats().slice(); if(E && !cl.includes(E.cat)) cl.push(E.cat);
+  $('#exeCat').innerHTML = cl.map(c => '<option></option>').join(''); [...$('#exeCat').options].forEach((o, i) => { o.textContent = cl[i]; o.value = cl[i]; });
+  $('#exeName').value = E ? E.name : ''; $('#exeCat').value = E ? E.cat : (exCat !== '全部' && exCats().includes(exCat) ? exCat : exCats()[0]);
   $('#exeNotes').value = E ? toJianpu(E.notes) : '1 2 3 4 5 4 3 2 1-';
   $('#exeSyl').value = E ? sylString(E.notes) : 'Mum';
   $('#exeGoal').value = E ? E.goal || '' : ''; $('#exeHow').value = E ? E.how || '' : '';
@@ -1359,8 +1423,10 @@ function exEditPreview(){
 function exEditSave(){
   const notes = exEditPreview(); if(!notes){ toast('音的寫法有問題，看一下預覽下方的提示'); return; }
   const name = $('#exeName').value.trim() || '我的練習';
-  const E = { id: exEditing ? exEditing.id : 'c' + Date.now().toString(36), name, cat: $('#exeCat').value, notes, goal: $('#exeGoal').value.trim(), how: $('#exeHow').value.trim(), custom: true };
-  state.customEx = (state.customEx || []).filter(x => x.id !== E.id).concat(E);
+  const E = { id: exEditing ? exEditing.id : 'c' + Date.now().toString(36), name, cat: $('#exeCat').value, notes, goal: $('#exeGoal').value.trim(), how: $('#exeHow').value.trim() };
+  if(exEditing && exEditing.builtin) E.builtin = true;
+  const L = exLib(), i = L.findIndex(x => x.id === E.id);
+  if(i >= 0) L[i] = E; else L.push(E);
   saveMeta(); closeSheet('#exEditSheet');
   W.pattern = E.id; renderExPick(); toast('已儲存「' + name + '」');
 }
@@ -3735,6 +3801,25 @@ $('#wClose').addEventListener('click', wClose);
 document.querySelectorAll('[data-wm]').forEach(b => b.addEventListener('click', () => { W.mode = b.dataset.wm; if(W.mode === 'free') wStopEx(); wSyncControls(); }));
 $('#wPick').addEventListener('click', () => { if(W.ex) wStopEx(); exList(); openSheet('#exSheet'); });
 $('#exBack').addEventListener('click', exList);
+$('#exCatManage').addEventListener('click', exCatPane);
+$('#exCatBack').addEventListener('click', exList);
+$('#exCatAdd').addEventListener('click', () => {
+  const v = $('#exCatNew').value.trim(); if(!v) return;
+  if(exCats().includes(v)){ toast('已經有這個分類了'); return; }
+  exCats().push(v); $('#exCatNew').value = ''; saveMeta(); exCatPane();
+});
+$('#exCatNew').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('#exCatAdd').click(); } });
+$('#exRestore').addEventListener('click', () => {
+  const L = exLib(); let n = 0;
+  EX_BUILTIN.forEach(b => { if(!L.some(e => e.id === b.id)){ L.push({ ...exClone(b), builtin: true }); n++; if(!exCats().includes(b.cat)) exCats().push(b.cat); } });
+  saveMeta(); exCatPane(); toast('找回 ' + n + ' 個內建練習');
+});
+$('#exdReset').addEventListener('click', () => {
+  const d = exDefault(exCur.id); if(!d) return;
+  const L = exLib(), i = L.findIndex(x => x.id === exCur.id);
+  L[i] = { ...exClone(d), builtin: true }; if(!exCats().includes(d.cat)) exCats().push(d.cat);
+  saveMeta(); renderExPick(); exDetail(L[i]); toast('已還原成預設');
+});
 $('#exdPlay').addEventListener('click', () => exCur && exPreview(exCur));
 $('#exdUse').addEventListener('click', () => { if(!exCur) return; W.pattern = exCur.id; saveMeta(); renderExPick(); exStopPreview(); closeSheet('#exSheet'); toast('已選「' + exCur.name + '」，按開始練習'); });
 $('#exNew').addEventListener('click', () => exEdit(null));
@@ -3742,9 +3827,9 @@ $('#exdEdit').addEventListener('click', () => exCur && exEdit(exCur));
 $('#exdDel').addEventListener('click', e => {
   const b = e.currentTarget;
   if(b.textContent !== '確定刪除？'){ b.textContent = '確定刪除？'; setTimeout(() => b.textContent = '刪除', 3000); return; }
-  state.customEx = (state.customEx || []).filter(x => x.id !== exCur.id);
-  if(W.pattern === exCur.id) W.pattern = 'mum5';
-  saveMeta(); renderExPick(); exList();
+  state.exLib = exLib().filter(x => x.id !== exCur.id);
+  if(W.pattern === exCur.id) W.pattern = (exLib()[0] || EX_BUILTIN[0]).id;
+  saveMeta(); renderExPick(); exList(); toast('已刪除，想找回內建練習可以到「管理分類」按「找回內建練習」');
 });
 ['#exeNotes', '#exeSyl'].forEach(id => $(id).addEventListener('input', exEditPreview));
 $('#exeSave').addEventListener('click', exEditSave);
