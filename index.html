@@ -114,6 +114,8 @@ body[data-view="library"] .transport{display:none}
 .ed-status{position:absolute;right:10px;top:32px;font-size:.8rem;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:6px}
 .ed-status:empty{display:none}
 .ed-bottom{padding:8px 12px 10px}
+.warm.running .wmodes,.warm.running #wPick,.warm.running .wstartrow,.warm.running #wLat,.warm.running #wHint,.warm.running #wRange{display:none !important}
+.ed-canvas{touch-action:none}
 .ed-sel{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .ed-sel[hidden]{display:none}
 .ed-sel #edName{flex:1;text-align:center;font-weight:700;font-size:.95rem}
@@ -209,6 +211,10 @@ body[data-view="library"] .transport{display:none}
 .song .badge{margin-left:auto}
 .libhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .libhead h1{flex:1;min-width:0}
+.setbtn{position:relative;color:var(--ink);flex:none}
+.setbtn svg{width:22px;height:22px}
+.setbtn.due::after{content:"";position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--rec)}
+.set-sheet{max-height:90vh}
 .libhead h1 .en{font-size:clamp(2rem,9vw,2.6rem)}
 .libhead h1 .zh{display:inline-block;font-size:.8rem;letter-spacing:.4em;margin:0 0 0 .2em}
 .searchrow{display:flex;gap:8px;align-items:center;margin-top:14px}
@@ -479,6 +485,7 @@ body[data-view="library"] .transport{display:none}
 <section id="libraryView">
   <div class="libhead">
     <h1><span class="en">Harmonia</span><span class="zh">和聲本</span></h1>
+    <button class="icon setbtn" id="setBtn" type="button" aria-label="設定"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <button class="btn sm" id="warmBtn" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 16c2-6 4-6 6 0s4 6 6 0 4-6 6 0"/></svg>暖聲</button>
     <button class="btn sm primary" id="newSong" type="button">
@@ -497,56 +504,6 @@ body[data-view="library"] .transport{display:none}
   <div id="libBrowse"></div>
   <ul id="songList"></ul>
   <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增」，放進伴奏就可以開始唱。</p>
-  <h2 class="sec">設定</h2>
-  <p class="hint" id="storeInfo"></p>
-  <details class="cal" id="backupBox" open>
-    <summary>備份與還原</summary>
-    <p>資料只存在這支手機的瀏覽器裡。建議每錄完幾首就匯出一次，把檔案存到 Google 雲端硬碟或電腦。換手機或資料不見時，用「匯入備份」就能還原。</p>
-    <p id="backupInfo" style="color:var(--ink)"></p>
-    <div class="row" style="margin-bottom:10px">
-      <button class="btn primary" id="exportAll" type="button">匯出全部備份</button>
-      <label class="btn" for="importFile">匯入備份</label>
-      <input id="importFile" class="sr" type="file" accept=".zip,application/zip">
-    </div>
-  </details>
-
-  <details class="cal" id="cloudBox">
-    <summary>雲端備份（Google 雲端硬碟）</summary>
-    <p>備份檔會存進你自己的雲端硬碟，檔名是「Harmonia 備份.zip」，每次上傳都會覆蓋同一個檔案。App 只看得到自己建立的檔案，碰不到你其他資料。</p>
-    <label style="font-size:.9rem;display:block">OAuth 用戶端 ID
-      <input id="gdId" class="wsel" type="text" placeholder="xxxxxx.apps.googleusercontent.com">
-    </label>
-    <p id="cloudInfo" style="color:var(--ink)"></p>
-    <div class="row" style="margin-bottom:10px">
-      <button class="btn primary" id="cloudUp" type="button">上傳到雲端硬碟</button>
-      <button class="btn" id="cloudDown" type="button">從雲端硬碟還原</button>
-      <button class="btn" id="cloudOut" type="button">解除連結</button>
-    </div>
-  </details>
-
-  <details class="cal" id="micBox">
-    <summary>收音設定</summary>
-    <p>如果錄起來聲音悶、像離很遠：戴有線耳機時，手機常會改用耳機線上的小麥克風。可以在這裡改選手機本身的麥克風，或換一副沒有麥克風的耳機。</p>
-    <label>麥克風
-      <select id="micSel" style="width:100%;min-height:44px;margin-top:4px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;padding:0 10px"></select>
-    </label>
-    <p id="micNote" style="margin-top:6px"></p>
-    <div class="row" style="margin:6px 0 10px" role="radiogroup" aria-label="收音模式">
-      <label><input type="radio" name="micMode" value="raw"> 原音（不處理，適合安靜的房間）</label>
-      <label><input type="radio" name="micMode" value="phone"> 手機處理（自動音量＋降噪）</label>
-    </div>
-    <button class="btn" id="micTest" type="button">試錄 4 秒</button>
-  </details>
-
-  <details class="cal">
-    <summary>延遲補償<span class="val" id="latVal">0 ms</span></summary>
-    <p>手機從播放到收音之間有一段延遲，沒補償的話，合音會整條慢半拍。拔掉耳機、把音量開大，按下「量測延遲」後會發出六聲嗶，量完再把耳機戴回去。有線耳機適用這個數值，藍牙耳機延遲太大，不建議用來錄音。</p>
-    <button class="btn" id="calBtn" type="button">量測延遲</button>
-    <label>手動調整 <output id="latOut">0 ms</output>
-      <input type="range" id="latRange" min="-100" max="500" step="5" value="0">
-    </label>
-  </details>
-
 </section>
 
 <section id="studioView" hidden>
@@ -562,7 +519,7 @@ body[data-view="library"] .transport{display:none}
       <input id="songTitle" class="song-title" aria-label="歌名" maxlength="60">
       <div class="artists" id="artistBox"><input id="songArtist" class="song-artist" aria-label="新增歌手" maxlength="60" placeholder="歌手／演唱者"></div>
       <input id="songYt" class="song-artist" aria-label="YouTube MV 連結" placeholder="YouTube MV 連結（可選）" inputmode="url">
-      <div class="rangerow"><span>音域</span><select id="rgLo" aria-label="最低音"></select><span>～</span><select id="rgHi" aria-label="最高音"></select><span class="rgfit" id="rgFit"></span></div>
+      <div class="rangerow"><span>音域</span><select id="rgLo" aria-label="最低音"></select><span>～</span><select id="rgHi" aria-label="最高音"></select><span class="rgfit" id="rgFit"></span><button class="linkbtn" id="rgDetect" type="button" hidden>從導唱偵測</button></div>
     </div>
   </div>
   <div class="tagrow" id="langRow" role="group" aria-label="分類"></div>
@@ -791,10 +748,10 @@ body[data-view="library"] .transport{display:none}
   </div>
   <div class="ed-canvas"><canvas id="wCanvas"></canvas></div>
   <div class="ed-bottom">
-    <div class="row" style="gap:6px" role="group" aria-label="練習模式">
+    <div class="row wmodes" style="gap:6px" role="group" aria-label="練習模式">
       <button class="chip2" type="button" data-wm="free" aria-pressed="true">自由發聲</button>
       <button class="chip2" type="button" data-wm="ex" aria-pressed="false">音階跟唱</button>
-    </div>
+    </div><!--wmodes-->
     <div class="wrange" id="wRange">
       <span id="wRangeTxt"></span>
       <div class="row" style="gap:6px;width:100%">
@@ -810,7 +767,7 @@ body[data-view="library"] .transport{display:none}
         <span class="expick-t"><b id="wPickName"></b><small id="wPickCat"></small></span>
         <span class="chev">›</span>
       </button>
-      <div class="row" style="gap:8px;margin-top:8px">
+      <div class="row wstartrow" style="gap:8px;margin-top:8px">
         <span style="font-size:.9rem;color:var(--muted)">起始音</span>
         <button class="btn sm" id="wDown" type="button" aria-label="起始音降半音">−</button>
         <strong id="wStart" style="min-width:2.6em;text-align:center"></strong>
@@ -824,6 +781,61 @@ body[data-view="library"] .transport{display:none}
     <p class="ed-hint" id="wHint">上方會顯示你現在唱的音和偏差，綠色代表準。下面的線是你的音高軌跡。</p>
   </div>
 </section>
+
+<div class="back" id="setSheet" hidden>
+  <div class="sheet set-sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="row" style="align-items:center"><h2 id="setTitle" style="margin:0">設定</h2><button class="btn sm" id="setClose" type="button" style="margin-left:auto">完成</button></div>
+  <p class="hint" id="storeInfo"></p>
+  <details class="cal" id="backupBox" open>
+    <summary>備份與還原</summary>
+    <p>資料只存在這支手機的瀏覽器裡。建議每錄完幾首就匯出一次，把檔案存到 Google 雲端硬碟或電腦。換手機或資料不見時，用「匯入備份」就能還原。</p>
+    <p id="backupInfo" style="color:var(--ink)"></p>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn primary" id="exportAll" type="button">匯出全部備份</button>
+      <label class="btn" for="importFile">匯入備份</label>
+      <input id="importFile" class="sr" type="file" accept=".zip,application/zip">
+    </div>
+  </details>
+
+  <details class="cal" id="cloudBox">
+    <summary>雲端備份（Google 雲端硬碟）</summary>
+    <p>備份檔會存進你自己的雲端硬碟，檔名是「Harmonia 備份.zip」，每次上傳都會覆蓋同一個檔案。App 只看得到自己建立的檔案，碰不到你其他資料。</p>
+    <label style="font-size:.9rem;display:block">OAuth 用戶端 ID
+      <input id="gdId" class="wsel" type="text" placeholder="xxxxxx.apps.googleusercontent.com">
+    </label>
+    <p id="cloudInfo" style="color:var(--ink)"></p>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn primary" id="cloudUp" type="button">上傳到雲端硬碟</button>
+      <button class="btn" id="cloudDown" type="button">從雲端硬碟還原</button>
+      <button class="btn" id="cloudOut" type="button">解除連結</button>
+    </div>
+  </details>
+
+  <details class="cal" id="micBox">
+    <summary>收音設定</summary>
+    <p>如果錄起來聲音悶、像離很遠：戴有線耳機時，手機常會改用耳機線上的小麥克風。可以在這裡改選手機本身的麥克風，或換一副沒有麥克風的耳機。</p>
+    <label>麥克風
+      <select id="micSel" style="width:100%;min-height:44px;margin-top:4px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;padding:0 10px"></select>
+    </label>
+    <p id="micNote" style="margin-top:6px"></p>
+    <div class="row" style="margin:6px 0 10px" role="radiogroup" aria-label="收音模式">
+      <label><input type="radio" name="micMode" value="raw"> 原音（不處理，適合安靜的房間）</label>
+      <label><input type="radio" name="micMode" value="phone"> 手機處理（自動音量＋降噪）</label>
+    </div>
+    <button class="btn" id="micTest" type="button">試錄 4 秒</button>
+  </details>
+
+  <details class="cal">
+    <summary>延遲補償<span class="val" id="latVal">0 ms</span></summary>
+    <p>手機從播放到收音之間有一段延遲，沒補償的話，合音會整條慢半拍。拔掉耳機、把音量開大，按下「量測延遲」後會發出六聲嗶，量完再把耳機戴回去。有線耳機適用這個數值，藍牙耳機延遲太大，不建議用來錄音。</p>
+    <button class="btn" id="calBtn" type="button">量測延遲</button>
+    <label>手動調整 <output id="latOut">0 ms</output>
+      <input type="range" id="latRange" min="-100" max="500" step="5" value="0">
+    </label>
+  </details>
+
+  </div>
+</div>
 
 <div class="back" id="exSheet" hidden>
   <div class="sheet ex-sheet" role="dialog" aria-modal="true" aria-labelledby="exTitle">
@@ -1186,6 +1198,13 @@ function wClose(){
   cancelAnimationFrame(W.raf); $('#warm').hidden = true; document.body.style.overflow = '';
   if(document.body.dataset.view === 'library') renderLibrary();
 }
+{ let dragY = null;
+  document.addEventListener('pointerdown', e => { if(e.target && e.target.id === 'wCanvas'){ dragY = e.clientY; } });
+  document.addEventListener('pointermove', e => { if(dragY === null) return; const dy = e.clientY - dragY; dragY = e.clientY; if(W.sy === null) return; W.sy -= dy; W.manualUntil = performance.now() + 2500; });
+  ['pointerup', 'pointercancel'].forEach(ev => document.addEventListener(ev, () => { dragY = null; }));
+}
+// 下方面板高度一變（切換模式、開始／停止），音條畫布就跟著重新量尺寸
+if(window.ResizeObserver) new ResizeObserver(() => { if(!$('#warm').hidden) wSize(); }).observe(document.querySelector('#warm .ed-canvas'));
 function wSize(){
   wCv = $('#wCanvas'); const box = wCv.parentElement, dpr = window.devicePixelRatio || 1;
   wW = box.clientWidth; wH = box.clientHeight;
@@ -1454,14 +1473,16 @@ function wStartEx(){
   }
   W.ex = { notes, oscs, end: t, E }; W.shown = W.ex;
   $('#wGo').textContent = '停止'; $('#wResult').textContent = '';
+  wRunning(true);
 }
+function wRunning(on){ $('#warm').classList.toggle('running', on); W.manualUntil = 0; requestAnimationFrame(() => { wSize(); }); }
 function wStopEx(){
   if(!W.ex) return;
   W.ex.oscs.forEach(o => { try{ o.stop(); }catch(e){} });
-  W.ex = null; $('#wGo').textContent = '開始練習';
+  W.ex = null; $('#wGo').textContent = '開始練習'; wRunning(false);
 }
 function wFinishEx(){
-  const ex = W.ex; W.ex = null; $('#wGo').textContent = '開始練習';
+  const ex = W.ex; W.ex = null; $('#wGo').textContent = '開始練習'; wRunning(false);
   let h = 0, tt = 0; ex.notes.forEach(n => { if(!n.demo && n.total){ h += n.hit / n.total; tt++; } });
   const pct = tt ? Math.round(h / tt * 100) : 0;
   $('#wResult').textContent = '這次音準 ' + pct + '%';
@@ -1490,11 +1511,11 @@ function wDraw(now, cur){
   // 垂直跟隨
   let focus = null;
   const ex = W.ex || W.shown;
-  if(W.ex){ const up = W.ex.notes.filter(n => n.t1 > now - 1 && n.t0 < now + 4); if(up.length) focus = up.reduce((a, n) => a + n.m, 0) / up.length; }
+  if(W.ex){ const up = W.ex.notes.filter(n => n.t1 > now - 0.5 && n.t0 < now + 4); if(up.length){ const ms = up.map(n => n.m); focus = (Math.min(...ms) + Math.max(...ms)) / 2; } }
   if(focus === null && cur) focus = cur.m;
   const rowY = m => (W.hi - m) * W.rowH - W.sy;
   if(W.sy === null) W.sy = (W.hi - (focus ?? 57)) * W.rowH - h / 2;
-  if(focus !== null){
+  if(focus !== null && !(W.manualUntil && performance.now() < W.manualUntil)){
     const y = rowY(focus);
     if(W.ex || y < h * 0.25 || y > h * 0.75){ const want = (W.hi - focus) * W.rowH - h / 2; W.sy += (want - W.sy) * 0.08; }
   }
@@ -1707,7 +1728,44 @@ function fitShift(lo, hi){
   return best;
 }
 const shiftTxt = k => k === 0 ? '原調可唱' : (k > 0 ? '升 ' + k : '降 ' + (-k)) + ' Key 可唱';
+// 分析導唱人聲：每 30ms 偵測一次音高，只取穩定唱住的音，再去掉頭尾 2% 的極端值
+async function detectRangeFromGuide(){
+  const t = state.tracks.find(x => x.kind === 'guide' && x.buffer);
+  if(!t){ toast('先匯入導唱人聲，或等它載入完成'); return; }
+  const btn = $('#rgDetect'); btn.disabled = true; btn.textContent = '偵測中…';
+  try{
+    const buf = t.buffer, sr = buf.sampleRate, ch = buf.numberOfChannels;
+    const F = Math.max(1, Math.round(sr / 12000)), sr2 = sr / F, len = Math.floor(buf.length / F);
+    const x = new Float32Array(len), c0 = buf.getChannelData(0), c1 = ch > 1 ? buf.getChannelData(1) : null;
+    for(let i = 0; i < len; i++){ let v = 0; for(let k = 0; k < F; k++){ const j = i * F + k; v += c1 ? (c0[j] + c1[j]) / 2 : c0[j]; } x[i] = v / F; }
+    let peak = 0; for(let i = 0; i < len; i += 4) peak = Math.max(peak, Math.abs(x[i]));
+    const gate = Math.max(0.01, peak * 0.06), tauMax = Math.ceil(sr2 / 70), Wn = 512, hop = Math.round(sr2 * 0.03);
+    const seg = new Float32Array(Wn + tauMax + 2), mids = [];
+    for(let p = 0; p + Wn + tauMax + 2 < len; p += hop){
+      let e = 0; for(let i = 0; i < Wn; i++){ const v = x[p + i]; e += v * v; }
+      if(Math.sqrt(e / Wn) < gate){ mids.push(null); continue; }
+      seg.set(x.subarray(p, p + seg.length));
+      const f = yin(seg, Wn, Math.floor(sr2 / 1100), tauMax, sr2, 0.15);
+      mids.push(f ? toMidi(f) : null);
+      if(mids.length % 400 === 0) await sleep(0);
+    }
+    const stable = [];
+    for(let i = 2; i < mids.length - 2; i++){
+      const w = mids.slice(i - 2, i + 3); if(w.some(v => v === null)) continue;
+      const mn = Math.min(...w), mx = Math.max(...w); if(mx - mn < 0.8) stable.push(mids[i]);
+    }
+    if(stable.length < 20){ toast('導唱裡偵測到的穩定歌聲太少，請手動填音域'); return; }
+    stable.sort((a, b) => a - b);
+    const q = r => stable[Math.min(stable.length - 1, Math.max(0, Math.round(r * (stable.length - 1))))];
+    const lo = Math.max(RANGE_MIN, Math.round(q(0.02))), hi = Math.min(RANGE_MAX, Math.round(q(0.98)));
+    state.rangeLo = lo; state.rangeHi = hi;
+    songs = songs.map(x0 => x0.id === songId ? { ...x0, rangeLo: lo, rangeHi: hi } : x0);
+    saveMeta(); fillRangeSelects();
+    toast('偵測到 ' + rangeTxt(lo, hi) + '，覺得不對可以直接在選單裡改');
+  } finally { btn.disabled = false; btn.textContent = '從導唱偵測'; }
+}
 function fillRangeSelects(){
+  $('#rgDetect').hidden = !state.tracks.some(x => x.kind === 'guide');
   const opts = '<option value="">—</option>' + Array.from({ length: RANGE_MAX - RANGE_MIN + 1 }, (_, i) => RANGE_MIN + i).map(m => '<option value="' + m + '">' + noteName(m) + '</option>').join('');
   ['#rgLo', '#rgHi'].forEach(id => { if(!$(id).options.length) $(id).innerHTML = opts; });
   $('#rgLo').value = typeof state.rangeLo === 'number' ? state.rangeLo : '';
@@ -1798,7 +1856,8 @@ function renderArtistList(box){
   box.appendChild(ul);
 }
 function renderLibrary(){
-  storageInfo(); $('#langFilter').hidden = true;
+  storageInfo();
+  { const due = songs.length > 0 && (!state.lastBackup || Date.now() - state.lastBackup > 7 * 864e5) && (!state.lastCloud || Date.now() - state.lastCloud > 7 * 864e5); $('#setBtn').classList.toggle('due', due); $('#setBtn').setAttribute('aria-label', due ? '設定（超過一週沒備份）' : '設定'); } $('#langFilter').hidden = true;
   const canFit = typeof state.myLo === 'number' && songs.some(sg => typeof sg.rangeLo === 'number');
   if(!canFit) rangeFilter = false;
   $('#fitToggle').hidden = !canFit; $('#fitToggle').setAttribute('aria-pressed', rangeFilter);
@@ -3355,6 +3414,7 @@ function updateStudioLabels(){
   $('#lyricsLabel').textContent = n ? '歌詞（' + n + ' 句' + (timed() ? '' : '，未對時') + '）' : '加入歌詞';
 }
 function render(){
+  { const d = document.getElementById('rgDetect'); if(d) d.hidden = !state.tracks.some(x => x.kind === 'guide'); }
   const ul = $('#tracks'); ul.innerHTML = '';
   $('#empty').hidden = state.tracks.length > 0;
   $('#hint').hidden = state.tracks.length === 0;
@@ -3849,10 +3909,13 @@ $('#wRangeSave').addEventListener('click', () => {
   toast('已存成我的音域：' + rangeTxt(state.myLo, state.myHi) + '，歌曲庫可以篩選「適合我」');
 });
 $('#rgLo').addEventListener('change', rangeChanged);
+$('#rgDetect').addEventListener('click', detectRangeFromGuide);
 $('#rgHi').addEventListener('change', rangeChanged);
 $('#fitToggle').addEventListener('click', () => { rangeFilter = !rangeFilter; saveMeta(); renderLibrary(); });
 $('#wTick').addEventListener('click', e => { W.tick = !W.tick; e.currentTarget.setAttribute('aria-pressed', W.tick); toast(W.tick ? '輪到你唱時會有輕輕的拍子' : '已關閉拍子提示'); });
-$('#wGo').addEventListener('click', () => { if(W.ex) wStopEx(); else wStartEx(); });
+$('#setBtn').addEventListener('click', () => { storageInfo(); openSheet('#setSheet'); });
+$('#setClose').addEventListener('click', () => { closeSheet('#setSheet'); renderLibrary(); });
+$('#wGo').addEventListener('click', () => { if(W.ex){ wStopEx(); W.shown = null; W.sy = null; } else wStartEx(); });
 $('#songSearch').addEventListener('input', renderLibrary);
 $('#toLibrary').addEventListener('click', backToLibrary);
 $('#delSong').addEventListener('click', deleteSong);
