@@ -220,6 +220,50 @@ body[data-view="library"] .transport{display:none}
 .setbtn svg{width:22px;height:22px}
 .setbtn.due::after{content:"";position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--rec)}
 .set-sheet{max-height:90vh}
+.melview{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:#1B1D20;color:#EEE9E4}
+.melview[hidden]{display:none}
+.mel-top{display:flex;align-items:center;gap:8px;padding:8px 10px}
+.mel-top .icon{color:#EEE9E4}
+.mel-title{flex:1;min-width:0}
+.mel-title b{display:block}
+.mel-title small{display:block;color:#9A958F;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.melview .btn{background:#2A2D31;color:#EEE9E4;border-color:#3A3E43}
+.mel-roll{position:relative;flex:1;min-height:120px;touch-action:none}
+.mel-roll canvas{display:block;width:100%;height:100%}
+.mel-line{position:absolute;left:0;right:0;top:6px;text-align:center;font-size:.9rem;color:#C9C3BC;pointer-events:none;padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mel-sel{display:flex;align-items:center;gap:4px;padding:6px 10px;background:#24272B;border-top:1px solid #33373C}
+.mel-sel span{flex:1;font-size:.85rem;color:#C9C3BC}
+.mel-sel button{min-width:36px;height:36px;border-radius:10px;border:1px solid #3A3E43;background:#2A2D31;color:#EEE9E4;cursor:pointer}
+.mel-sel .del{padding:0 10px;color:#F08A98}
+.mel-ctl{display:flex;align-items:center;gap:6px;padding:6px 10px}
+.mel-ctl .icon{color:#EEE9E4}
+.mel-play{width:52px;height:52px;border-radius:50%;border:none;background:#E7968C;color:#2A2224;display:grid;place-items:center;cursor:pointer}
+.mel-play svg{width:24px;height:24px}
+.mel-rec{display:flex;align-items:center;gap:6px;height:40px;border-radius:999px;border:1px solid #3A3E43;background:#2A2D31;color:#EEE9E4;padding:0 12px;font:inherit;font-size:.88rem;cursor:pointer}
+.mel-rec i{width:12px;height:12px;border-radius:50%;background:#8A858F}
+.mel-rec[aria-pressed="true"]{border-color:#E0607A;color:#F4A6B2}
+.mel-rec[aria-pressed="true"] i{background:#E0607A;box-shadow:0 0 8px #E0607A}
+.mel-speed{display:flex;gap:2px;margin-left:auto}
+.mel-speed button{height:32px;border-radius:999px;border:1px solid #3A3E43;background:none;color:#9A958F;font-size:.75rem;padding:0 7px;cursor:pointer}
+.mel-speed button[aria-pressed="true"]{border-color:#E7968C;color:#E7968C}
+.mel-oct{display:flex;align-items:center;gap:6px;padding:4px 8px;background:#141517}
+.mel-oct button{width:40px;height:30px;border-radius:15px;border:none;background:#2A2D31;color:#EEE9E4;cursor:pointer;font-size:.7rem}
+.mel-strip{position:relative;flex:1;height:22px;border-radius:4px;background:repeating-linear-gradient(90deg,#4A4D52 0 6px,#2A2D31 6px 7px)}
+.mel-strip i{position:absolute;top:0;bottom:0;border-radius:4px;background:rgba(238,233,228,.75);mix-blend-mode:screen}
+.piano{position:relative;height:clamp(150px,26vh,230px);display:flex;user-select:none;-webkit-user-select:none;touch-action:none;padding-bottom:env(safe-area-inset-bottom,0px);background:#141517}
+.pk{position:relative;flex:1;border:1px solid #2A2A2A;border-top:none;border-radius:0 0 8px 8px;background:linear-gradient(#FDFDF8,#F1F0EA);display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;cursor:pointer}
+.pk span{font-size:.72rem;font-weight:700;color:#222;background:#BDF3C0;border-radius:5px;padding:2px 4px}
+.pk.c span{background:#7FDCD8}
+.pk.on{background:linear-gradient(#E9E3D6,#D8D0C0)}
+.pkb{position:absolute;top:0;height:60%;border-radius:0 0 6px 6px;background:linear-gradient(#3A3A3A,#0E0E0E);border:1px solid #000;z-index:2;cursor:pointer;box-shadow:0 3px 4px rgba(0,0,0,.4)}
+.pkb.on{background:linear-gradient(#5A5A5A,#2A2A2A)}
+.st-lane{height:84px;margin:6px 14px 0;border-radius:12px;background:rgba(0,0,0,.18);overflow:hidden}
+.st-lane[hidden]{display:none}
+.st-lane canvas{display:block;width:100%;height:100%}
+.mel-score{display:flex;gap:10px;margin:10px 0 0}
+.mel-score div{flex:1;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--surface)}
+.mel-score b{display:block;font-size:1.5rem;color:var(--v1)}
+.mel-score small{color:var(--muted);font-size:.78rem}
 #lyrics .mk{position:relative}
 #lyrics .mk .mks{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% - .05em);font-style:normal;font-size:.48em;line-height:1;white-space:nowrap;letter-spacing:.05em;pointer-events:none}
 #lyrics li.has-mk{padding-top:.5em}
@@ -604,6 +648,10 @@ body[data-view="library"] .transport{display:none}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>
       <span id="lyricsLabel">加入歌詞</span>
     </button>
+    <button class="btn" id="melBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v9M12 5v9M16 5v9"/></svg>
+      <span id="melLabel">旋律輸入</span>
+    </button>
   </div>
 
   <p class="hint" id="guideHint">想邊聽原唱邊練習的話，可以匯入「只有人聲」的原唱檔當導唱。它預設靜音，在錄音畫面的調音台可以打開。</p>
@@ -669,6 +717,7 @@ body[data-view="library"] .transport{display:none}
   <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><button type="button" class="chip" id="duetSkipBtn" aria-pressed="false" hidden>只錄我的部分</button><button type="button" class="chip" id="mvBtn" aria-pressed="false" hidden>MV 模式</button><button type="button" class="chip" id="mvAlignBtn">字幕對齊</button><span class="take" id="stTake"></span><button type="button" class="icon st-opt" id="stOptBtn" aria-label="錄音選項"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
   <div class="mvbox" id="mvBox" hidden><div id="mvPlayer"></div></div>
   <div class="st-tracks" id="stTracks" role="group" aria-label="已錄的音軌（點一下切換要不要聽到）"></div>
+  <div class="st-lane" id="stLane" hidden><canvas id="stLaneCv"></canvas></div>
   <div class="cue" id="cue" aria-hidden="true"><span class="cue-label" id="cueLabel"></span><span class="cue-dots"><i></i><i></i><i></i></span></div>
   <div class="st-body">
     <div class="st-meter"><div class="bar" id="stMeter"><i></i></div>
@@ -855,6 +904,36 @@ body[data-view="library"] .transport{display:none}
 </section>
 
 <input id="artistFile" class="sr" type="file" accept="image/*">
+<section class="melview" id="melView" hidden aria-label="旋律輸入">
+  <div class="mel-top">
+    <button class="icon" id="melClose" type="button" aria-label="關閉"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="mel-title"><b>旋律輸入</b><small id="melInfo"></small></div>
+    <button class="btn sm" id="melUndo" type="button">復原</button>
+    <button class="btn sm" id="melClear" type="button">清除</button>
+  </div>
+  <div class="mel-roll"><canvas id="melCv"></canvas><div class="mel-line" id="melLine"></div></div>
+  <div class="mel-sel" id="melSel" hidden>
+    <span id="melSelTxt"></span>
+    <button type="button" data-a="up" aria-label="升半音">▲</button><button type="button" data-a="down" aria-label="降半音">▼</button>
+    <button type="button" data-a="left" aria-label="提早">◀</button><button type="button" data-a="right" aria-label="延後">▶</button>
+    <button type="button" data-a="short" aria-label="縮短">－</button><button type="button" data-a="long" aria-label="加長">＋</button>
+    <button type="button" data-a="del" class="del">刪除</button>
+  </div>
+  <div class="mel-ctl">
+    <button class="icon" id="melRew" type="button" aria-label="倒轉 3 秒"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg></button>
+    <button class="mel-play" id="melPlay" type="button" aria-label="播放"><svg id="melPlayIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></button>
+    <button class="icon" id="melFwd" type="button" aria-label="快轉 3 秒"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/></svg></button>
+    <button class="mel-rec" id="melRec" type="button" aria-pressed="false"><i></i>錄音符</button>
+    <div class="mel-speed" id="melSpeed"><button type="button" data-r="0.5">0.5×</button><button type="button" data-r="0.75">0.75×</button><button type="button" data-r="1" aria-pressed="true">1×</button></div>
+  </div>
+  <div class="mel-oct">
+    <button type="button" id="melOctDn" aria-label="低八度">◀◀</button>
+    <div class="mel-strip" id="melStrip"><i id="melStripWin"></i></div>
+    <button type="button" id="melOctUp" aria-label="高八度">▶▶</button>
+  </div>
+  <div class="piano" id="piano"></div>
+</section>
+
 <div class="back" id="mkSheet" hidden>
   <div class="sheet mk-sheet" role="dialog" aria-modal="true" aria-labelledby="mkLineNo">
     <div class="row" style="align-items:center;gap:6px">
@@ -880,6 +959,7 @@ body[data-view="library"] .transport{display:none}
   <div class="sheet ana-sheet" role="dialog" aria-modal="true" aria-labelledby="anaTitle">
     <div class="row" style="align-items:center"><h2 id="anaTitle" style="margin:0;font-size:1.1rem"></h2><button class="btn sm" id="anaClose" type="button" style="margin-left:auto">關閉</button></div>
     <div class="ana-top"><div><span class="ana-total" id="anaTotal"></span><span class="ana-unit">分</span></div><small id="anaCmp"></small></div>
+    <div class="mel-score" id="anaMel" hidden></div>
     <div id="anaRadar" class="ana-radar"></div>
     <div class="ana-tl"><canvas id="anaCv"></canvas></div>
     <p class="ana-legend"><i class="lv"></i>顫音　<i class="ll"></i>長音　<b style="color:#5F85AA">↗</b> しゃくり　<b style="color:#B27D74">↘</b> フォール</p>
@@ -1002,6 +1082,8 @@ body[data-view="library"] .transport{display:none}
     <div class="optrow" id="optPartRow"><span>錄哪個聲部<small>其他聲部的段落會自動跳過</small></span><div class="seg" id="optPart"></div></div>
     <div class="optrow" style="display:block" id="optNotesRow"><span>唱法筆記<small id="optDiff"></small></span><textarea class="optnotes" id="optNotes" rows="3" placeholder="這首歌要注意的地方…"></textarea></div>
     <div class="optrow" id="optTrRow"><span>顯示翻譯<small>每句下方顯示翻譯</small></span><button type="button" class="switch" id="optTr" aria-label="顯示翻譯" aria-pressed="true"></button></div>
+    <div class="optrow" id="optMelRow"><span>顯示音準條<small>錄音時對照你輸入的旋律</small></span><button type="button" class="switch" id="optMel" aria-label="顯示音準條" aria-pressed="true"></button></div>
+    <div class="optrow" id="optMelEdit"><span>旋律<small id="optMelInfo"></small></span><button type="button" class="btn sm" id="optMelBtn">輸入／編輯</button></div>
     <div class="optrow" id="optMkRow"><span>顯示唱法標記<small>字上的記號和每句的筆記</small></span><button type="button" class="switch" id="optMk" aria-label="顯示唱法標記" aria-pressed="true"></button></div>
     <div class="optrow" id="optRbRow"><span>顯示讀音<small>漢字上方顯示假名</small></span><button type="button" class="switch" id="optRb" aria-label="顯示讀音" aria-pressed="true"></button></div>
     <div class="optrow" id="optMvRow"><span>MV 模式<small>看著 MV 練唱（不能錄音）</small></span><button type="button" class="switch" id="optMv" aria-label="MV 模式" aria-pressed="false"></button></div>
@@ -1077,7 +1159,7 @@ function saveMeta(){
   metaTimer = setTimeout(() => {
     kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, exLib: state.exLib || null, exCats: state.exCats || null, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', myLo: state.myLo ?? null, myHi: state.myHi ?? null, artistImgs: state.artistImgs || [], customMarks: state.customMarks || [], rangeFilter: !!rangeFilter, lib: { lang: libLang, artist: libArtist, sort: libSort } });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, showMel: state.showMel !== false, melody: state.melody || [], melVer: state.melVer || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     writeIndex();
@@ -1185,7 +1267,7 @@ async function loadSong(id){
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.recPart = sg.recPart || '';
   state.yt = sg.yt || ''; state.mvOffset = sg.mvOffset || 0; state.mvAnchors = Array.isArray(sg.mvAnchors) ? sg.mvAnchors : [];
-  state.showTr = sg.showTr !== false; state.showRb = sg.showRb !== false; state.showMk = sg.showMk !== false;
+  state.showTr = sg.showTr !== false; state.showRb = sg.showRb !== false; state.showMk = sg.showMk !== false; state.showMel = sg.showMel !== false; state.melody = Array.isArray(sg.melody) ? sg.melody : []; state.melVer = sg.melVer || 0;
   // 舊版的「我／對方／合唱」轉成 A／B／A+B
   const WHO = { me: ['A'], other: ['B'], both: ['A', 'B'] };
   state.lyrics.forEach(l => { if(l.who){ if(!l.parts) l.parts = WHO[l.who] || []; delete l.who; } });
@@ -2101,7 +2183,7 @@ function makeSwipe(li, front, actions, onTap){
 }
 function newSong(){
   if(playing) haltPlayback();
-  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.artists = []; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; state.recPart = ''; state.yt = ''; state.mvOffset = 0; state.mvAnchors = []; state.showTr = true; state.showRb = true; state.rangeLo = null; state.rangeHi = null; state.diff = 0; state.notes = '';
+  songId = uid(); state.tracks = []; state.lyrics = []; state.reverb = 0; state.pos = 0; state.title = '新歌曲'; state.artist = ''; state.artists = []; state.lang = ''; state.created = Date.now(); state.order = 0; state.cover = false; state.recPart = ''; state.yt = ''; state.mvOffset = 0; state.mvAnchors = []; state.showTr = true; state.showRb = true; state.rangeLo = null; state.rangeHi = null; state.diff = 0; state.notes = ''; state.melody = []; state.melVer = 0;
   saveMeta();
   $('#songTitle').value = state.title; renderArtists(); $('#songYt').value = ''; fillRangeSelects(); renderLang(); renderCover();
   showView('studio'); render(); updateClock();
@@ -2125,7 +2207,7 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, showMel: state.showMel !== false, melody: state.melody || [], melVer: state.melVer || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }
@@ -2929,6 +3011,8 @@ function renderOpts(){
   });
   $('#optNotes').value = state.notes || ''; $('#optDiff').textContent = state.diff ? '難易度 ' + starsTxt(state.diff) + '　' + DIFF_TXT[state.diff] : '';
   $('#optTrRow').hidden = !state.lyrics.some(l => l.tr); $('#optTr').setAttribute('aria-pressed', !!state.showTr);
+  $('#optMelRow').hidden = !(state.melody || []).length; $('#optMel').setAttribute('aria-pressed', state.showMel !== false);
+  $('#optMelInfo').textContent = (state.melody || []).length ? '已輸入 ' + state.melody.length + ' 個音符' : '還沒有旋律，可以用鋼琴鍵邊聽邊輸入';
   $('#optMkRow').hidden = !hasMarks(); $('#optMk').setAttribute('aria-pressed', state.showMk !== false);
   $('#optRbRow').hidden = !state.lyrics.some(l => l.rb); $('#optRb').setAttribute('aria-pressed', !!state.showRb);
   $('#optMvRow').hidden = !ytId(state.yt) || !!punch;
@@ -3029,7 +3113,7 @@ function updateCue(){
   } else el.classList.remove('on');
 }
 function updateStage(force){
-  updateCue();
+  updateCue(); drawLane();
   const len = Math.max(mvOn ? mvDur() : songLength(), state.pos);
   $('#stClock').textContent = fmtShort(state.pos) + ' / ' + fmtShort(len);
   drawMap(len);
@@ -3156,7 +3240,7 @@ function skipAheadDuringRec(target){
   playing = null; stopNodes(p.nodes);
   const seg = segmentFrom(p); if(seg) take.segs.push(seg);
   state.pos = target;
-  const c = ctx, cap = startCapture(c, micStream, state.monitor);
+  const c = ctx, cap = startCapture(c, micStream, state.monitor); cap.onFrame = laneFrame;
   const startAt = c.currentTime + 0.05;
   playing = { mode: 'rec', startAt, pos0: state.pos, nodes: buildGraph(c, startAt, state.pos), cap };
   updateStage(true);
@@ -3181,7 +3265,8 @@ async function startRec(){
     if(punch){ const r = punchRange(); take.punch = true; take.r0 = r.r0; take.r1 = r.r1; }
   }
   take.startPos = Math.min(take.startPos, state.pos);
-  const cap = startCapture(c, stream, state.monitor);
+  if(take && !take.segs.length) LANE.trail = [];
+  const cap = startCapture(c, stream, state.monitor); cap.onFrame = laneFrame;
   const startAt = c.currentTime + 0.3;
   playing = { mode: 'rec', startAt, pos0: state.pos, nodes: buildGraph(c, startAt, state.pos), cap };
   if(take.punch && punch){
@@ -3252,7 +3337,8 @@ async function autoAnalyze(t){
     if(lastTake !== t) return;
     $('#doneAnaScore').textContent = t.ana.total ?? '—';
     const G = state.tracks.find(x => x.kind === 'guide' && anaOK(x));
-    $('#doneAnaTxt').textContent = '顫音 ' + t.ana.vib.count + ' 次・長音 ' + t.ana.long.count + ' 個・しゃくり ' + t.ana.scoop.count + ' 次' + (G && G.ana.total !== null && t.ana.total !== null ? '（原唱 ' + G.ana.total + ' 分）' : '');
+    const ms = melScoreOf(t);
+    $('#doneAnaTxt').textContent = (ms ? '音準 ' + ms.pitch + '%・節奏 ' + ms.rhythm + '%・' : '') + '顫音 ' + t.ana.vib.count + ' 次・長音 ' + t.ana.long.count + ' 個' + (G && G.ana.total !== null && t.ana.total !== null ? '（原唱 ' + G.ana.total + ' 分）' : '');
     $('#doneAnaBtn').disabled = false;
   }catch(e){ $('#doneAnaScore').textContent = ''; $('#doneAnaTxt').textContent = '這一軌太短或沒有偵測到歌聲，無法分析'; }
 }
@@ -3805,7 +3891,7 @@ async function zipReader(file){
 async function flushSong(){
   if(!songId) return;
   clearTimeout(metaTimer);
-  await kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+  await kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, showMel: state.showMel !== false, melody: state.melody || [], melVer: state.melVer || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
   songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
   await writeIndex();
 }
@@ -4446,6 +4532,8 @@ function showAnalysis(t){
   if(isGuide) cmp = '之後分析自己的錄音，會拿這份當參考';
   else if(prev && prev.ana.total !== null && A.total !== null){ const d = A.total - prev.ana.total; cmp = '比' + (prev.kind === 'guide' ? '原唱' : '「' + prev.name + '」') + (d > 0 ? '高 ' + d : d < 0 ? '低 ' + (-d) : '一樣') + (d ? ' 分' : ''); }
   $('#anaCmp').textContent = cmp;
+  { const ms = isGuide ? null : melScoreOf(t), box = $('#anaMel'); box.hidden = !ms;
+    if(ms) box.innerHTML = '<div><b>' + ms.pitch + '%</b><small>音準：唱在旋律音高半音內的比例</small></div><div><b>' + ms.rhythm + '%</b><small>節奏：每個音開口的時間準不準</small></div><div><b>' + ms.cover + '%</b><small>有唱到的比例（' + ms.n + ' 個音）</small></div>'; }
   $('#anaRadar').innerHTML = radarSVG(A.scores, prev ? prev.ana.scores : null) + (prev ? '<div class="rleg"><i class="now"></i>這一軌　<i class="old"></i>' + prevName + '</div>' : '');
   const v = A.vib, L = A.long, G = guide ? guide.ana : null;
   const ref = (txt) => G ? '<em class="ref">原唱：' + txt + '</em>' : '';
@@ -4468,6 +4556,206 @@ async function runAnalysis(t, btn){
     saveMeta(); showAnalysis(t);
   }catch(e){ toast('分析失敗：' + (e.message || e)); }
   finally{ anaBusy = false; if(btn){ btn.disabled = false; btn.textContent = old; } }
+}
+/* ---------- 旋律輸入（鋼琴鍵）＋ 音準、節奏比對 ---------- */
+const melSorted = () => (state.melody || []).slice().sort((a, b) => a.t - b.t);
+const M = { open: false, play: null, rate: 1, rec: false, base: 48, sel: -1, hist: [], held: new Map(), raf: 0, pps: 110, keyW: 40 };
+function melTouch(){ state.melVer = (state.melVer || 0) + 1; saveMeta(); }
+function melPush(){ M.hist.push(JSON.stringify(state.melody || [])); if(M.hist.length > 80) M.hist.shift(); }
+function keyOn(m){
+  const c = ac(), f = 440 * Math.pow(2, (m - 69) / 12), t = c.currentTime;
+  const g = c.createGain(), o1 = c.createOscillator(), o2 = c.createOscillator(), g2 = c.createGain();
+  o1.type = 'triangle'; o1.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 2; g2.gain.value = 0.2;
+  o1.connect(g); o2.connect(g2); g2.connect(g); g.connect(c.destination);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.exponentialRampToValueAtTime(0.09, t + 0.5);
+  o1.start(t); o2.start(t);
+  return { g, o: [o1, o2] };
+}
+function keyOff(h){ if(!h) return; const c = ac(), t = c.currentTime; h.g.gain.cancelScheduledValues(t); h.g.gain.setValueAtTime(h.g.gain.value, t); h.g.gain.linearRampToValueAtTime(0.0001, t + 0.12); h.o.forEach(o => o.stop(t + 0.15)); }
+const melPos = () => M.play ? M.play.pos0 + Math.max(0, ctx.currentTime - M.play.startAt) * M.play.rate : state.pos;
+// 你聽到的聲音比實際播放晚一點，按鍵也會慢一點，這裡一起扣掉
+const melLag = () => ((ctx && (ctx.outputLatency || ctx.baseLatency)) || 0.03) + 0.06;
+function melStart(){
+  if(M.play) return;
+  const c = ac(), startAt = c.currentTime + 0.12;
+  M.play = { startAt, pos0: state.pos, rate: M.rate, nodes: buildGraph(c, startAt, state.pos, M.rate) };
+  melIcon();
+}
+function melStop(){
+  if(!M.play) return;
+  state.pos = melPos(); stopNodes(M.play.nodes); M.play = null;
+  M.held.forEach((v, m) => melRelease(m)); melIcon();
+}
+function melIcon(){ $('#melPlayIcon').innerHTML = M.play ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>' : '<path d="M7 4v16l13-8z"/>'; }
+function melJump(d){ const was = !!M.play; melStop(); state.pos = Math.max(0, Math.min(songLength(), state.pos + d)); if(was) melStart(); }
+function melPress(m, el){
+  if(M.held.has(m)) return;
+  const h = keyOn(m), rec = M.rec && M.play;
+  const t0 = rec ? Math.max(0, melPos() - melLag() * M.rate) : null;
+  M.held.set(m, { h, t0, el }); if(el) el.classList.add('on');
+}
+function melRelease(m){
+  const k = M.held.get(m); if(!k) return; M.held.delete(m);
+  keyOff(k.h); if(k.el) k.el.classList.remove('on');
+  if(k.t0 === null || !M.play) return;
+  const t1 = Math.max(k.t0 + 0.08, melPos() - melLag() * M.rate);
+  melPush();
+  const L = state.melody || (state.melody = []);
+  // 覆蓋：新音符蓋掉時間上重疊的舊音符
+  state.melody = L.filter(n => n.t + n.d <= k.t0 + 0.02 || n.t >= t1 - 0.02);
+  state.melody.push({ t: +k.t0.toFixed(3), d: +(t1 - k.t0).toFixed(3), m });
+  state.melody.sort((a, b) => a.t - b.t); melTouch(); melInfo();
+}
+function renderPiano(){
+  const box = $('#piano'); box.innerHTML = '';
+  const W = box.clientWidth || 360, n = Math.max(7, Math.min(15, Math.floor(W / M.keyW)));
+  const whites = []; let m = M.base;
+  while(whites.length < n){ if(![1, 3, 6, 8, 10].includes(((m % 12) + 12) % 12)) whites.push(m); m++; }
+  const ww = 100 / n;
+  whites.forEach((wm, i) => {
+    const k = document.createElement('div'); k.className = 'pk' + (wm % 12 === 0 ? ' c' : ''); k.dataset.m = wm;
+    k.innerHTML = '<span>' + noteName(wm) + '</span>'; box.appendChild(k);
+    if([0, 2, 5, 7, 9].includes(wm % 12) && i < n - 1){
+      const b = document.createElement('div'); b.className = 'pkb'; b.dataset.m = wm + 1;
+      b.style.left = ((i + 1) * ww - ww * 0.3) + '%'; b.style.width = (ww * 0.6) + '%'; box.appendChild(b);
+    }
+  });
+  M.lo = whites[0]; M.hi = whites[whites.length - 1];
+  const s0 = 24, s1 = 96, strip = $('#melStripWin');
+  strip.style.left = ((M.lo - s0) / (s1 - s0) * 100) + '%'; strip.style.width = ((M.hi - M.lo + 1) / (s1 - s0) * 100) + '%';
+}
+{ // 鋼琴鍵：多指同時按也可以
+  const pid = new Map();
+  const box = () => $('#piano');
+  document.addEventListener('pointerdown', e => {
+    const k = e.target.closest && e.target.closest('#piano .pk, #piano .pkb'); if(!k) return;
+    e.preventDefault(); const m = +k.dataset.m; pid.set(e.pointerId, m); melPress(m, k);
+    try{ k.releasePointerCapture(e.pointerId); }catch(_){}
+  });
+  const up = e => { const m = pid.get(e.pointerId); if(m === undefined) return; pid.delete(e.pointerId); melRelease(m); };
+  document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+}
+function melInfo(){
+  const n = (state.melody || []).length;
+  $('#melInfo').textContent = n ? '已輸入 ' + n + ' 個音符' : '按「錄音符」再播放，邊聽邊彈';
+}
+function melDraw(){
+  const cv = $('#melCv'), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if(!w) return;
+  if(cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)){ cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const pos = melPos(), px = w * 0.35, lo = M.lo - 2, hi = M.hi + 2, rows = hi - lo + 1, rh = (h - 30) / rows;
+  const X = t => px + (t - pos) * M.pps, Y = m => 26 + (hi - m) * rh;
+  for(let m = lo; m <= hi; m++){ const bl = [1, 3, 6, 8, 10].includes(((m % 12) + 12) % 12); g.fillStyle = bl ? '#1F2124' : '#25282C'; g.fillRect(0, Y(m), w, rh); if(m % 12 === 0){ g.fillStyle = '#6E6A66'; g.font = '10px system-ui'; g.fillText(noteName(m), 4, Y(m) + rh - 3); } }
+  // 每句歌詞開頭畫一條淡線
+  g.strokeStyle = 'rgba(238,233,228,.12)'; g.lineWidth = 1;
+  state.lyrics.forEach(l => { if(l.t === null) return; const x = X(l.t); if(x < 0 || x > w) return; g.beginPath(); g.moveTo(x, 22); g.lineTo(x, h); g.stroke(); });
+  const L = state.melody || [];
+  L.forEach((n, i) => {
+    const x0 = X(n.t), x1 = X(n.t + n.d); if(x1 < 0 || x0 > w) return;
+    const mm = Math.max(lo, Math.min(hi, n.m)), out = n.m !== mm;
+    g.fillStyle = i === M.sel ? '#F4C26B' : out ? 'rgba(231,150,140,.45)' : '#E7968C';
+    rrect(g, x0, Y(mm) + 1, Math.max(3, x1 - x0 - 1), rh - 2, Math.min(5, rh / 2)); g.fill();
+  });
+  M.held.forEach((k, m) => { if(k.t0 === null) return; const x0 = X(k.t0); g.fillStyle = '#F4A6B2'; rrect(g, x0, Y(Math.max(lo, Math.min(hi, m))) + 1, Math.max(3, px - x0), rh - 2, 4); g.fill(); });
+  g.strokeStyle = M.rec ? '#E0607A' : '#EEE9E4'; g.lineWidth = 2; g.beginPath(); g.moveTo(px, 20); g.lineTo(px, h); g.stroke();
+  g.fillStyle = '#C9C3BC'; g.font = '12px system-ui'; g.fillText(fmtShort(pos), px + 6, 16);
+  const li = lineIndexAt(pos, 0.05); $('#melLine').textContent = li >= 0 ? state.lyrics[li].text || '' : '';
+}
+function melLoop(){
+  if(!M.open) return;
+  if(M.play && melPos() > songLength() + 0.2){ melStop(); state.pos = 0; }
+  melDraw(); M.raf = requestAnimationFrame(melLoop);
+}
+function openMelody(){
+  if(!backing()){ toast('先匯入伴奏，才能邊聽邊輸入旋律'); return; }
+  if(playing && playing.mode === 'play') haltPlayback();
+  M.open = true; M.sel = -1; M.hist = []; $('#melView').hidden = false; document.body.style.overflow = 'hidden';
+  if(typeof state.melOct === 'number') M.base = state.melOct;
+  else { const L = state.melody || []; if(L.length){ const md = median(L.map(n => n.m)); M.base = Math.floor((md - 5) / 12) * 12; } }
+  $('#melRec').setAttribute('aria-pressed', M.rec);
+  requestAnimationFrame(() => { renderPiano(); melInfo(); melSelUI(); cancelAnimationFrame(M.raf); melLoop(); });
+}
+function closeMelody(){ melStop(); M.open = false; cancelAnimationFrame(M.raf); $('#melView').hidden = true; document.body.style.overflow = ''; state.pos = 0; if(stageOpen()){ renderLyrics(); updateStage(true); } else { render(); updateClock(); } }
+function melSelUI(){
+  const n = (state.melody || [])[M.sel];
+  $('#melSel').hidden = !n;
+  if(n) $('#melSelTxt').textContent = noteName(n.m) + '・' + fmtShort(n.t) + '・' + n.d.toFixed(2) + ' 秒';
+}
+// 暫停時點音符可以選取、修改
+{ let down = null;
+  document.addEventListener('pointerdown', e => { if(e.target.id === 'melCv') down = { x: e.clientX, y: e.clientY, pos: state.pos }; });
+  document.addEventListener('pointermove', e => { if(!down || M.play) return; const dx = e.clientX - down.x; if(Math.abs(dx) > 6){ state.pos = Math.max(0, Math.min(songLength(), down.pos - dx / M.pps)); down.moved = true; } });
+  document.addEventListener('pointerup', e => {
+    if(!down) return; const d = down; down = null; if(d.moved || M.play) return;
+    const cv = $('#melCv'), r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const pos = melPos(), px = r.width * 0.35, lo = M.lo - 2, hi = M.hi + 2, rh = (r.height - 30) / (hi - lo + 1);
+    const t = pos + (x - px) / M.pps, m = hi - Math.floor((y - 26) / rh);
+    const i = (state.melody || []).findIndex(n => t >= n.t - 0.04 && t <= n.t + n.d + 0.04 && Math.max(lo, Math.min(hi, n.m)) === m);
+    M.sel = i; melSelUI();
+  });
+}
+// ---- 比對：音準（音高差在半音內）與節奏（開口時間差） ----
+function melodyScore(curve, dt, offset, dur){
+  const L = melSorted().filter(n => n.t >= offset - 0.05 && n.t + n.d <= offset + dur + 0.05);
+  if(L.length < 3) return null;
+  const at = t => { const k = Math.round((t - offset) / dt); return k >= 0 && k < curve.length ? curve[k] : null; };
+  let tot = 0, voiced = 0, hit = 0; const rs = [];
+  L.forEach((n, i) => {
+    for(let t = n.t + 0.06; t <= n.t + n.d - 0.03; t += dt){ tot++; const v = at(t); if(v === null) continue; voiced++; const df = Math.abs(circSigned(v, n.m)); hit += df <= 0.5 ? 1 : df <= 0.8 ? 0.5 : 0; }
+    const prev = L[i - 1];
+    if(prev && n.t - (prev.t + prev.d) < 0.12 && prev.m === n.m) return;
+    let off = null;
+    for(let t = n.t - 0.3; t <= n.t + 0.35; t += dt){
+      const a = at(t), b = at(t + dt), c = at(t + 2 * dt);
+      if([a, b, c].every(v => v !== null && circ(v, n.m) <= 0.7)){ off = t - n.t; break; }
+    }
+    rs.push(off === null ? 0 : Math.max(0, 1 - Math.max(0, Math.abs(off) - 0.06) / 0.3));
+  });
+  return { pitch: voiced ? Math.round(hit / voiced * 100) : 0, cover: tot ? Math.round(voiced / tot * 100) : 0, rhythm: rs.length ? Math.round(rs.reduce((a, b) => a + b, 0) / rs.length * 100) : 0, n: L.length };
+}
+const trackDur = t => t.buffer ? t.buffer.duration : 0;
+function melScoreOf(t){ return t.ana && t.ana.curve && (state.melody || []).length ? melodyScore(t.ana.curve, 0.03, t.offset || 0, trackDur(t)) : null; }
+// ---- 錄音畫面的音準條 ----
+const LANE = { trail: [] };
+function laneFrame(d, pt){
+  if(!playing || playing.mode !== 'rec') return;
+  const sr = ctx.sampleRate, ct = pt + d.length / 2 / sr;
+  const song = playing.pos0 + (ct - playing.startAt) * (playing.rate || 1) - state.latencyMs / 1000;
+  const v = detectLive(d, sr);
+  LANE.trail.push({ t: song, m: v }); while(LANE.trail.length && song - LANE.trail[0].t > 6) LANE.trail.shift();
+}
+function drawLane(){
+  const wrap = $('#stLane'), show = (state.melody || []).length > 0 && state.showMel !== false && !mvOn;
+  wrap.hidden = !show; if(!show) return;
+  const cv = $('#stLaneCv'), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if(!w) return;
+  if(cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)){ cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const pos = state.pos, px = w * 0.25, pps = 90, L = state.melody;
+  const vis = L.filter(n => n.t + n.d > pos - px / pps && n.t < pos + (w - px) / pps);
+  const ms = vis.length ? vis.map(n => n.m) : [60];
+  let lo = Math.min(...ms) - 2, hi = Math.max(...ms) + 2; if(hi - lo < 10){ const c = (hi + lo) / 2; lo = Math.floor(c - 5); hi = lo + 10; }
+  LANE.lo = LANE.lo === undefined ? lo : LANE.lo + (lo - LANE.lo) * 0.08; LANE.hi = LANE.hi === undefined ? hi : LANE.hi + (hi - LANE.hi) * 0.08;
+  const X = t => px + (t - pos) * pps, Y = m => 6 + (LANE.hi - m) / (LANE.hi - LANE.lo) * (h - 12), rh = Math.max(8, (h - 12) / (LANE.hi - LANE.lo) * 0.9);
+  const rec = playing && playing.mode === 'rec';
+  vis.forEach(n => {
+    let col = 'rgba(238,233,228,.35)';
+    if(rec && n.t < pos){
+      const pts = LANE.trail.filter(q => q.t >= n.t && q.t <= Math.min(pos, n.t + n.d) && q.m !== null);
+      if(pts.length) col = pts.filter(q => circ(q.m, n.m) <= 0.5).length / pts.length > 0.5 ? 'rgba(124,196,154,.85)' : 'rgba(232,112,126,.7)';
+    }
+    g.fillStyle = col; rrect(g, X(n.t), Y(n.m) - rh / 2, Math.max(3, n.d * pps - 2), rh, rh / 2); g.fill();
+  });
+  if(rec){
+    g.strokeStyle = '#F4C26B'; g.lineWidth = 2; g.beginPath(); let pen = false;
+    LANE.trail.forEach(q => {
+      if(q.m === null || q.t > pos){ pen = false; return; }
+      const near = vis.find(n => q.t >= n.t - 0.2 && q.t <= n.t + n.d + 0.2), ref = near ? near.m : (LANE.lo + LANE.hi) / 2;
+      const m = ref + circSigned(q.m, ref), x = X(q.t), y = Y(m);
+      if(pen) g.lineTo(x, y); else { g.moveTo(x, y); pen = true; }
+    });
+    g.stroke();
+  }
+  g.strokeStyle = 'rgba(238,233,228,.6)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, h); g.stroke();
 }
 /* ---------- 唱法記號（標在每個字上） ---------- */
 const MARKS_DEFAULT = [
@@ -4580,6 +4868,34 @@ function renderMarkList(){
   });
 }
 const hasMarks = () => state.lyrics.some(l => (l.marks && l.marks.length) || l.memo);
+$('#melBtn').addEventListener('click', openMelody);
+$('#optMelBtn').addEventListener('click', () => { closeSheet('#optSheet'); openMelody(); });
+$('#optMel').addEventListener('click', () => { state.showMel = state.showMel === false; saveMeta(); updateStage(true); renderOpts(); });
+$('#melClose').addEventListener('click', closeMelody);
+$('#melPlay').addEventListener('click', () => { if(M.play) melStop(); else melStart(); });
+$('#melRew').addEventListener('click', () => melJump(-3));
+$('#melFwd').addEventListener('click', () => melJump(3));
+$('#melRec').addEventListener('click', e => { M.rec = !M.rec; e.currentTarget.setAttribute('aria-pressed', M.rec); toast(M.rec ? '播放時按琴鍵就會記下音符，按住多久就是多長' : '琴鍵只會發出聲音，不會記錄'); });
+$('#melSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; M.rate = +b.dataset.r; $('#melSpeed').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); if(M.play){ melStop(); melStart(); } });
+$('#melOctDn').addEventListener('click', () => { M.base = Math.max(24, M.base - 12); state.melOct = M.base; renderPiano(); });
+$('#melOctUp').addEventListener('click', () => { M.base = Math.min(84, M.base + 12); state.melOct = M.base; renderPiano(); });
+$('#melUndo').addEventListener('click', () => { if(!M.hist.length){ toast('沒有可以復原的'); return; } state.melody = JSON.parse(M.hist.pop()); M.sel = -1; melSelUI(); melTouch(); melInfo(); });
+$('#melClear').addEventListener('click', e => {
+  const b = e.currentTarget; if(b.textContent !== '確定清除？'){ b.textContent = '確定清除？'; setTimeout(() => b.textContent = '清除', 3000); return; }
+  b.textContent = '清除'; melPush(); state.melody = []; M.sel = -1; melSelUI(); melTouch(); melInfo();
+});
+$('#melSel').addEventListener('click', e => {
+  const b = e.target.closest('button'); const n = (state.melody || [])[M.sel]; if(!b || !n) return;
+  melPush(); const a = b.dataset.a;
+  if(a === 'up') n.m++; else if(a === 'down') n.m--;
+  else if(a === 'left') n.t = Math.max(0, +(n.t - 0.05).toFixed(3)); else if(a === 'right') n.t = +(n.t + 0.05).toFixed(3);
+  else if(a === 'short') n.d = Math.max(0.08, +(n.d - 0.05).toFixed(3)); else if(a === 'long') n.d = +(n.d + 0.05).toFixed(3);
+  else if(a === 'del'){ state.melody.splice(M.sel, 1); M.sel = -1; }
+  if(a === 'up' || a === 'down'){ const h = keyOn(n.m); setTimeout(() => keyOff(h), 250); }
+  state.melody.sort((x, y) => x.t - y.t); if(M.sel >= 0) M.sel = state.melody.indexOf(n);
+  melTouch(); melSelUI(); melInfo();
+});
+window.addEventListener('resize', () => { if(M.open) renderPiano(); });
 $('#mkPrev').addEventListener('click', () => { let i = mkIdx - 1; while(i > 0 && !(state.lyrics[i].text || '').trim()) i--; mkIdx = Math.max(0, i); mkSel = -1; renderMarkEditor(); });
 $('#mkNext').addEventListener('click', () => { let i = mkIdx + 1; while(i < state.lyrics.length - 1 && !(state.lyrics[i].text || '').trim()) i++; mkIdx = Math.min(state.lyrics.length - 1, i); mkSel = -1; renderMarkEditor(); });
 $('#mkDone').addEventListener('click', () => { closeSheet('#mkSheet'); refreshMarks(); });
