@@ -220,6 +220,29 @@ body[data-view="library"] .transport{display:none}
 .setbtn svg{width:22px;height:22px}
 .setbtn.due::after{content:"";position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--rec)}
 .set-sheet{max-height:90vh}
+#lyrics .mk{position:relative}
+#lyrics .mk .mks{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% - .05em);font-style:normal;font-size:.48em;line-height:1;white-space:nowrap;letter-spacing:.05em;pointer-events:none}
+#lyrics li.has-mk{padding-top:.5em}
+.stage.ruby #lyrics .mk .mks{bottom:auto;top:calc(100% - .15em)}
+.stage.ruby #lyrics li.has-mk{padding-top:0;padding-bottom:.5em}
+#lyrics .lt-memo{display:block;font-size:.55em;font-weight:400;opacity:.8;margin-top:.25em;line-height:1.35}
+#lyrics .lt-memo::before{content:"✎ ";opacity:.7}
+.mk-sheet{max-height:86vh}
+.mk-line{display:flex;flex-wrap:wrap;gap:4px;padding:14px 8px 10px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+.mktok{position:relative;min-width:40px;min-height:52px;padding:16px 8px 6px;border:1px solid transparent;border-radius:10px;background:none;color:var(--ink);font:inherit;font-size:1.25rem;cursor:pointer}
+.mktok .mks{position:absolute;top:3px;left:50%;transform:translateX(-50%);font-style:normal;font-size:.7rem;white-space:nowrap}
+.mktok[aria-pressed="true"]{border-color:var(--v1);background:var(--surface)}
+.mk-pal{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.mkp{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:58px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);cursor:pointer;padding:6px 2px}
+.mkp b{font-size:1.2rem;color:var(--mc)}
+.mkp small{font-size:.7rem;color:var(--muted)}
+.mkp[aria-pressed="true"]{background:var(--mc);border-color:transparent}
+.mkp[aria-pressed="true"] b,.mkp[aria-pressed="true"] small{color:#fff}
+.mkprev{font-size:1rem;color:var(--ink);line-height:2.1}
+.mkprev .mk{position:relative}
+.mkprev .mks{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% - .2em);font-style:normal;font-size:.65em;white-space:nowrap}
+.mkmemo{display:block;color:var(--muted);font-size:.8rem;line-height:1.4}
+#mkList li{cursor:pointer}
 .ana-sheet{max-height:90vh}
 .ana-top{display:flex;align-items:baseline;justify-content:space-between;margin-top:6px}
 .ana-total{font-size:3rem;font-weight:700;line-height:1;color:var(--v1);font-variant-numeric:tabular-nums}
@@ -245,6 +268,7 @@ body[data-view="library"] .transport{display:none}
 .ana-list li span{color:var(--muted);font-size:.9rem}
 .ana-list li b{font-size:1rem}
 .ana-list li small{grid-column:2;color:var(--muted);font-size:.8rem;line-height:1.4}
+.ana-list .ref{display:block;font-style:normal;color:var(--v2);margin-top:2px}
 .done-ana{margin:4px 0 12px;padding:10px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .done-ana b{font-size:1.6rem;color:var(--v1)}
 .done-ana span{flex:1;font-size:.88rem;color:var(--muted)}
@@ -697,6 +721,7 @@ body[data-view="library"] .transport{display:none}
       <button type="button" class="chip2" data-tab="lyr" aria-pressed="true">歌詞</button>
       <button type="button" class="chip2" data-tab="tr" aria-pressed="false">翻譯</button>
       <button type="button" class="chip2" data-tab="rb" aria-pressed="false">讀音</button>
+      <button type="button" class="chip2" data-tab="mk" aria-pressed="false">標記</button>
     </div>
     <div class="lypane" data-pane="lyr">
     <p>可以貼上或匯入 LRC 歌詞檔（每行開頭有 [01:23.45] 這種時間碼），就會自動跟著捲動。只有純文字的話，貼上後按「開始對時」，邊聽邊點每一句的開頭。LRC 裡同一個時間碼出現兩行的話，第二行會自動當成翻譯。</p>
@@ -719,6 +744,10 @@ body[data-view="library"] .transport{display:none}
         </div>
         <p class="hint" id="trSideNote" style="margin:6px 0 0"></p>
       </div>
+    </div>
+    <div class="lypane" data-pane="mk" hidden>
+      <p>點一句就能幫每個字加上唱法記號（顫音、轉音、換氣……），也可以寫這句的小筆記。在錄音畫面<strong>長按某一句</strong>也能直接標。</p>
+      <ol class="pair" id="mkList"></ol>
     </div>
     <div class="lypane" data-pane="rb" hidden>
       <p>日文歌可以在漢字上方顯示讀音。按「自動產生」會用日文字典幫每句加上讀音（第一次要下載約 17 MB 的字典）。讀錯的地方可以直接改：寫法是 <code>漢字{よみ}</code>，例如 <code>笑顔{えがお}</code>；漢字和假名混在一起時用 <code>[取り扱い]{とりあつかい}</code>。</p>
@@ -826,6 +855,27 @@ body[data-view="library"] .transport{display:none}
 </section>
 
 <input id="artistFile" class="sr" type="file" accept="image/*">
+<div class="back" id="mkSheet" hidden>
+  <div class="sheet mk-sheet" role="dialog" aria-modal="true" aria-labelledby="mkLineNo">
+    <div class="row" style="align-items:center;gap:6px">
+      <button class="icon" id="mkPrev" type="button" aria-label="上一句">‹</button>
+      <b id="mkLineNo"></b>
+      <button class="icon" id="mkNext" type="button" aria-label="下一句">›</button>
+      <button class="btn sm primary" id="mkDone" type="button" style="margin-left:auto">完成</button>
+    </div>
+    <p class="hint" style="margin:4px 0 8px">先點一個字，再點下面的記號；同一個記號再點一次就取消。</p>
+    <div class="mk-line" id="mkTokens"></div>
+    <div class="mk-pal" id="mkPal"></div>
+    <button class="linkbtn" id="mkAddToggle" type="button">＋ 自訂記號</button>
+    <div class="row" id="mkAddForm" hidden style="gap:6px;margin-top:4px">
+      <input id="mkAddG" class="wsel" maxlength="2" placeholder="符號" style="width:4.5em">
+      <input id="mkAddN" class="wsel" maxlength="8" placeholder="名稱，例如：鼻音" style="flex:1">
+      <button class="btn sm" id="mkAddOk" type="button">新增</button>
+    </div>
+    <label class="exf">這句的筆記<input id="mkMemo" class="wsel" maxlength="40" placeholder="例如：放輕、像在說話"></label>
+  </div>
+</div>
+
 <div class="back" id="anaSheet" hidden>
   <div class="sheet ana-sheet" role="dialog" aria-modal="true" aria-labelledby="anaTitle">
     <div class="row" style="align-items:center"><h2 id="anaTitle" style="margin:0;font-size:1.1rem"></h2><button class="btn sm" id="anaClose" type="button" style="margin-left:auto">關閉</button></div>
@@ -952,6 +1002,7 @@ body[data-view="library"] .transport{display:none}
     <div class="optrow" id="optPartRow"><span>錄哪個聲部<small>其他聲部的段落會自動跳過</small></span><div class="seg" id="optPart"></div></div>
     <div class="optrow" style="display:block" id="optNotesRow"><span>唱法筆記<small id="optDiff"></small></span><textarea class="optnotes" id="optNotes" rows="3" placeholder="這首歌要注意的地方…"></textarea></div>
     <div class="optrow" id="optTrRow"><span>顯示翻譯<small>每句下方顯示翻譯</small></span><button type="button" class="switch" id="optTr" aria-label="顯示翻譯" aria-pressed="true"></button></div>
+    <div class="optrow" id="optMkRow"><span>顯示唱法標記<small>字上的記號和每句的筆記</small></span><button type="button" class="switch" id="optMk" aria-label="顯示唱法標記" aria-pressed="true"></button></div>
     <div class="optrow" id="optRbRow"><span>顯示讀音<small>漢字上方顯示假名</small></span><button type="button" class="switch" id="optRb" aria-label="顯示讀音" aria-pressed="true"></button></div>
     <div class="optrow" id="optMvRow"><span>MV 模式<small>看著 MV 練唱（不能錄音）</small></span><button type="button" class="switch" id="optMv" aria-label="MV 模式" aria-pressed="false"></button></div>
     <div class="optrow" id="optAlignRow"><span>字幕對齊 MV<small>設定第一句和中間段落的時間</small></span><button type="button" class="btn sm" id="optAlign">調整</button></div>
@@ -1024,9 +1075,9 @@ function songSummary(id, title, tracks, artist, x){
 function saveMeta(){
   clearTimeout(metaTimer);
   metaTimer = setTimeout(() => {
-    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, exLib: state.exLib || null, exCats: state.exCats || null, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', myLo: state.myLo ?? null, myHi: state.myHi ?? null, artistImgs: state.artistImgs || [], rangeFilter: !!rangeFilter, lib: { lang: libLang, artist: libArtist, sort: libSort } });
+    kvSet('settings', { latencyMs: state.latencyMs, micId: state.micId, micMode: state.micMode, monitor: state.monitor, skipIntro: state.skipIntro, warm: { start: W.start, pattern: W.pattern, slow: W.slow, along: W.along }, exLib: state.exLib || null, exCats: state.exCats || null, lastBackup: state.lastBackup || 0, lastCloud: state.lastCloud || 0, gdClientId: state.gdClientId || '', gdFileId: state.gdFileId || '', myLo: state.myLo ?? null, myHi: state.myHi ?? null, artistImgs: state.artistImgs || [], customMarks: state.customMarks || [], rangeFilter: !!rangeFilter, lib: { lang: libLang, artist: libArtist, sort: libSort } });
     if(!songId) return;
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
     writeIndex();
@@ -1060,6 +1111,7 @@ function applySettings(st){
   if(typeof st.skipIntro === 'boolean') state.skipIntro = st.skipIntro;
   state.lastBackup = st.lastBackup || 0; state.lastCloud = st.lastCloud || 0;
   state.artistImgs = Array.isArray(st.artistImgs) ? st.artistImgs : (state.artistImgs || []);
+  state.customMarks = Array.isArray(st.customMarks) ? st.customMarks : (state.customMarks || []);
   state.myLo = typeof st.myLo === 'number' ? st.myLo : null; state.myHi = typeof st.myHi === 'number' ? st.myHi : null; rangeFilter = !!st.rangeFilter;
   state.gdClientId = st.gdClientId || ''; state.gdFileId = st.gdFileId || '';
   if(st.lib){ libLang = st.lib.lang || ''; libArtist = st.lib.artist || ''; libSort = st.lib.sort || 'name'; }
@@ -1133,7 +1185,7 @@ async function loadSong(id){
   state.lyrics = Array.isArray(sg.lyrics) ? sg.lyrics : [];
   state.recPart = sg.recPart || '';
   state.yt = sg.yt || ''; state.mvOffset = sg.mvOffset || 0; state.mvAnchors = Array.isArray(sg.mvAnchors) ? sg.mvAnchors : [];
-  state.showTr = sg.showTr !== false; state.showRb = sg.showRb !== false;
+  state.showTr = sg.showTr !== false; state.showRb = sg.showRb !== false; state.showMk = sg.showMk !== false;
   // 舊版的「我／對方／合唱」轉成 A／B／A+B
   const WHO = { me: ['A'], other: ['B'], both: ['A', 'B'] };
   state.lyrics.forEach(l => { if(l.who){ if(!l.parts) l.parts = WHO[l.who] || []; delete l.who; } });
@@ -2073,7 +2125,7 @@ function backToLibrary(){
   if(playing) haltPlayback();
   clearTimeout(metaTimer);
   if(songId){
-    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+    kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
     writeIndex();
   }
@@ -2471,6 +2523,7 @@ function showLyTab(tab){
   readBulk();
   if(tab === 'tr'){ syncWork(); setTrBulk(false); }
   if(tab === 'rb'){ syncWork(); renderRbList(); }
+  if(tab === 'mk') renderMarkList();
 }
 function fillLyExtras(){
   work = { lines: [], tr: [], rb: [], ready: false };
@@ -2587,7 +2640,7 @@ async function autoRuby(){
 }
 function saveLyricsFromSheet(){
   const old = state.lyrics, next = parseLyrics($('#lyText').value);
-  if(old.length === next.length) next.forEach((l, i) => { const o = old[i]; if(!o) return; if(o.parts && !l.parts) l.parts = o.parts; if(typeof o.mt === 'number') l.mt = o.mt; if(!work.ready){ if(o.tr && !l.tr) l.tr = o.tr; if(o.rb) l.rb = o.rb; } });
+  if(old.length === next.length) next.forEach((l, i) => { const o = old[i]; if(!o) return; if(o.parts && !l.parts) l.parts = o.parts; if(typeof o.mt === 'number') l.mt = o.mt; if(o.text === l.text){ if(o.marks) l.marks = o.marks; if(o.memo) l.memo = o.memo; } if(!work.ready){ if(o.tr && !l.tr) l.tr = o.tr; if(o.rb) l.rb = o.rb; } });
   state.lyrics = next; applyLyExtras(); saveMeta(); renderLyrics(); updateStudioLabels(); renderDuet(); fillLyExtras();
 }
 
@@ -2876,6 +2929,7 @@ function renderOpts(){
   });
   $('#optNotes').value = state.notes || ''; $('#optDiff').textContent = state.diff ? '難易度 ' + starsTxt(state.diff) + '　' + DIFF_TXT[state.diff] : '';
   $('#optTrRow').hidden = !state.lyrics.some(l => l.tr); $('#optTr').setAttribute('aria-pressed', !!state.showTr);
+  $('#optMkRow').hidden = !hasMarks(); $('#optMk').setAttribute('aria-pressed', state.showMk !== false);
   $('#optRbRow').hidden = !state.lyrics.some(l => l.rb); $('#optRb').setAttribute('aria-pressed', !!state.showRb);
   $('#optMvRow').hidden = !ytId(state.yt) || !!punch;
   $('#optMv').setAttribute('aria-pressed', mvOn);
@@ -3015,12 +3069,22 @@ function renderLyrics(){
     { const i0 = state.lyrics.indexOf(l), inG = l.with || (state.lyrics[i0 + 1] && state.lyrics[i0 + 1].with);
       if(inG){ li.classList.add('grp'); const pos = i0 - groupStart(i0); li.classList.add(pos % 2 ? 'grp-r' : 'grp-l'); if(!(state.lyrics[i0 + 1] && state.lyrics[i0 + 1].with)) li.classList.add('grp-end'); } }
     const main = document.createElement('span'); main.className = 'lt-main';
-    if(state.showRb && l.rb) main.innerHTML = rubyHTML(l.rb); else main.textContent = l.text || '♪';
+    const useMk = state.showMk !== false;
+    if((l.text || '').trim()) main.innerHTML = lineHTML(l, state.showRb && !!l.rb, useMk); else main.textContent = '♪';
+    if(useMk && l.marks && l.marks.length) li.classList.add('has-mk');
     li.appendChild(main);
     if(state.showTr && l.tr){ const tr = document.createElement('span'); tr.className = 'lt-tr'; tr.textContent = l.tr; li.appendChild(tr); }
+    if(useMk && l.memo){ const mm = document.createElement('span'); mm.className = 'lt-memo'; mm.textContent = l.memo; li.appendChild(mm); }
+    { let lp = 0, x0 = 0, y0 = 0;
+      li.addEventListener('pointerdown', e => { if(stageMode === 'rec' || stageMode === 'sync' || !(l.text || '').trim()) return; x0 = e.clientX; y0 = e.clientY; lp = setTimeout(() => { lp = -1; li.dataset.lp = '1'; if(navigator.vibrate) navigator.vibrate(15); openMarkEditor(state.lyrics.indexOf(l)); }, 550); });
+      const cancel = () => { if(lp > 0) clearTimeout(lp); lp = 0; };
+      li.addEventListener('pointermove', e => { if(Math.hypot(e.clientX - x0, e.clientY - y0) > 10) cancel(); });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => li.addEventListener(ev, cancel));
+      li.addEventListener('contextmenu', e => e.preventDefault()); }
     if(!(l.text || '').trim()) li.classList.add('gapline');
     if(lt(l) === null) li.classList.add('untimed');
     li.addEventListener('click', () => {
+      if(li.dataset.lp === '1'){ delete li.dataset.lp; return; }
       if(stageMode === 'sync'){ stampLine(state.lyrics.indexOf(l)); return; }
       if(stageMode === 'rec') return;
       if(lt(l) === null){ toast('歌詞還沒對時：按右上角的歌詞圖示，再按「開始對時」'); return; }
@@ -3187,7 +3251,8 @@ async function autoAnalyze(t){
     saveMeta();
     if(lastTake !== t) return;
     $('#doneAnaScore').textContent = t.ana.total ?? '—';
-    $('#doneAnaTxt').textContent = '顫音 ' + t.ana.vib.count + ' 次・長音 ' + t.ana.long.count + ' 個・しゃくり ' + t.ana.scoop.count + ' 次';
+    const G = state.tracks.find(x => x.kind === 'guide' && anaOK(x));
+    $('#doneAnaTxt').textContent = '顫音 ' + t.ana.vib.count + ' 次・長音 ' + t.ana.long.count + ' 個・しゃくり ' + t.ana.scoop.count + ' 次' + (G && G.ana.total !== null && t.ana.total !== null ? '（原唱 ' + G.ana.total + ' 分）' : '');
     $('#doneAnaBtn').disabled = false;
   }catch(e){ $('#doneAnaScore').textContent = ''; $('#doneAnaTxt').textContent = '這一軌太短或沒有偵測到歌聲，無法分析'; }
 }
@@ -3530,7 +3595,7 @@ function render(){
       <div class="track-head">
         <span class="swatch"></span>
         <input class="name" aria-label="音軌名稱">
-        ${t.kind === 'voice' ? '<button class="btn sm ana" type="button">' + (t.ana ? '分析 ' + (t.ana.total ?? '') : '分析') + '</button><button class="btn sm fix" type="button">修一句</button>' : ''}
+        ${t.kind === 'voice' || t.kind === 'guide' ? '<button class="btn sm ana" type="button">' + (anaOK(t) ? '分析 ' + (t.ana.total ?? '') : t.ana ? '重新分析' : '分析') + '</button>' : ''}${t.kind === 'voice' ? '<button class="btn sm fix" type="button">修一句</button>' : ''}
         <button class="icon mute" type="button" aria-label="靜音" aria-pressed="${t.mute}">${t.mute ? ICON_MUTE_ON : ICON_MUTE_OFF}</button>
         <button class="icon del" type="button" aria-label="刪除這一軌">${ICON_TRASH}</button>
       </div>
@@ -3556,7 +3621,7 @@ function render(){
       e.currentTarget.setAttribute('aria-pressed', t.mute); e.currentTarget.innerHTML = t.mute ? ICON_MUTE_ON : ICON_MUTE_OFF;
       const n = liveNode(t.id); if(n) n.g.gain.value = t.mute ? 0 : t.vol; saveMeta();
     });
-    const anaB = q('.ana'); if(anaB) anaB.addEventListener('click', () => { if(t.ana) showAnalysis(t); else runAnalysis(t, anaB); });
+    const anaB = q('.ana'); if(anaB) anaB.addEventListener('click', () => { if(anaOK(t)) showAnalysis(t); else runAnalysis(t, anaB); });
     const fix = q('.fix');
     if(fix) fix.addEventListener('click', () => { if(!state.lyrics.some(l => l.t !== null)){ toast('要先有對過時的歌詞，才能一句一句修'); return; } openStage({ punch: t }); });
     const del = q('.del'); let armed = null;
@@ -3740,7 +3805,7 @@ async function zipReader(file){
 async function flushSong(){
   if(!songId) return;
   clearTimeout(metaTimer);
-  await kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
+  await kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
   songs = [songSummary(songId, state.title, state.tracks, state.artist, state), ...songs.filter(x => x.id !== songId)];
   await writeIndex();
 }
@@ -4089,6 +4154,7 @@ $('#stOptBtn').addEventListener('click', () => { if(stageMode === 'rec' || stage
 $('#optDone').addEventListener('click', () => closeSheet('#optSheet'));
 { let nt = 0; $('#optNotes').addEventListener('input', e => { state.notes = e.target.value; $('#songNotes').value = state.notes; clearTimeout(nt); nt = setTimeout(saveMeta, 600); }); }
 $('#optTr').addEventListener('click', () => { state.showTr = !state.showTr; saveMeta(); renderLyrics(); updateStage(true); renderOpts(); });
+$('#optMk').addEventListener('click', () => { state.showMk = state.showMk === false; saveMeta(); renderLyrics(); updateStage(true); renderOpts(); });
 $('#optRb').addEventListener('click', () => { state.showRb = !state.showRb; saveMeta(); renderLyrics(); updateStage(true); renderOpts(); });
 document.querySelectorAll('.lytabs [data-tab]').forEach(b => b.addEventListener('click', () => showLyTab(b.dataset.tab)));
 let trClearArmed = null;
@@ -4177,6 +4243,7 @@ $('#syncEnd').addEventListener('click', () => endSync(false));
 
 $('#doneHarmony').addEventListener('click', () => { closeSheet('#doneSheet'); setStageMode('idle'); updateStage(true); beginRec(); });
 /* ---------- 表現力分析（只看自己的聲音，不需要標準旋律） ---------- */
+const ANA_VER = 2;
 const median = a => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
 const pct = (a, q) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.min(s.length - 1, Math.max(0, Math.round(q * (s.length - 1))))] : 0; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -4221,7 +4288,8 @@ function analyzePitch(pt){
   for(const [a, b] of runs){
     const seq = fill(a, b), base = movAvg(seq, 25); voiced += seq.length;
     // 2) 顫音：基線去掉後，規律的上下擺動（3.8–9 Hz、幅度 0.25–3 半音）
-    const d = seq.map((v, i) => v - base[i]);
+    const d0 = seq.map((v, i) => v - base[i]);
+    const d = d0.map((v, i) => (d0[Math.max(0, i - 1)] + v + d0[Math.min(d0.length - 1, i + 1)]) / 3);
     const ext = []; let dir = 0, lastV = d[0], lastI = 0;
     for(let i = 1; i < d.length; i++){
       if(dir >= 0){ if(d[i] > lastV){ lastV = d[i]; lastI = i; } else if(lastV - d[i] > 0.12){ ext.push([lastI, lastV]); dir = -1; lastV = d[i]; lastI = i; } }
@@ -4229,16 +4297,22 @@ function analyzePitch(pt){
     }
     let chain = [];
     const flush = () => {
-      if(chain.length >= 4){
+      if(chain.length >= 5){
         const i0 = chain[0][0], i1 = chain[chain.length - 1][1];
         const hp = chain.map(c => (c[1] - c[0]) * dt), amp = chain.map(c => c[2]);
-        vib.push({ t0: (a + i0) * dt, t1: (a + i1) * dt, rate: 1 / (2 * (hp.reduce((x, y) => x + y, 0) / hp.length)), depth: amp.reduce((x, y) => x + y, 0) / amp.length / 2 });
+        const mHp = hp.reduce((x, y) => x + y, 0) / hp.length, mAmp = amp.reduce((x, y) => x + y, 0) / amp.length;
+        const cvHp = Math.sqrt(hp.reduce((x, h) => x + (h - mHp) ** 2, 0) / hp.length) / mHp;
+        const cvAmp = Math.sqrt(amp.reduce((x, v) => x + (v - mAmp) ** 2, 0) / amp.length) / mAmp;
+        const bs = base.slice(i0, i1 + 1), drift = Math.max(...bs) - Math.min(...bs);
+        // 規律：每一下的速度差不到 30%、幅度差不到 45%；而且基線沒有在換音
+        if((i1 - i0) * dt >= 0.45 && cvHp < 0.3 && cvAmp < 0.45 && drift < 0.9)
+          vib.push({ t0: (a + i0) * dt, t1: (a + i1) * dt, rate: 1 / (2 * mHp), depth: mAmp / 2 });
       }
       chain = [];
     };
     for(let k = 1; k < ext.length; k++){
       const half = (ext[k][0] - ext[k - 1][0]) * dt, pp = Math.abs(ext[k][1] - ext[k - 1][1]);
-      if(half >= 0.055 && half <= 0.135 && pp >= 0.25 && pp <= 3) chain.push([ext[k - 1][0], ext[k][0], pp]);
+      if(half >= 0.06 && half <= 0.13 && pp >= 0.3 && pp <= 2.5) chain.push([ext[k - 1][0], ext[k][0], pp]);
       else flush();
     }
     flush();
@@ -4253,12 +4327,13 @@ function analyzePitch(pt){
       }
     }
     // 4) フォール：句尾 0.1–0.4 秒內往下掉超過 1 半音
-    const tailN = Math.min(40, seq.length - 10);
-    if(tailN > 10){
-      const ref = median(base.slice(Math.max(0, seq.length - tailN - 30), seq.length - tailN));
-      const tail = seq.slice(seq.length - tailN), drop = ref - Math.min(...tail.slice(-6));
-      let mono = 0; for(let i = 1; i < tail.length; i++) if(tail[i] <= tail[i - 1] + 0.05) mono++;
-      if(drop >= 1 && drop <= 12 && mono / tail.length > 0.7) falls.push((b - 3) * dt);
+    if(seq.length >= 60){
+      const tailN = 40, pre = seq.slice(seq.length - tailN - 25, seq.length - tailN);
+      const preStable = Math.max(...pre) - Math.min(...pre) < 0.8, ref = median(pre);
+      const tail = seq.slice(seq.length - tailN), endV = median(tail.slice(-5)), drop = ref - endV;
+      let mono = 0; for(let i = 1; i < tail.length; i++) if(tail[i] <= tail[i - 1] + 0.04) mono++;
+      const startI = tail.findIndex(v => ref - v > 0.3), dur = startI < 0 ? 0 : (tailN - startI) * dt;
+      if(preStable && drop >= 1.2 && drop <= 12 && mono / tail.length > 0.75 && dur >= 0.12) falls.push((b - 3) * dt);
     }
   }
   // 5) しゃくり：音符開頭從下方滑上來（低 0.6–4 半音，0.35 秒內到位）
@@ -4295,16 +4370,17 @@ function analyzePitch(pt){
   const stabDev = devs.length ? devs.reduce((x, y) => x + y, 0) / devs.length : null;
   const longDev = longs.length ? longs.reduce((x, l) => x + l.dev, 0) / longs.length : null;
   const perMin = voicedSec > 5 ? (scoops.length + falls.length) / (voicedSec / 60) : 0;
+  const vibRatio = noteSec ? Math.min(1, vibSec / noteSec) : 0;
   const sc = {
-    stab: stabDev === null ? null : Math.round(clamp(100 - (stabDev - 8) * 1.6, 5, 100)),
-    dyn: voicedSec < 3 ? null : Math.round(clamp(20 + dyn * 6.5, 5, 98)),
-    vib: noteSec < 1 ? null : Math.round(clamp(15 + (vibSec / noteSec) * 170 + (vib.length && Math.abs(median(vib.map(v => v.rate)) - 6) < 1.2 ? 8 : 0), 5, 100)),
-    long: longDev === null ? null : Math.round(clamp(100 - (longDev - 6) * 2, 5, 100) * (longs.length >= 2 ? 1 : 0.85)),
-    tech: voicedSec < 5 ? null : Math.round(clamp(30 + perMin * 7, 5, 100))
+    stab: stabDev === null ? null : Math.round(clamp(100 - stabDev * 1.3, 5, 98)),
+    dyn: voicedSec < 3 ? null : Math.round(clamp(25 + dyn * 4.5, 5, 95)),
+    vib: noteSec < 1 ? null : Math.round(clamp(20 + vibRatio * 150 + (vib.length && Math.abs(median(vib.map(v => v.rate)) - 6) < 1.2 ? 6 : 0), 5, 96)),
+    long: longDev === null ? null : Math.round(clamp(100 - longDev * 1.6, 5, 97) * Math.min(1, 0.7 + longs.length * 0.1)),
+    tech: voicedSec < 5 ? null : Math.round(clamp(30 + perMin * 4, 5, 95))
   };
   const vals = Object.values(sc).filter(v => v !== null);
   return {
-    at: Date.now(), voicedSec: +voicedSec.toFixed(1),
+    ver: ANA_VER, at: Date.now(), voicedSec: +voicedSec.toFixed(1),
     vib: { count: vib.length, sec: +vibSec.toFixed(1), rate: vib.length ? +median(vib.map(v => v.rate)).toFixed(1) : 0, depth: vib.length ? +median(vib.map(v => v.depth)).toFixed(2) : 0, list: vib.map(v => [+v.t0.toFixed(2), +v.t1.toFixed(2)]) },
     scoop: { count: scoops.length, list: scoops.map(t => +t.toFixed(2)) },
     fall: { count: falls.length, list: falls.map(t => +t.toFixed(2)) },
@@ -4314,6 +4390,7 @@ function analyzePitch(pt){
   };
 }
 let anaBusy = false, anaShown = null;
+const anaOK = t => t && t.ana && t.ana.ver === ANA_VER;
 async function analyzeTrack(t, onProg){
   if(!t || !t.buffer) throw new Error('這一軌還沒載入完成');
   const pt = await pitchTrack(t.buffer, onProg);
@@ -4358,22 +4435,27 @@ function anaRow(label, val, sub){ return '<li><span>' + label + '</span><b>' + v
 function showAnalysis(t){
   const A = t.ana; if(!A) return;
   anaShown = t;
-  const voices = state.tracks.filter(x => x.kind === 'voice' && x.ana && x.id !== t.id && x.ana.at < A.at);
-  const prev = voices.length ? voices.sort((a, b) => b.ana.at - a.ana.at)[0] : null;
-  $('#anaTitle').textContent = t.name + '・表現力分析';
+  const isGuide = t.kind === 'guide';
+  const guide = !isGuide ? state.tracks.find(x => x.kind === 'guide' && anaOK(x)) : null;
+  const voices = state.tracks.filter(x => x.kind === 'voice' && anaOK(x) && x.id !== t.id && x.ana.at < A.at);
+  const prev = isGuide ? null : guide || (voices.length ? voices.sort((a, b) => b.ana.at - a.ana.at)[0] : null);
+  const prevName = prev ? (prev.kind === 'guide' ? '原唱' : prev.name) : '';
+  $('#anaTitle').textContent = (isGuide ? '原唱人聲' : t.name) + '・表現力分析';
   $('#anaTotal').textContent = A.total ?? '—';
   let cmp = '';
-  if(prev && prev.ana.total !== null && A.total !== null){ const d = A.total - prev.ana.total; cmp = '比「' + prev.name + '」' + (d > 0 ? '高 ' + d : d < 0 ? '低 ' + (-d) : '一樣') + (d ? ' 分' : ''); }
+  if(isGuide) cmp = '之後分析自己的錄音，會拿這份當參考';
+  else if(prev && prev.ana.total !== null && A.total !== null){ const d = A.total - prev.ana.total; cmp = '比' + (prev.kind === 'guide' ? '原唱' : '「' + prev.name + '」') + (d > 0 ? '高 ' + d : d < 0 ? '低 ' + (-d) : '一樣') + (d ? ' 分' : ''); }
   $('#anaCmp').textContent = cmp;
-  $('#anaRadar').innerHTML = radarSVG(A.scores, prev ? prev.ana.scores : null) + (prev ? '<div class="rleg"><i class="now"></i>這一軌　<i class="old"></i>' + prev.name + '</div>' : '');
-  const v = A.vib, L = A.long;
+  $('#anaRadar').innerHTML = radarSVG(A.scores, prev ? prev.ana.scores : null) + (prev ? '<div class="rleg"><i class="now"></i>這一軌　<i class="old"></i>' + prevName + '</div>' : '');
+  const v = A.vib, L = A.long, G = guide ? guide.ana : null;
+  const ref = (txt) => G ? '<em class="ref">原唱：' + txt + '</em>' : '';
   $('#anaList').innerHTML =
-    anaRow('顫音', v.count + ' 次', v.count ? '共 ' + v.sec + ' 秒・每秒 ' + v.rate + ' 下・幅度 ±' + v.depth + ' 半音' : '長音時可以試著放鬆讓聲音自然擺動') +
-    anaRow('長音', L.count + ' 個', L.count ? '最長 ' + L.best + ' 秒・平均晃動 ' + L.dev + ' 音分' : '這一軌沒有超過 1 秒的長音') +
-    anaRow('しゃくり', A.scoop.count + ' 次', '從下方滑上來進入音') +
-    anaRow('フォール', A.fall.count + ' 次', '句尾音高往下落') +
-    anaRow('安定性', A.stab === null ? '—' : '±' + A.stab + ' 音分', '音符中間（不算顫音）的平均晃動，越小越穩') +
-    anaRow('抑揚', A.dyn + ' dB', '強弱起伏的幅度，太小會聽起來平平的');
+    anaRow('顫音', v.count + ' 次', (v.count ? '共 ' + v.sec + ' 秒・每秒 ' + v.rate + ' 下・幅度 ±' + v.depth + ' 半音' : '長音時可以試著放鬆讓聲音自然擺動') + ref(G && G.vib.count + ' 次、共 ' + G.vib.sec + ' 秒')) +
+    anaRow('長音', L.count + ' 個', (L.count ? '最長 ' + L.best + ' 秒・平均晃動 ' + L.dev + ' 音分' : '這一軌沒有超過 1 秒的長音') + ref(G && G.long.count + ' 個' + (G.long.count ? '、平均晃動 ' + G.long.dev + ' 音分' : ''))) +
+    anaRow('しゃくり', A.scoop.count + ' 次', '從下方滑上來進入音' + ref(G && G.scoop.count + ' 次')) +
+    anaRow('フォール', A.fall.count + ' 次', '句尾音高往下落' + ref(G && G.fall.count + ' 次')) +
+    anaRow('安定性', A.stab === null ? '—' : '±' + A.stab + ' 音分', '音符中間（不算顫音）的平均晃動，越小越穩' + ref(G && G.stab !== null ? '±' + G.stab + ' 音分' : '—')) +
+    anaRow('抑揚', A.dyn + ' dB', '強弱起伏的幅度，太小會聽起來平平的' + ref(G && G.dyn + ' dB'));
   openSheet('#anaSheet');
   requestAnimationFrame(() => drawAnaTimeline($('#anaCv'), A, t.offset || 0));
 }
@@ -4387,6 +4469,130 @@ async function runAnalysis(t, btn){
   }catch(e){ toast('分析失敗：' + (e.message || e)); }
   finally{ anaBusy = false; if(btn){ btn.disabled = false; btn.textContent = old; } }
 }
+/* ---------- 唱法記號（標在每個字上） ---------- */
+const MARKS_DEFAULT = [
+  { k: 'vib', g: '〰', n: '顫音', c: '#E6B54F' },
+  { k: 'rd', g: '↘', n: '下行轉音', c: '#D98C7E' },
+  { k: 'ru', g: '↗', n: '上行轉音', c: '#6FA8DC' },
+  { k: 'cut', g: '┃', n: '急收', c: '#E8707E' },
+  { k: 'rasp', g: '⚡', n: '撕裂音', c: '#F0A04B' },
+  { k: 'br', g: 'V', n: '換氣', c: '#7CC49A' },
+  { k: 'fal', g: '假', n: '假音', c: '#B49AE0' },
+  { k: 'air', g: '氣', n: '氣音', c: '#9FB4C7' },
+  { k: 'cr', g: '＜', n: '漸強', c: '#E6B54F' },
+  { k: 'dim', g: '＞', n: '漸弱', c: '#9FB4C7' }
+];
+const MARK_COLORS = ['#E8707E', '#6FA8DC', '#7CC49A', '#E6B54F', '#B49AE0', '#F0A04B'];
+const allMarks = () => [...MARKS_DEFAULT, ...(state.customMarks || [])];
+const markDef = k => allMarks().find(m => m.k === k);
+const WORDCH = /[A-Za-z0-9'’\-\u00C0-\u024F]/;
+function lineTokens(text){
+  const ch = Array.from(text || ''), out = []; let i = 0;
+  while(i < ch.length){
+    if(WORDCH.test(ch[i])){ let j = i; while(j < ch.length && WORDCH.test(ch[j])) j++; out.push({ s: i, e: j, t: ch.slice(i, j).join('') }); i = j; }
+    else if(/\s/.test(ch[i])) i++;
+    else { out.push({ s: i, e: i + 1, t: ch[i] }); i++; }
+  }
+  return out;
+}
+// 把一句拆成「顯示單位」：有讀音的話，一組漢字＋假名算一個單位
+function lineUnits(l, useRb){
+  const text = l.text || '';
+  if(!(useRb && l.rb)) return Array.from(text).map((c, i) => ({ s: i, e: i + 1, html: escHtml(c) }));
+  const out = [], re = new RegExp('\\[([^\\]]+)\\]\\{([^}]+)\\}|([' + KANJI + ']+)\\{([^}]+)\\}|([\\s\\S])', 'gu'); let m, pos = 0;
+  while((m = re.exec(l.rb))){
+    if(m[5] !== undefined){ out.push({ s: pos, e: pos + 1, html: escHtml(m[5]) }); pos++; continue; }
+    const base = m[1] !== undefined ? m[1] : m[3], rt = m[1] !== undefined ? m[2] : m[4], n = Array.from(base).length;
+    out.push({ s: pos, e: pos + n, html: '<ruby>' + escHtml(base) + '<rt>' + escHtml(rt) + '</rt></ruby>' }); pos += n;
+  }
+  return out;
+}
+function marksGlyphs(ks){ return ks.map(k => { const d = markDef(k); return d ? '<b style="color:' + d.c + '">' + escHtml(d.g) + '</b>' : ''; }).join(''); }
+function lineHTML(l, useRb, useMk){
+  const units = lineUnits(l, useRb);
+  const marks = useMk && Array.isArray(l.marks) ? l.marks : [];
+  if(!marks.length) return units.map(u => u.html).join('');
+  const toks = lineTokens(l.text), byTok = new Map();
+  marks.forEach(m => { const t = toks.find(x => x.s === m.i); if(t){ (byTok.get(t.s) || byTok.set(t.s, { t, ks: [] }).get(t.s)).ks.push(m.k); } });
+  const uOf = c => units.findIndex(u => c >= u.s && c < u.e);
+  const wraps = [...byTok.values()].map(({ t, ks }) => ({ a: uOf(t.s), b: uOf(t.e - 1), ks })).filter(w => w.a >= 0).sort((x, y) => x.a - y.a);
+  const merged = []; wraps.forEach(w => { const p = merged[merged.length - 1]; if(p && w.a <= p.b){ p.b = Math.max(p.b, w.b); p.ks.push(...w.ks); } else merged.push({ ...w, ks: w.ks.slice() }); });
+  let html = '', k = 0;
+  for(let i = 0; i < units.length; i++){
+    const w = merged[k];
+    if(w && i === w.a){
+      html += '<span class="mk">' + units.slice(w.a, w.b + 1).map(u => u.html).join('') + '<i class="mks">' + marksGlyphs(w.ks) + '</i></span>';
+      i = w.b; k++;
+    } else html += units[i].html;
+  }
+  return html;
+}
+let mkIdx = 0, mkSel = -1;
+function openMarkEditor(i){
+  mkIdx = Math.max(0, Math.min(state.lyrics.length - 1, i));
+  while(mkIdx < state.lyrics.length - 1 && !(state.lyrics[mkIdx].text || '').trim()) mkIdx++;
+  mkSel = -1; renderMarkEditor(); openSheet('#mkSheet');
+}
+function renderMarkEditor(){
+  const l = state.lyrics[mkIdx]; if(!l) return;
+  $('#mkLineNo').textContent = '第 ' + (mkIdx + 1) + ' 句';
+  const box = $('#mkTokens'); box.innerHTML = '';
+  const toks = lineTokens(l.text);
+  if(mkSel < 0 && toks.length) mkSel = toks[0].s;
+  toks.forEach(t => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'mktok';
+    const ks = (l.marks || []).filter(m => m.i === t.s).map(m => m.k);
+    b.innerHTML = '<i class="mks">' + marksGlyphs(ks) + '</i><span></span>';
+    b.querySelector('span').textContent = t.t;
+    b.setAttribute('aria-pressed', t.s === mkSel);
+    b.addEventListener('click', () => { mkSel = t.s; renderMarkEditor(); });
+    box.appendChild(b);
+  });
+  const pal = $('#mkPal'); pal.innerHTML = '';
+  const on = new Set((l.marks || []).filter(m => m.i === mkSel).map(m => m.k));
+  allMarks().forEach(d => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'mkp';
+    b.style.setProperty('--mc', d.c); b.setAttribute('aria-pressed', on.has(d.k));
+    b.innerHTML = '<b></b><small></small>'; b.querySelector('b').textContent = d.g; b.querySelector('small').textContent = d.n;
+    b.addEventListener('click', () => {
+      if(mkSel < 0) return;
+      const arr = l.marks || (l.marks = []), j = arr.findIndex(m => m.i === mkSel && m.k === d.k);
+      if(j >= 0) arr.splice(j, 1); else arr.push({ i: mkSel, k: d.k });
+      if(!arr.length) delete l.marks;
+      saveMeta(); renderMarkEditor(); refreshMarks();
+    });
+    pal.appendChild(b);
+  });
+  $('#mkMemo').value = l.memo || '';
+  $('#mkPrev').disabled = mkIdx <= 0; $('#mkNext').disabled = mkIdx >= state.lyrics.length - 1;
+}
+function refreshMarks(){ if(stageOpen()){ renderLyrics(); updateStage(true); } renderMarkList(); }
+function renderMarkList(){
+  const ol = $('#mkList'); if(!ol) return; ol.innerHTML = '';
+  state.lyrics.forEach((l, i) => {
+    if(!(l.text || '').trim()) return;
+    const li = document.createElement('li');
+    li.innerHTML = '<div class="orig"><b></b><span class="mkprev"></span></div>';
+    li.querySelector('b').textContent = i + 1;
+    li.querySelector('.mkprev').innerHTML = lineHTML(l, false, true) + (l.memo ? '<small class="mkmemo">' + escHtml(l.memo) + '</small>' : '');
+    li.addEventListener('click', () => { saveLyricsFromSheet(); closeSheet('#lyricsSheet'); openMarkEditor(i); });
+    ol.appendChild(li);
+  });
+}
+const hasMarks = () => state.lyrics.some(l => (l.marks && l.marks.length) || l.memo);
+$('#mkPrev').addEventListener('click', () => { let i = mkIdx - 1; while(i > 0 && !(state.lyrics[i].text || '').trim()) i--; mkIdx = Math.max(0, i); mkSel = -1; renderMarkEditor(); });
+$('#mkNext').addEventListener('click', () => { let i = mkIdx + 1; while(i < state.lyrics.length - 1 && !(state.lyrics[i].text || '').trim()) i++; mkIdx = Math.min(state.lyrics.length - 1, i); mkSel = -1; renderMarkEditor(); });
+$('#mkDone').addEventListener('click', () => { closeSheet('#mkSheet'); refreshMarks(); });
+{ let mt = 0; $('#mkMemo').addEventListener('input', e => { const l = state.lyrics[mkIdx]; if(!l) return; const v = e.target.value.trim(); if(v) l.memo = v; else delete l.memo; clearTimeout(mt); mt = setTimeout(() => { saveMeta(); refreshMarks(); }, 500); }); }
+$('#mkAddToggle').addEventListener('click', () => { $('#mkAddForm').hidden = !$('#mkAddForm').hidden; });
+$('#mkAddOk').addEventListener('click', () => {
+  const g = $('#mkAddG').value.trim(), n = $('#mkAddN').value.trim();
+  if(!g || !n){ toast('符號和名稱都要填'); return; }
+  const list = state.customMarks || (state.customMarks = []);
+  list.push({ k: 'u' + Date.now().toString(36), g, n, c: MARK_COLORS[list.length % MARK_COLORS.length] });
+  $('#mkAddG').value = ''; $('#mkAddN').value = ''; $('#mkAddForm').hidden = true;
+  saveMeta(); renderMarkEditor(); toast('已新增記號「' + n + '」');
+});
 $('#anaClose').addEventListener('click', () => closeSheet('#anaSheet'));
 $('#doneAnaBtn').addEventListener('click', () => { if(lastTake && lastTake.ana){ closeSheet('#doneSheet'); showAnalysis(lastTake); } });
 $('#doneStudio').addEventListener('click', () => { closeSheet('#doneSheet'); openEditorFromStage(); });
