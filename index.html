@@ -266,12 +266,12 @@ body[data-view="library"] .transport{display:none}
   .mel-strip{height:26px}
 }
 .piano{position:relative;height:clamp(150px,26vh,230px);display:flex;user-select:none;-webkit-user-select:none;touch-action:none;padding-bottom:env(safe-area-inset-bottom,0px);background:#141517}
-.pk{position:relative;flex:1;border:1px solid #2A2A2A;border-top:none;border-radius:0 0 8px 8px;background:linear-gradient(#FDFDF8,#F1F0EA);display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;cursor:pointer}
-.pk span{font-size:.72rem;font-weight:700;color:#222;background:#BDF3C0;border-radius:5px;padding:2px 4px}
-.pk.c span{background:#7FDCD8}
-.pk.on{background:linear-gradient(#E9E3D6,#D8D0C0)}
-.pkb{position:absolute;top:0;height:60%;border-radius:0 0 6px 6px;background:linear-gradient(#3A3A3A,#0E0E0E);border:1px solid #000;z-index:2;cursor:pointer;box-shadow:0 3px 4px rgba(0,0,0,.4)}
-.pkb.on{background:linear-gradient(#5A5A5A,#2A2A2A)}
+.pk{position:relative;flex:1;border:1px solid #2A2A2A;border-top:none;border-radius:0 0 8px 8px;background:linear-gradient(#FDFDF8 0%,#F5F4EE 80%,#E4E2D8 100%);box-shadow:inset 0 -7px 0 #DAD7CC,0 2px 3px rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;padding-bottom:13px;cursor:pointer}
+.pk span{font-size:.72rem;font-weight:700;color:#222;background:var(--oc,#BDF3C0);border-radius:5px;padding:2px 4px}
+.pk.on{background:linear-gradient(#B9B7B0 0%,#8F8D88 45%,#A9A7A0 100%);box-shadow:inset 0 4px 10px rgba(0,0,0,.5),inset 0 -2px 0 #9C9A93;padding-bottom:9px}
+.pk.on span{filter:brightness(.85)}
+.pkb{position:absolute;top:0;height:60%;border-radius:0 0 6px 6px;background:linear-gradient(90deg,#141414 0%,#3A3A3A 14%,#151515 32%,#0A0A0A 68%,#2C2C2C 88%,#101010 100%);border:1px solid #000;z-index:2;cursor:pointer;box-shadow:0 5px 6px rgba(0,0,0,.55),inset 0 -12px 0 #262626}
+.pkb.on{height:59%;background:linear-gradient(#090909 0%,#2A2A2A 40%,#6E6E6E 100%);box-shadow:0 1px 2px rgba(0,0,0,.5),inset 0 -3px 0 #3C3C3C}
 .st-lane{height:84px;margin:6px 14px 0;border-radius:12px;background:rgba(0,0,0,.18);overflow:hidden}
 .st-lane[hidden]{display:none}
 .st-lane canvas{display:block;width:100%;height:100%}
@@ -993,7 +993,7 @@ body[data-view="library"] .transport{display:none}
     <div class="row" style="align-items:center"><h2 id="setTitle" style="margin:0">設定</h2><button class="btn sm" id="setClose" type="button" style="margin-left:auto">完成</button></div>
   <p class="hint" id="storeInfo"></p>
   <p class="hint" style="font-size:.75rem">旋律輸入的鋼琴音色：Salamander Grand Piano（Alexander Holm，CC BY 3.0）</p>
-  <p class="hint" style="font-size:.75rem">版本 2026.10.16（橫向鋼琴）</p>
+  <p class="hint" style="font-size:.75rem">版本 2026.10.16b（慢速不變調）</p>
   <details class="cal" id="backupBox" open>
     <summary>備份與還原</summary>
     <p>資料只存在這支手機的瀏覽器裡。建議每錄完幾首就匯出一次，把檔案存到 Google 雲端硬碟或電腦。換手機或資料不見時，用「匯入備份」就能還原。</p>
@@ -1339,8 +1339,10 @@ function buildGraph(c, when, pos, rate){
     g.connect(p); p.connect(c.destination);
     let send = null;
     if(t.kind === 'voice'){ send = c.createGain(); send.gain.value = state.reverb; p.connect(send); send.connect(verb); }
-    s.playbackRate.value = rate;
-    if(rel >= 0) s.start(when + rel / rate); else s.start(when, -rel);
+    // 慢速時：伴奏和導唱用「拉長但不變調」的版本；還沒處理好就先用變速（音會變低）
+    const st = rate !== 1 ? stretchedOf(t, rate) : null;
+    if(st){ s.buffer = st; if(rel >= 0) s.start(when + rel / rate); else s.start(when, -rel / rate); }
+    else { s.playbackRate.value = rate; if(rel >= 0) s.start(when + rel / rate); else s.start(when, -rel); }
     nodes.push({ id: t.id, s, g, p, send });
   }
   return nodes;
@@ -3503,10 +3505,11 @@ function syncJump(d){
   state.pos = Math.min(t, songLength()); updateStage(true);
   if(was) syncStartAudio(state.pos);
 }
-function setSyncRate(r){
+function setSyncRate(r, ready){
   syncRate = r;
   $('#syncSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.r === r));
   if(sync && sync.mv){ if(ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(r); return; }
+  if(!ready) ensureStretch(r, () => { if(syncRate === r && playing && playing.mode === 'sync') setSyncRate(r, true); });
   if(!(playing && playing.mode === 'sync')) return;
   const c = ac(), keep = state.pos;
   stopNodes(playing.nodes);
@@ -3603,9 +3606,58 @@ async function pitchShift(buf, semis, onProgress, cancelled){
   }
   return out;
 }
+// ---- 變速不變調（WSOLA）：為了省記憶體，慢速版用單聲道 22 kHz 就夠練習用 ----
+const STRETCH = { job: 0, busy: null };
+const stretchSrc = t => t.pbuf || t.buffer;
+function stretchedOf(t, rate){ const c = t.sbuf; return (t.kind === 'backing' || t.kind === 'guide') && c && c.rate === rate && c.src === stretchSrc(t) ? c.buf : null; }
+async function toMono22k(buf){
+  const sr = 22050, len = Math.ceil(buf.duration * sr), oc = new OfflineAudioContext(1, len, sr);
+  const s = oc.createBufferSource(); s.buffer = buf; s.connect(oc.destination); s.start();
+  return oc.startRendering();
+}
+async function timeStretch(buf, rate, onProgress, cancelled){
+  const sr = buf.sampleRate, N = buf.length, x = buf.getChannelData(0);
+  const G = Math.round(sr * 0.06) & ~1, Hs = G / 2, D = Math.round(sr * 0.015), STEP = 6;
+  const outN = Math.ceil(N / rate) + G, out = new AudioBuffer({ length: outN, numberOfChannels: 1, sampleRate: sr }), y = out.getChannelData(0);
+  const win = new Float32Array(G); for(let j = 0; j < G; j++) win[j] = 0.5 - 0.5 * Math.cos(2 * Math.PI * j / G);
+  const at = i => (i >= 0 && i < N) ? x[i] : 0;
+  const grains = Math.ceil(outN / Hs); let prev = 0;
+  for(let k = 0; k < grains; k++){
+    const o0 = k * Hs, nominal = Math.round(o0 * rate); let s0 = nominal;
+    if(k > 0){
+      let best = -Infinity;
+      for(let dd = -D; dd <= D; dd += 3){
+        const s = nominal + dd; let acc = 0, en = 1e-9;
+        for(let j = 0; j < Hs; j += STEP){ const v = at(s + j); acc += at(prev + Hs + j) * v; en += v * v; }
+        const sc = acc / Math.sqrt(en); if(sc > best){ best = sc; s0 = s; }
+      }
+    }
+    for(let j = 0; j < G; j++){ const o = o0 + j; if(o >= outN) break; y[o] += win[j] * at(s0 + j); }
+    prev = s0;
+    if(k % 150 === 0){ if(cancelled && cancelled()) return null; if(onProgress) onProgress(k / grains); await sleep(0); }
+  }
+  return out;
+}
+// 準備某個速度的慢速版；完成後呼叫 onReady（通常是重新開始播放）
+async function ensureStretch(rate, onReady){
+  const job = ++STRETCH.job;
+  if(rate === 1) return;
+  const list = state.tracks.filter(t => (t.kind === 'backing' || t.kind === 'guide') && t.buffer && !stretchedOf(t, rate));
+  if(!list.length) return;
+  for(let i = 0; i < list.length; i++){
+    const t = list[i], src = stretchSrc(t);
+    toast('準備慢速音訊（不變調）…');
+    const mono = await toMono22k(src); if(job !== STRETCH.job) return;
+    const out = await timeStretch(mono, rate, p => { if(job === STRETCH.job) toast('準備慢速音訊 ' + Math.round((i + p) / list.length * 100) + '%'); }, () => job !== STRETCH.job);
+    if(!out || job !== STRETCH.job) return;
+    t.sbuf = { rate, src, buf: out };
+  }
+  toast('慢速準備好了，音高不會變低');
+  onReady && onReady();
+}
 let keyJob = 0, keyTimer = null;
 const keyLabel = k => k ? (k > 0 ? '+' + k : '−' + (-k)) : '原調';
-function keyStatus(text){ const el = document.querySelector('.keyrow .ks'); if(el) el.textContent = text; }
+function keyStatus(text){ document.querySelectorAll('.keyrow .ks').forEach(el => el.textContent = text); }
 function scheduleKey(){ clearTimeout(keyTimer); keyTimer = setTimeout(applyKey, 450); }
 async function applyKey(){
   const b0 = backing(); if(!b0) return;
@@ -3734,7 +3786,7 @@ function render(){
         <label>音量 <output class="o-vol"></output><input type="range" class="r-vol" min="0" max="1.5" step="0.01"></label>
         <label>左右 <output class="o-pan"></output><input type="range" class="r-pan" min="-1" max="1" step="0.05"></label>
         <label>對齊微調 <output class="o-nudge"></output><input type="range" class="r-nudge" min="-2000" max="2000" step="5"></label>
-      </div>`;
+      </div>${t.kind === 'backing' ? '<div class="keyrow"><span>升降 Key</span><button type="button" class="km" aria-label="降半音">−</button><output class="kv"></output><button type="button" class="kp" aria-label="升半音">＋</button><span class="ks"></span></div>' : ''}`;
     const q = s => li.querySelector(s);
     q('.name').value = t.name;
     q('.name').addEventListener('change', e => { t.name = e.target.value.trim() || t.name; saveMeta(); });
@@ -3753,6 +3805,11 @@ function render(){
       const n = liveNode(t.id); if(n) n.g.gain.value = t.mute ? 0 : t.vol; saveMeta();
     });
     const anaB = q('.ana'); if(anaB) anaB.addEventListener('click', () => { if(anaOK(t)) showAnalysis(t); else runAnalysis(t, anaB); });
+    if(t.kind === 'backing'){
+      const kv = q('.kv'), showK = () => kv.textContent = keyLabel(t.key || 0); showK();
+      q('.km').addEventListener('click', () => { t.key = Math.max(-6, (t.key || 0) - 1); showK(); scheduleKey(); });
+      q('.kp').addEventListener('click', () => { t.key = Math.min(6, (t.key || 0) + 1); showK(); scheduleKey(); });
+    }
     const fix = q('.fix');
     if(fix) fix.addEventListener('click', () => { if(!state.lyrics.some(l => l.t !== null)){ toast('要先有對過時的歌詞，才能一句一句修'); return; } openStage({ punch: t }); });
     const del = q('.del'); let armed = null;
@@ -4677,6 +4734,8 @@ function melRelease(m){
   state.melody.push({ t: +k.t0.toFixed(3), d: +(t1 - k.t0).toFixed(3), m });
   state.melody.sort((a, b) => a.t - b.t); melTouch(); melInfo();
 }
+// 每個八度的音名用不同顏色：C0 灰、C1 粉褐、C2 橘、C3 黃、C4 綠、C5 青、C6 藍、C7 紫
+const OCT_COLORS = ['#D6D6D6', '#D9B6B4', '#FDC2A8', '#F2EBAE', '#BDF3C0', '#86DDD8', '#A3BEF2', '#E6C6EC', '#D6D6D6'];
 // 鍵盤範圍：C1～C7 的白鍵，M.wi 是目前最左邊那個白鍵的位置
 const WHITE = []; for(let m = 24; m <= 96; m++) if(![1, 3, 6, 8, 10].includes(m % 12)) WHITE.push(m);
 const whiteIdx = m => { let best = 0; WHITE.forEach((w, i) => { if(Math.abs(w - m) < Math.abs(WHITE[best] - m)) best = i; }); return best; };
@@ -4697,7 +4756,8 @@ function renderPiano(){
   const whites = WHITE.slice(M.wi, M.wi + n);
   const ww = 100 / n;
   whites.forEach((wm, i) => {
-    const k = document.createElement('div'); k.className = 'pk' + (wm % 12 === 0 ? ' c' : ''); k.dataset.m = wm;
+    const k = document.createElement('div'); k.className = 'pk'; k.dataset.m = wm;
+    k.style.setProperty('--oc', OCT_COLORS[Math.max(0, Math.min(8, Math.floor(wm / 12) - 1))]);
     k.innerHTML = '<span>' + noteName(wm) + '</span>'; box.appendChild(k);
     if([0, 2, 5, 7, 9].includes(wm % 12) && i < n - 1){
       const b = document.createElement('div'); b.className = 'pkb'; b.dataset.m = wm + 1;
@@ -4723,16 +4783,23 @@ async function melRotate(){
   }catch(e){ toast('這台裝置不能自動轉向，可以開啟自動旋轉後把手機轉橫'); }
 }
 document.addEventListener('fullscreenchange', () => { if(M.open) setTimeout(renderPiano, 250); });
-{ // 鋼琴鍵：多指同時按也可以
+{ // 鋼琴鍵：多指同時按也可以；手指滑到隔壁鍵會換音（像刮琴）
   const pid = new Map();
-  const box = () => $('#piano');
+  const keyAt = (x, y) => { const el = document.elementFromPoint(x, y); return el && el.closest ? el.closest('#piano .pk, #piano .pkb') : null; };
   document.addEventListener('pointerdown', e => {
     const k = e.target.closest && e.target.closest('#piano .pk, #piano .pkb'); if(!k) return;
     e.preventDefault(); const m = +k.dataset.m; pid.set(e.pointerId, m); melPress(m, k);
     try{ k.releasePointerCapture(e.pointerId); }catch(_){}
+  }, { passive: false });
+  document.addEventListener('pointermove', e => {
+    const m0 = pid.get(e.pointerId); if(m0 === undefined) return;
+    const k = keyAt(e.clientX, e.clientY); if(!k) return;
+    const m = +k.dataset.m; if(m === m0) return;
+    melRelease(m0); pid.set(e.pointerId, m); melPress(m, k);
   });
   const up = e => { const m = pid.get(e.pointerId); if(m === undefined) return; pid.delete(e.pointerId); melRelease(m); };
   document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+  document.addEventListener('contextmenu', e => { if(e.target.closest && e.target.closest('#piano')) e.preventDefault(); });
 }
 function melInfo(){
   const n = (state.melody || []).length;
@@ -4989,7 +5056,7 @@ $('#melPlay').addEventListener('click', () => { if(M.play) melStop(); else melSt
 $('#melRew').addEventListener('click', () => melJump(-3));
 $('#melFwd').addEventListener('click', () => melJump(3));
 $('#melRec').addEventListener('click', e => { M.rec = !M.rec; e.currentTarget.setAttribute('aria-pressed', M.rec); toast(M.rec ? '播放時按琴鍵就會記下音符，按住多久就是多長' : '琴鍵只會發出聲音，不會記錄'); });
-$('#melSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; M.rate = +b.dataset.r; $('#melSpeed').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); if(M.play){ melStop(); melStart(); } });
+$('#melSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; const r = +b.dataset.r; M.rate = r; $('#melSpeed').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); if(M.play){ melStop(); melStart(); } ensureStretch(r, () => { if(M.rate === r && M.play){ melStop(); melStart(); } }); });
 $('#melOctDn').addEventListener('click', () => setWhite(M.wi - 1));
 $('#melOctUp').addEventListener('click', () => setWhite(M.wi + 1));
 $('#melRotate').addEventListener('click', melRotate);
