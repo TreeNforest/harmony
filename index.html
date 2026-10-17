@@ -260,19 +260,30 @@ body[data-view="library"] .transport{display:none}
   .mel-roll{grid-column:1 / 3;grid-row:2;min-height:0}
   .mel-sel{grid-column:1 / 3;grid-row:3}
   .mel-oct{grid-column:1 / 3;grid-row:4;padding:2px 8px}
-  .piano{grid-column:1 / 3;grid-row:5;height:42vh}
+  .piano{grid-column:1 / 3;grid-row:5;height:60vh}
+  .mel-roll{max-height:22vh}
+  .mel-line{top:2px;font-size:.8rem}
+  .mel-top .btn{min-height:34px;padding:0 10px}
   .mel-play{width:42px;height:42px}
   .mel-title small{display:none}
   .mel-strip{height:26px}
 }
-.piano{position:relative;height:clamp(150px,26vh,230px);display:flex;user-select:none;-webkit-user-select:none;touch-action:none;padding-bottom:env(safe-area-inset-bottom,0px);background:#141517}
+.piano{position:relative;height:clamp(190px,34vh,300px);display:flex;user-select:none;-webkit-user-select:none;touch-action:none;padding-bottom:env(safe-area-inset-bottom,0px);background:#141517}
 .pk{position:relative;flex:1;border:1px solid #2A2A2A;border-top:none;border-radius:0 0 8px 8px;background:linear-gradient(#FDFDF8 0%,#F5F4EE 80%,#E4E2D8 100%);box-shadow:inset 0 -7px 0 #DAD7CC,0 2px 3px rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;padding-bottom:13px;cursor:pointer}
 .pk span{font-size:.72rem;font-weight:700;color:#222;background:var(--oc,#BDF3C0);border-radius:5px;padding:2px 4px}
 .pk.on{background:linear-gradient(#B9B7B0 0%,#8F8D88 45%,#A9A7A0 100%);box-shadow:inset 0 4px 10px rgba(0,0,0,.5),inset 0 -2px 0 #9C9A93;padding-bottom:9px}
 .pk.on span{filter:brightness(.85)}
 .pkb{position:absolute;top:0;height:60%;border-radius:0 0 6px 6px;background:linear-gradient(90deg,#141414 0%,#3A3A3A 14%,#151515 32%,#0A0A0A 68%,#2C2C2C 88%,#101010 100%);border:1px solid #000;z-index:2;cursor:pointer;box-shadow:0 5px 6px rgba(0,0,0,.55),inset 0 -12px 0 #262626}
 .pkb.on{height:59%;background:linear-gradient(#090909 0%,#2A2A2A 40%,#6E6E6E 100%);box-shadow:0 1px 2px rgba(0,0,0,.5),inset 0 -3px 0 #3C3C3C}
-.st-lane{height:84px;margin:6px 14px 0;border-radius:12px;background:rgba(0,0,0,.18);overflow:hidden}
+.st-lane{position:relative;height:84px;margin:6px 14px 0;border-radius:12px;background:rgba(0,0,0,.18);overflow:hidden}
+/* 琴鍵不要出現點擊的藍色反白、文字圈選或長按選單 */
+.melview,.melview *{-webkit-tap-highlight-color:transparent}
+.piano,.piano *,.mel-strip,.mel-strip *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;outline:none}
+.piano ::selection{background:transparent}
+.lane-x{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(0,0,0,.35);color:var(--s-ink);font-size:.9rem;cursor:pointer}
+.lane-mini{display:block;margin:6px auto 0;height:28px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.18);color:var(--s-dim);font:inherit;font-size:.78rem;padding:0 12px;cursor:pointer}
+.lane-mini[hidden]{display:none}
+.st-tracks{display:none !important}
 .st-lane[hidden]{display:none}
 .st-lane canvas{display:block;width:100%;height:100%}
 .mel-score{display:flex;gap:10px;margin:10px 0 0}
@@ -736,7 +747,8 @@ body[data-view="library"] .transport{display:none}
   <div class="st-info"><span class="dot"></span><span id="stClock">0:00 / 0:00</span><button type="button" class="chip" id="skipBtn" aria-pressed="false">跳過前奏</button><button type="button" class="chip" id="duetSkipBtn" aria-pressed="false" hidden>只錄我的部分</button><button type="button" class="chip" id="mvBtn" aria-pressed="false" hidden>MV 模式</button><button type="button" class="chip" id="mvAlignBtn">字幕對齊</button><span class="take" id="stTake"></span><button type="button" class="icon st-opt" id="stOptBtn" aria-label="錄音選項"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
   <div class="mvbox" id="mvBox" hidden><div id="mvPlayer"></div></div>
   <div class="st-tracks" id="stTracks" role="group" aria-label="已錄的音軌（點一下切換要不要聽到）"></div>
-  <div class="st-lane" id="stLane" hidden><canvas id="stLaneCv"></canvas></div>
+  <div class="st-lane" id="stLane" hidden><canvas id="stLaneCv"></canvas><button type="button" class="lane-x" id="laneHide" aria-label="收起音準條">▴</button></div>
+  <button type="button" class="lane-mini" id="laneShow" hidden>音準條 ▾</button>
   <div class="cue" id="cue" aria-hidden="true"><span class="cue-label" id="cueLabel"></span><span class="cue-dots"><i></i><i></i><i></i></span></div>
   <div class="st-body">
     <div class="st-meter"><div class="bar" id="stMeter"><i></i></div>
@@ -993,7 +1005,7 @@ body[data-view="library"] .transport{display:none}
     <div class="row" style="align-items:center"><h2 id="setTitle" style="margin:0">設定</h2><button class="btn sm" id="setClose" type="button" style="margin-left:auto">完成</button></div>
   <p class="hint" id="storeInfo"></p>
   <p class="hint" style="font-size:.75rem">旋律輸入的鋼琴音色：Salamander Grand Piano（Alexander Holm，CC BY 3.0）</p>
-  <p class="hint" style="font-size:.75rem">版本 2026.10.16b（慢速不變調）</p>
+  <p class="hint" style="font-size:.75rem">版本 2026.10.17b（琴鍵去藍底）</p>
   <details class="cal" id="backupBox" open>
     <summary>備份與還原</summary>
     <p>資料只存在這支手機的瀏覽器裡。建議每錄完幾首就匯出一次，把檔案存到 Google 雲端硬碟或電腦。換手機或資料不見時，用「匯入備份」就能還原。</p>
@@ -1331,7 +1343,9 @@ function buildGraph(c, when, pos, rate){
   for(const t of state.tracks){
     const rel = trackStart(t) - pos;
     if(rel < 0 && -rel >= t.buffer.duration) continue;
-    const s = c.createBufferSource(); s.buffer = t.pbuf || t.buffer;
+    // 慢速時：用「拉長但不變調」的版本；還沒處理好就先用變速（音會變低）
+    const st = rate !== 1 ? stretchedOf(t, rate) : null;
+    const s = c.createBufferSource(); s.buffer = st || t.pbuf || t.buffer;
     const g = c.createGain(); g.gain.value = t.mute ? 0 : t.vol;
     const p = c.createStereoPanner(); p.pan.value = t.pan;
     if(t.kind === 'voice'){ const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 80; s.connect(hp); hp.connect(g); }
@@ -1339,9 +1353,7 @@ function buildGraph(c, when, pos, rate){
     g.connect(p); p.connect(c.destination);
     let send = null;
     if(t.kind === 'voice'){ send = c.createGain(); send.gain.value = state.reverb; p.connect(send); send.connect(verb); }
-    // 慢速時：伴奏和導唱用「拉長但不變調」的版本；還沒處理好就先用變速（音會變低）
-    const st = rate !== 1 ? stretchedOf(t, rate) : null;
-    if(st){ s.buffer = st; if(rel >= 0) s.start(when + rel / rate); else s.start(when, -rel / rate); }
+    if(st){ if(rel >= 0) s.start(when + rel / rate); else s.start(when, -rel / rate); }
     else { s.playbackRate.value = rate; if(rel >= 0) s.start(when + rel / rate); else s.start(when, -rel); }
     nodes.push({ id: t.id, s, g, p, send });
   }
@@ -3452,8 +3464,8 @@ function startSync(fromHere){
   const c = ac(); state.pos = startPos; sync = { i: from };
   $('#syncSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.r === syncRate));
   $('.sync-tip').textContent = '唱到哪一句，就直接點那句歌詞；框起來的是下一句。';
-  const startAt = c.currentTime + 0.4;
-  playing = { mode: 'sync', startAt, pos0: startPos, rate: syncRate, nodes: buildGraph(c, startAt, startPos, syncRate) };
+  if(needStretch(syncRate)){ state.pos = startPos; const r = syncRate; ensureStretch(r, () => { if(sync && !sync.mv && !playing && syncRate === r){ syncStartAudio(state.pos); syncPlayIcon(); } }); }
+  else { const startAt = c.currentTime + 0.4; playing = { mode: 'sync', startAt, pos0: startPos, rate: syncRate, nodes: buildGraph(c, startAt, startPos, syncRate) }; }
   holdWake(); setStageMode('sync'); updateStage(true); loop(); syncPlayIcon();
 }
 function stampLine(i){
@@ -3482,6 +3494,7 @@ function syncPlayIcon(){
   $('#syncPlay').setAttribute('aria-label', on ? '暫停' : '播放');
 }
 function syncStartAudio(pos){
+  if(needStretch(syncRate)){ const r = syncRate; ensureStretch(r, () => { if(sync && !sync.mv && !playing && syncRate === r) syncStartAudio(state.pos); }); return; }
   const c = ac(), startAt = c.currentTime + 0.12;
   playing = { mode: 'sync', startAt, pos0: pos, rate: syncRate, nodes: buildGraph(c, startAt, pos, syncRate) };
   loop();
@@ -3509,7 +3522,12 @@ function setSyncRate(r, ready){
   syncRate = r;
   $('#syncSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.r === r));
   if(sync && sync.mv){ if(ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(r); return; }
-  if(!ready) ensureStretch(r, () => { if(syncRate === r && playing && playing.mode === 'sync') setSyncRate(r, true); });
+  if(!ready && needStretch(r)){
+    // 先暫停，慢速版做好後從同一個位置接著播
+    if(playing && playing.mode === 'sync'){ const p = playing; state.pos = p.pos0 + Math.max(0, ctx.currentTime - p.startAt) * (p.rate || 1); playing = null; stopNodes(p.nodes); syncPlayIcon(); }
+    ensureStretch(r, () => { if(syncRate === r && sync && !sync.mv && !playing){ syncStartAudio(state.pos); syncPlayIcon(); } });
+    return;
+  }
   if(!(playing && playing.mode === 'sync')) return;
   const c = ac(), keep = state.pos;
   stopNodes(playing.nodes);
@@ -3609,7 +3627,7 @@ async function pitchShift(buf, semis, onProgress, cancelled){
 // ---- 變速不變調（WSOLA）：為了省記憶體，慢速版用單聲道 22 kHz 就夠練習用 ----
 const STRETCH = { job: 0, busy: null };
 const stretchSrc = t => t.pbuf || t.buffer;
-function stretchedOf(t, rate){ const c = t.sbuf; return (t.kind === 'backing' || t.kind === 'guide') && c && c.rate === rate && c.src === stretchSrc(t) ? c.buf : null; }
+function stretchedOf(t, rate){ const c = t.sbuf; return c && c.rate === rate && c.src === stretchSrc(t) ? c.buf : null; }
 async function toMono22k(buf){
   const sr = 22050, len = Math.ceil(buf.duration * sr), oc = new OfflineAudioContext(1, len, sr);
   const s = oc.createBufferSource(); s.buffer = buf; s.connect(oc.destination); s.start();
@@ -3639,21 +3657,25 @@ async function timeStretch(buf, rate, onProgress, cancelled){
   return out;
 }
 // 準備某個速度的慢速版；完成後呼叫 onReady（通常是重新開始播放）
+// 這個速度下，還有沒有音軌需要先做成「拉長不變調」版
+const needStretch = rate => rate !== 1 && state.tracks.some(t => t.buffer && !t.mute && !stretchedOf(t, rate));
 async function ensureStretch(rate, onReady){
-  const job = ++STRETCH.job;
   if(rate === 1) return;
-  const list = state.tracks.filter(t => (t.kind === 'backing' || t.kind === 'guide') && t.buffer && !stretchedOf(t, rate));
-  if(!list.length) return;
-  for(let i = 0; i < list.length; i++){
-    const t = list[i], src = stretchSrc(t);
-    toast('準備慢速音訊（不變調）…');
-    const mono = await toMono22k(src); if(job !== STRETCH.job) return;
-    const out = await timeStretch(mono, rate, p => { if(job === STRETCH.job) toast('準備慢速音訊 ' + Math.round((i + p) / list.length * 100) + '%'); }, () => job !== STRETCH.job);
-    if(!out || job !== STRETCH.job) return;
-    t.sbuf = { rate, src, buf: out };
-  }
-  toast('慢速準備好了，音高不會變低');
-  onReady && onReady();
+  if(STRETCH.running && STRETCH.rate === rate){ if(onReady) STRETCH.cbs.push(onReady); return; }
+  const job = ++STRETCH.job; STRETCH.rate = rate; STRETCH.running = true; STRETCH.cbs = onReady ? [onReady] : [];
+  const list = state.tracks.filter(t => t.buffer && !t.mute && !stretchedOf(t, rate));
+  try{
+    for(let i = 0; i < list.length; i++){
+      const t = list[i], src = stretchSrc(t);
+      toast('準備慢速音訊（不變調）…');
+      const mono = await toMono22k(src); if(job !== STRETCH.job) return;
+      const out = await timeStretch(mono, rate, p => { if(job === STRETCH.job) toast('準備慢速音訊 ' + Math.round((i + p) / list.length * 100) + '%'); }, () => job !== STRETCH.job);
+      if(!out || job !== STRETCH.job) return;
+      t.sbuf = { rate, src, buf: out };
+    }
+  } finally { if(job === STRETCH.job) STRETCH.running = false; }
+  if(list.length) toast('慢速準備好了，音高不會變低');
+  const cbs = STRETCH.cbs; STRETCH.cbs = []; cbs.forEach(f => f());
 }
 let keyJob = 0, keyTimer = null;
 const keyLabel = k => k ? (k > 0 ? '+' + k : '−' + (-k)) : '原調';
@@ -4705,6 +4727,8 @@ const melPos = () => M.play ? M.play.pos0 + Math.max(0, ctx.currentTime - M.play
 const melLag = () => ((ctx && (ctx.outputLatency || ctx.baseLatency)) || 0.03) + 0.06;
 function melStart(){
   if(M.play) return;
+  // 慢速版還沒做好：先等它做好再播，不用變低的聲音頂替
+  if(needStretch(M.rate)){ const r = M.rate; ensureStretch(r, () => { if(M.open && !M.play && M.rate === r) melStart(); }); return; }
   const c = ac(), startAt = c.currentTime + 0.12;
   M.play = { startAt, pos0: state.pos, rate: M.rate, nodes: buildGraph(c, startAt, state.pos, M.rate) };
   melIcon();
@@ -4750,7 +4774,7 @@ function renderStrip(){
 function setWhite(i){ const n = M.n || 9; M.wi = Math.max(0, Math.min(WHITE.length - n, Math.round(i))); M.base = WHITE[M.wi]; state.melOct = M.base; renderPiano(); }
 function renderPiano(){
   const box = $('#piano'); box.innerHTML = ''; renderStrip();
-  const W = box.clientWidth || 360, kw = innerWidth > innerHeight ? 46 : M.keyW, n = Math.max(7, Math.min(24, Math.floor(W / kw)));
+  const W = box.clientWidth || 360, kw = innerWidth > innerHeight ? 68 : 48, n = Math.max(6, Math.min(16, Math.floor(W / kw)));
   M.n = n; if(M.wi === undefined) M.wi = whiteIdx(M.base);
   M.wi = Math.max(0, Math.min(WHITE.length - n, M.wi)); M.base = WHITE[M.wi];
   const whites = WHITE.slice(M.wi, M.wi + n);
@@ -4788,7 +4812,7 @@ document.addEventListener('fullscreenchange', () => { if(M.open) setTimeout(rend
   const keyAt = (x, y) => { const el = document.elementFromPoint(x, y); return el && el.closest ? el.closest('#piano .pk, #piano .pkb') : null; };
   document.addEventListener('pointerdown', e => {
     const k = e.target.closest && e.target.closest('#piano .pk, #piano .pkb'); if(!k) return;
-    e.preventDefault(); const m = +k.dataset.m; pid.set(e.pointerId, m); melPress(m, k);
+    e.preventDefault(); const sel = window.getSelection && window.getSelection(); if(sel && sel.rangeCount) sel.removeAllRanges(); const m = +k.dataset.m; pid.set(e.pointerId, m); melPress(m, k);
     try{ k.releasePointerCapture(e.pointerId); }catch(_){}
   }, { passive: false });
   document.addEventListener('pointermove', e => {
@@ -4905,8 +4929,8 @@ function laneFrame(d, pt){
   LANE.trail.push({ t: song, m: v }); while(LANE.trail.length && song - LANE.trail[0].t > 6) LANE.trail.shift();
 }
 function drawLane(){
-  const wrap = $('#stLane'), show = (state.melody || []).length > 0 && state.showMel !== false && !mvOn;
-  wrap.hidden = !show; if(!show) return;
+  const hasMel = (state.melody || []).length > 0 && !mvOn, wrap = $('#stLane'), show = hasMel && state.showMel !== false;
+  wrap.hidden = !show; $('#laneShow').hidden = !(hasMel && !show); if(!show) return;
   const cv = $('#stLaneCv'), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if(!w) return;
   if(cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)){ cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
@@ -5052,11 +5076,13 @@ $('#melBtn').addEventListener('click', openMelody);
 $('#optMelBtn').addEventListener('click', () => { closeSheet('#optSheet'); openMelody(); });
 $('#optMel').addEventListener('click', () => { state.showMel = state.showMel === false; saveMeta(); updateStage(true); renderOpts(); });
 $('#melClose').addEventListener('click', closeMelody);
+$('#laneHide').addEventListener('click', () => { state.showMel = false; saveMeta(); updateStage(true); });
+$('#laneShow').addEventListener('click', () => { state.showMel = true; saveMeta(); updateStage(true); });
 $('#melPlay').addEventListener('click', () => { if(M.play) melStop(); else melStart(); });
 $('#melRew').addEventListener('click', () => melJump(-3));
 $('#melFwd').addEventListener('click', () => melJump(3));
 $('#melRec').addEventListener('click', e => { M.rec = !M.rec; e.currentTarget.setAttribute('aria-pressed', M.rec); toast(M.rec ? '播放時按琴鍵就會記下音符，按住多久就是多長' : '琴鍵只會發出聲音，不會記錄'); });
-$('#melSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; const r = +b.dataset.r; M.rate = r; $('#melSpeed').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); if(M.play){ melStop(); melStart(); } ensureStretch(r, () => { if(M.rate === r && M.play){ melStop(); melStart(); } }); });
+$('#melSpeed').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; const r = +b.dataset.r; M.rate = r; $('#melSpeed').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); if(M.play){ melStop(); melStart(); } else ensureStretch(r); });
 $('#melOctDn').addEventListener('click', () => setWhite(M.wi - 1));
 $('#melOctUp').addEventListener('click', () => setWhite(M.wi + 1));
 $('#melRotate').addEventListener('click', melRotate);
