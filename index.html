@@ -276,6 +276,14 @@ body[data-view="library"] .transport{display:none}
 .pkb{position:absolute;top:0;height:60%;border-radius:0 0 6px 6px;background:linear-gradient(90deg,#141414 0%,#3A3A3A 14%,#151515 32%,#0A0A0A 68%,#2C2C2C 88%,#101010 100%);border:1px solid #000;z-index:2;cursor:pointer;box-shadow:0 5px 6px rgba(0,0,0,.55),inset 0 -12px 0 #262626}
 .pkb.on{height:59%;background:linear-gradient(#090909 0%,#2A2A2A 40%,#6E6E6E 100%);box-shadow:0 1px 2px rgba(0,0,0,.5),inset 0 -3px 0 #3C3C3C}
 .st-lane{position:relative;height:84px;margin:6px 14px 0;border-radius:12px;background:rgba(0,0,0,.18);overflow:hidden}
+.libwarn{margin:12px 0 4px;padding:10px 12px;border-radius:12px;border:1px solid var(--rec);background:rgba(224,96,122,.08);font-size:.88rem;line-height:1.55;color:var(--ink)}
+.libwarn[hidden]{display:none}
+.libwarn .btn{margin-top:8px}
+.rescue p{margin:.4em 0;line-height:1.6;color:var(--muted)}
+.rescue p b{color:var(--ink)}
+.rescue-box{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.rescue-box > b{display:block;margin-bottom:2px}
+.rescue-id{margin-top:10px}
 /* 琴鍵不要出現點擊的藍色反白、文字圈選或長按選單 */
 .melview,.melview *{-webkit-tap-highlight-color:transparent}
 .piano,.piano *,.mel-strip,.mel-strip *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;outline:none}
@@ -639,9 +647,24 @@ body[data-view="library"] .transport{display:none}
   <div class="tagfilter" id="langFilter" role="group" aria-label="依分類篩選"></div>
   <div class="tagfilter" id="sortBar" role="group" aria-label="排序方式" hidden></div>
   <nav class="crumbs" id="libCrumbs" aria-label="目前位置"></nav>
+  <div class="libwarn" id="libWarn" hidden role="status"></div>
   <div id="libBrowse"></div>
   <ul id="songList"></ul>
-  <p class="hint" id="libEmpty">歌曲庫還是空的。按「新增」，放進伴奏就可以開始唱。</p>
+  <div class="rescue" id="libEmpty">
+    <p><b>歌曲庫是空的。</b>第一次使用的話，按「新增」放進伴奏就可以開始唱。</p>
+    <div class="rescue-box">
+      <b>之前的歌不見了嗎？</b>
+      <p>歌曲只存在「這個瀏覽器」裡。常見原因是：用了不同的方式開啟（例如從 LINE 點連結，會用 LINE 自己的瀏覽器，資料是分開的），或手機清理空間時把網站資料刪掉了。先試試用主畫面的 Harmonia 圖示或 Chrome 重新打開；還是空的話，從備份還原：</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <label class="btn sm" for="importFile">匯入備份檔</label>
+        <button class="btn sm primary" id="rescueCloud" type="button">從雲端硬碟還原</button>
+      </div>
+      <div class="rescue-id" id="rescueIdRow" hidden>
+        <p>需要重新填一次 Google 用戶端 ID（在 Google Cloud Console 的「憑證」頁面可以複製）：</p>
+        <input id="rescueId" class="wsel" type="text" placeholder="xxxxxx.apps.googleusercontent.com">
+      </div>
+    </div>
+  </div>
 </section>
 
 <section id="studioView" hidden>
@@ -1005,7 +1028,7 @@ body[data-view="library"] .transport{display:none}
     <div class="row" style="align-items:center"><h2 id="setTitle" style="margin:0">設定</h2><button class="btn sm" id="setClose" type="button" style="margin-left:auto">完成</button></div>
   <p class="hint" id="storeInfo"></p>
   <p class="hint" style="font-size:.75rem">旋律輸入的鋼琴音色：Salamander Grand Piano（Alexander Holm，CC BY 3.0）</p>
-  <p class="hint" style="font-size:.75rem">版本 2026.10.17b（琴鍵去藍底）</p>
+  <p class="hint" style="font-size:.75rem">版本 2026.10.18（資料保護提醒）</p>
   <details class="cal" id="backupBox" open>
     <summary>備份與還原</summary>
     <p>資料只存在這支手機的瀏覽器裡。建議每錄完幾首就匯出一次，把檔案存到 Google 雲端硬碟或電腦。換手機或資料不見時，用「匯入備份」就能還原。</p>
@@ -2114,7 +2137,23 @@ function renderArtistList(box){
   [...m.keys()].sort((a, b) => a.localeCompare(b, 'zh-Hant', { sensitivity: 'base' })).forEach(a => row(a, m.get(a), a));
   box.appendChild(ul);
 }
+// 保護資料的提醒：App 內建瀏覽器、太久沒備份、沒有長期保存權限
+async function renderLibWarn(){
+  const box = $('#libWarn'), ua = navigator.userAgent || '';
+  const inApp = /\bLine\/|FBAN|FBAV|Instagram|Messenger|MicroMessenger|; wv\)/i.test(ua);
+  let html = '';
+  if(inApp) html = '<b>你正在 App 內建的瀏覽器裡開啟。</b>這裡的資料和 Chrome 是分開存的，關掉後歌曲可能就不見了。請按右上角選單選「用瀏覽器開啟」，或用主畫面上的 Harmonia 圖示開啟。';
+  else if(songs.length){
+    const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted().catch(() => true) : true;
+    const last = Math.max(state.lastBackup || 0, state.lastCloud || 0), days = last ? (Date.now() - last) / 864e5 : Infinity;
+    if(days > 3) html = '<b>' + (last ? '已經 ' + Math.floor(days) + ' 天沒有備份了。' : '還沒有備份過。') + '</b>手機清理空間時，瀏覽器裡的資料有可能被刪掉，備份一下比較安心。<br><button class="btn sm primary" id="warnBackup" type="button">' + (state.gdClientId ? '備份到雲端硬碟' : '匯出全部備份') + '</button>';
+    else if(!persisted) html = '瀏覽器還沒給 Harmonia 長期保存的權限。用 Chrome 選單的「加到主畫面」安裝成 App，資料比較不容易被系統清掉。';
+  }
+  box.innerHTML = html; box.hidden = !html;
+  const b = $('#warnBackup'); if(b) b.onclick = () => state.gdClientId ? gdUpload() : $('#exportAll').click();
+}
 function renderLibrary(){
+  renderLibWarn();
   storageInfo();
   { const due = songs.length > 0 && (!state.lastBackup || Date.now() - state.lastBackup > 7 * 864e5) && (!state.lastCloud || Date.now() - state.lastCloud > 7 * 864e5); $('#setBtn').classList.toggle('due', due); $('#setBtn').setAttribute('aria-label', due ? '設定（超過一週沒備份）' : '設定'); } $('#langFilter').hidden = true;
   const canFit = typeof state.myLo === 'number' && songs.some(sg => typeof sg.rangeLo === 'number');
@@ -2144,7 +2183,6 @@ function renderSongListInner(q0){
   const list = scoped.filter(sg => (!q || (sg.title || '').toLowerCase().includes(q) || (sg.artists && sg.artists.length ? sg.artists : [sg.artist || '']).some(a => a.toLowerCase().includes(q)) || (sg.lang || '').toLowerCase().includes(q)));
   $('#songSearch').hidden = false;
   $('#libEmpty').hidden = songs.length > 0;
-  $('#libEmpty').textContent = songs.length ? '' : '歌曲庫還是空的。按「新增」，放進伴奏就可以開始唱。';
   $('#libLede').hidden = songs.length > 0;
   if(songs.length && !list.length){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = rangeFilter ? '沒有在你音域內的歌（只會列出有填音域的歌）。' : libLang ? '這個分類裡沒有符合的歌曲。' : '找不到符合的歌曲。'; ul.appendChild(li); }
   if(false){
@@ -4241,6 +4279,11 @@ $('#newSong').addEventListener('click', newSong);
 $('#exportAll').addEventListener('click', () => exportBackup());
 $('#gdId').addEventListener('change', e => { state.gdClientId = e.target.value.trim(); gdToken = null; saveMeta(); cloudInfo(); });
 $('#cloudUp').addEventListener('click', gdUpload);
+$('#rescueCloud').addEventListener('click', () => {
+  if(!state.gdClientId){ $('#rescueIdRow').hidden = false; $('#rescueId').focus(); toast('先填用戶端 ID，填好再按一次'); return; }
+  gdRestore();
+});
+$('#rescueId').addEventListener('change', e => { const v = e.target.value.trim(); if(!v) return; state.gdClientId = v; gdToken = null; saveMeta(); if($('#gdId')) $('#gdId').value = v; toast('已記住用戶端 ID，再按「從雲端硬碟還原」'); });
 $('#cloudDown').addEventListener('click', gdRestore);
 $('#cloudOut').addEventListener('click', () => { gdToken = null; state.gdFileId = ''; saveMeta(); cloudInfo(); toast('已解除連結，下次上傳會重新授權'); });
 $('#cloudBox').addEventListener('toggle', e => { if(e.target.open){ $('#gdId').value = state.gdClientId || ''; cloudInfo(); } });
