@@ -284,6 +284,13 @@ body[data-view="library"] .transport{display:none}
 .rescue-box{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
 .rescue-box > b{display:block;margin-bottom:2px}
 .rescue-id{margin-top:10px}
+.rescue .diag{color:var(--ink);background:var(--paper);border-radius:10px;padding:8px 10px;font-size:.85rem}
+.sizelist{list-style:none;margin:8px 0 0;padding:0}
+.sizelist li{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.sizelist li span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sizelist li small{color:var(--muted);font-size:.78rem}
+.sizelist li b{font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
+.sizelist li i{display:block;height:4px;border-radius:2px;background:var(--v1);margin-top:4px}
 /* 琴鍵不要出現點擊的藍色反白、文字圈選或長按選單 */
 .melview,.melview *{-webkit-tap-highlight-color:transparent}
 .piano,.piano *,.mel-strip,.mel-strip *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;outline:none}
@@ -654,6 +661,7 @@ body[data-view="library"] .transport{display:none}
     <p><b>歌曲庫是空的。</b>第一次使用的話，按「新增」放進伴奏就可以開始唱。</p>
     <div class="rescue-box">
       <b>之前的歌不見了嗎？</b>
+      <p id="rescueDiag" class="diag" hidden></p>
       <p>歌曲只存在「這個瀏覽器」裡。常見原因是：用了不同的方式開啟（例如從 LINE 點連結，會用 LINE 自己的瀏覽器，資料是分開的），或手機清理空間時把網站資料刪掉了。先試試用主畫面的 Harmonia 圖示或 Chrome 重新打開；還是空的話，從備份還原：</p>
       <div class="row" style="gap:8px;flex-wrap:wrap">
         <label class="btn sm" for="importFile">匯入備份檔</label>
@@ -1027,8 +1035,16 @@ body[data-view="library"] .transport{display:none}
   <div class="sheet set-sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <div class="row" style="align-items:center"><h2 id="setTitle" style="margin:0">設定</h2><button class="btn sm" id="setClose" type="button" style="margin-left:auto">完成</button></div>
   <p class="hint" id="storeInfo"></p>
+  <button class="btn sm primary" id="persistBtn" type="button" hidden>申請長期保存</button>
+  <details class="setsec" id="storeMgr">
+    <summary>儲存空間管理</summary>
+    <p class="hint">看看每首歌各佔多少空間；點歌名會進到編輯畫面，可以刪掉不要的舊錄音。</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sm" id="sizeScan" type="button">計算每首歌的大小</button><button class="btn sm" id="cacheClear" type="button">清除可重新下載的快取</button></div>
+    <p class="hint" id="sizeInfo" style="margin:8px 0 0"></p>
+    <ol class="sizelist" id="sizeList"></ol>
+  </details>
   <p class="hint" style="font-size:.75rem">旋律輸入的鋼琴音色：Salamander Grand Piano（Alexander Holm，CC BY 3.0）</p>
-  <p class="hint" style="font-size:.75rem">版本 2026.10.18（資料保護提醒）</p>
+  <p class="hint" style="font-size:.75rem">版本 2026.10.21（自動雲端同步）</p>
   <details class="cal" id="backupBox" open>
     <summary>備份與還原</summary>
     <p>資料只存在這支手機的瀏覽器裡。建議每錄完幾首就匯出一次，把檔案存到 Google 雲端硬碟或電腦。換手機或資料不見時，用「匯入備份」就能還原。</p>
@@ -1047,6 +1063,8 @@ body[data-view="library"] .transport{display:none}
       <input id="gdId" class="wsel" type="text" placeholder="xxxxxx.apps.googleusercontent.com">
     </label>
     <p id="cloudInfo" style="color:var(--ink)"></p>
+    <div class="optrow" style="border-top:1px solid var(--line);margin-top:6px"><span>自動雲端同步<small>改過的歌會自動上傳，不用每次手動備份</small></span><button type="button" class="switch" id="syncToggle" aria-label="自動雲端同步" aria-pressed="false"></button></div>
+    <p id="syncInfo" class="hint" style="margin:4px 0 10px"></p>
     <div class="row" style="margin-bottom:10px">
       <button class="btn primary" id="cloudUp" type="button">上傳到雲端硬碟</button>
       <button class="btn" id="cloudDown" type="button">從雲端硬碟還原</button>
@@ -1219,7 +1237,7 @@ function saveMeta(){
     kvSet('song:' + songId, { title: state.title, artist: state.artist, artists: state.artists || [], cover: !!state.cover, rangeLo: state.rangeLo ?? null, rangeHi: state.rangeHi ?? null, diff: state.diff || 0, notes: state.notes || '', lang: state.lang || '', order: state.order || 0, created: state.created || 0, lyrics: state.lyrics, recPart: state.recPart || '', yt: state.yt || '', mvOffset: state.mvOffset || 0, mvAnchors: state.mvAnchors || [], showTr: state.showTr !== false, showRb: state.showRb !== false, showMk: state.showMk !== false, showMel: state.showMel !== false, melody: state.melody || [], melVer: state.melVer || 0, reverb: state.reverb, tracks: state.tracks.map(trackMeta) });
     const sum = songSummary(songId, state.title, state.tracks, state.artist, state);
     songs = [sum, ...songs.filter(x => x.id !== songId)];
-    writeIndex();
+    writeIndex(); syncMark(songId);
   }, 300);
 }
 function saveAudio(t){
@@ -1291,11 +1309,14 @@ async function storageInfo(){
     const lb = state.lastBackup ? new Date(state.lastBackup) : null;
     $('#storeInfo').textContent = '本機儲存：' + songs.length + ' 首歌' + (e ? '，已使用 ' + mb(e.usage || 0) + ' MB' : '') + (persisted ? '，已設為長期保存' : '，尚未取得長期保存權限');
     $('#storeInfo').textContent += songs.length && e ? '（平均每首約 ' + mb((e.usage || 0) / songs.length) + ' MB）' : '';
+    $('#persistBtn').hidden = !!persisted;
     $('#backupInfo').textContent = lb ? '上次備份：' + (lb.getMonth() + 1) + '/' + lb.getDate() + ' ' + String(lb.getHours()).padStart(2, '0') + ':' + String(lb.getMinutes()).padStart(2, '0') : '還沒有備份過。';
   }catch(err){}
 }
 async function initStore(){
   const st = await kvGet('settings'); applySettings(st);
+  if(!state.gdClientId) state.gdClientId = GD_DEFAULT_ID;
+  await syncLoad();
   songs = (await kvGet('songs')) || [];
   if(!songs.length){
     const meta = await kvGet('meta');
@@ -2147,13 +2168,31 @@ async function renderLibWarn(){
     const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted().catch(() => true) : true;
     const last = Math.max(state.lastBackup || 0, state.lastCloud || 0), days = last ? (Date.now() - last) / 864e5 : Infinity;
     if(days > 3) html = '<b>' + (last ? '已經 ' + Math.floor(days) + ' 天沒有備份了。' : '還沒有備份過。') + '</b>手機清理空間時，瀏覽器裡的資料有可能被刪掉，備份一下比較安心。<br><button class="btn sm primary" id="warnBackup" type="button">' + (state.gdClientId ? '備份到雲端硬碟' : '匯出全部備份') + '</button>';
-    else if(!persisted) html = '瀏覽器還沒給 Harmonia 長期保存的權限。用 Chrome 選單的「加到主畫面」安裝成 App，資料比較不容易被系統清掉。';
+    else if(!persisted) html = '<b>瀏覽器還沒給 Harmonia 長期保存的權限</b>，所以手機空間不夠時，歌曲可能會被自動清掉。<br><button class="btn sm primary" id="warnPersist" type="button">申請長期保存</button>';
   }
   box.innerHTML = html; box.hidden = !html;
   const b = $('#warnBackup'); if(b) b.onclick = () => state.gdClientId ? gdUpload() : $('#exportAll').click();
+  const pb = $('#warnPersist'); if(pb) pb.onclick = askPersist;
+}
+// 申請長期保存：Chrome 只會把這個權限給「看起來很重要」的網站（安裝成 App、允許通知等），所以順便請求通知權限來提高成功率（不會真的發通知）
+async function askPersist(){
+  let ok = false;
+  try{ if(navigator.storage && navigator.storage.persisted && await navigator.storage.persisted()){ toast('已經是長期保存了'); storageInfo(); renderLibWarn(); return; } }catch(e){}
+  try{ ok = await navigator.storage.persist(); }catch(e){}
+  if(!ok){ try{ if('Notification' in window && Notification.permission === 'default'){ toast('接下來請按「允許」，這只是為了讓瀏覽器保留資料，Harmonia 不會發通知'); await sleep(1200); await Notification.requestPermission(); } }catch(e){} try{ ok = await navigator.storage.persist(); }catch(e){} }
+  toast(ok ? '已取得長期保存，瀏覽器不會再自動清掉歌曲' : '瀏覽器還是沒給權限：請用 Chrome 選單「加到主畫面」安裝成 App 後再試一次');
+  storageInfo(); renderLibWarn();
 }
 function renderLibrary(){
   renderLibWarn();
+  // 診斷用：另外記一份「上次有幾首歌」在 localStorage，資料不見時可以知道是怎麼被清掉的
+  try{ if(songs.length) localStorage.setItem('harmonia-mark', JSON.stringify({ n: songs.length, t: Date.now() })); }catch(e){}
+  if(!songs.length){
+    let mk = null; try{ mk = JSON.parse(localStorage.getItem('harmonia-mark') || 'null'); }catch(e){}
+    const d = $('#rescueDiag');
+    if(mk && mk.n){ const t = new Date(mk.t); d.hidden = false; d.textContent = '診斷：上次（' + (t.getMonth() + 1) + '/' + t.getDate() + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + '）還有 ' + mk.n + ' 首歌。瀏覽器裡的小紀錄還在，但歌曲資料庫被清掉了，比較像是瀏覽器為了騰空間而刪掉佔空間大的資料。可以截圖這段給開發者參考。'; }
+    else d.hidden = true;
+  }
   storageInfo();
   { const due = songs.length > 0 && (!state.lastBackup || Date.now() - state.lastBackup > 7 * 864e5) && (!state.lastCloud || Date.now() - state.lastCloud > 7 * 864e5); $('#setBtn').classList.toggle('due', due); $('#setBtn').setAttribute('aria-label', due ? '設定（超過一週沒備份）' : '設定'); } $('#langFilter').hidden = true;
   const canFit = typeof state.myLo === 'number' && songs.some(sg => typeof sg.rangeLo === 'number');
@@ -2214,7 +2253,7 @@ async function openSong(id, edit){
 async function deleteSongById(id){
   const sg = songs.find(x => x.id === id), doc = await kvGet('song:' + id);
   if(doc) for(const t of doc.tracks || []){ await kvDel('audio:' + t.id); await kvDel('orig:' + t.id); }
-  await kvDel('song:' + id); await kvDel('cover:' + id); dropCover(id);
+  await kvDel('song:' + id); await kvDel('cover:' + id); dropCover(id); syncDeleted(id);
   removedIds.add(id); songs = songs.filter(x => x.id !== id); await kvSet('songs', songs);
   if(songId === id){ songId = null; state.tracks = []; }
   renderLibrary(); toast('已刪除「' + ((sg && sg.title) || '歌曲') + '」');
@@ -4133,6 +4172,127 @@ async function gdAuth(interactive){
     client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
   });
 }
+// ---- 自動雲端同步：每首歌一個檔案，只上傳有改過的歌；資料被清掉時可以一鍵全部救回 ----
+const GD_DEFAULT_ID = '';   // 可以把自己的 OAuth 用戶端 ID 寫在這裡，資料被清掉後就不用重填
+const SYNC_DIR = 'Harmonia 同步';
+const SY = { on: false, dirty: [], deleted: [], files: {}, folderId: '', indexId: '', last: 0, busy: false, timer: 0, err: '' };
+async function syncLoad(){ const s = await kvGet('sync'); if(s) Object.assign(SY, s, { busy: false, timer: 0 }); }
+function syncSave(){ const { on, dirty, deleted, files, folderId, indexId, last, err } = SY; kvSet('sync', { on, dirty, deleted, files, folderId, indexId, last, err }); }
+function syncMark(id){
+  if(!SY.on || !id) return;
+  if(!SY.dirty.includes(id)) SY.dirty.push(id);
+  syncSave(); syncInfo(); syncSchedule();
+}
+function syncDeleted(id){
+  if(!SY.on || !id) return;
+  SY.dirty = SY.dirty.filter(x => x !== id);
+  if(SY.files[id] && !SY.deleted.includes(id)) SY.deleted.push(id);
+  syncSave(); syncInfo(); syncSchedule();
+}
+const syncPending = () => SY.dirty.length + SY.deleted.length;
+const tokenOK = () => gdToken && gdToken.exp > Date.now() + 60000;
+const busyRecording = () => !!(playing && (playing.mode === 'rec' || playing.mode === 'sync')) || (typeof M !== 'undefined' && M.open);
+function syncSchedule(){ clearTimeout(SY.timer); SY.timer = setTimeout(() => syncRun(), 15000); }
+// 取得授權要在使用者點畫面時才能跳視窗，所以有東西要上傳時，就在下一次點歌曲庫時順便授權
+document.addEventListener('pointerup', () => {
+  if(!SY.on || !syncPending() || tokenOK() || SY.authing || busyRecording()) return;
+  if(document.body.dataset.view !== 'library' || !$('#stage').hidden) return;
+  if(!state.gdClientId) return;
+  SY.authing = true;
+  gdAuth(false).then(() => syncRun()).catch(e => { SY.err = '授權沒有完成，下次點畫面時會再試'; syncInfo(); }).finally(() => { SY.authing = false; });
+}, true);
+async function gdFindOrCreate(token, name, mime, parent){
+  const q = encodeURIComponent("name='" + name.replace(/'/g, "\\'") + "' and trashed=false" + (mime ? " and mimeType='" + mime + "'" : '') + (parent ? " and '" + parent + "' in parents" : ''));
+  const r = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id)&orderBy=modifiedTime desc', { headers: { Authorization: 'Bearer ' + token } });
+  const j = await r.json(); if(j.files && j.files.length) return j.files[0].id;
+  if(mime !== 'application/vnd.google-apps.folder') return '';
+  const out = await gdSend('POST', 'https://www.googleapis.com/drive/v3/files?fields=id', token, JSON.stringify({ name, mimeType: mime, ...(parent ? { parents: [parent] } : {}) }), 'application/json');
+  return out.id;
+}
+async function gdPutFile(token, fileId, name, blob, type, parent){
+  if(fileId){
+    try{ return (await gdSend('PATCH', 'https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media&fields=id', token, blob, type)).id; }
+    catch(e){ if(!/HTTP 404/.test(e.message)) throw e; }
+  }
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify({ name, mimeType: type, parents: [parent] })], { type: 'application/json' }));
+  form.append('file', blob);
+  return (await gdSend('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', token, form, null)).id;
+}
+async function syncRun(){
+  if(!SY.on || SY.busy || !syncPending() || !tokenOK()) return;
+  if(busyRecording() || playing){ syncSchedule(); return; }
+  SY.busy = true; SY.err = ''; syncInfo();
+  try{
+    const token = gdToken.token;
+    if(!SY.folderId) SY.folderId = await gdFindOrCreate(token, SYNC_DIR, 'application/vnd.google-apps.folder');
+    let n = 0; const total = syncPending();
+    while(SY.deleted.length){
+      const id = SY.deleted[0], fid = SY.files[id];
+      if(fid){ try{ await gdSend('DELETE', 'https://www.googleapis.com/drive/v3/files/' + fid, token); }catch(e){ if(!/HTTP 404/.test(e.message)) throw e; } }
+      delete SY.files[id]; SY.deleted.shift(); n++; syncSave();
+    }
+    while(SY.dirty.length){
+      if(busyRecording() || playing){ syncSchedule(); break; }
+      const id = SY.dirty[0];
+      if(!songs.some(x => x.id === id)){ SY.dirty.shift(); continue; }
+      $('#syncInfo') && ($('#syncInfo').textContent = '同步中 ' + (n + 1) + ' / ' + total + '…');
+      const made = await buildBackup(id);
+      if(made) SY.files[id] = await gdPutFile(token, SY.files[id], 'song-' + id + '.zip', made.blob, 'application/zip', SY.folderId);
+      SY.dirty.shift(); n++; syncSave();
+    }
+    const index = { app: 'harmonia-sync', v: 1, updated: Date.now(), settings: await kvGet('settings'), songs: songs.filter(s => SY.files[s.id]).map(s => ({ id: s.id, title: s.title, file: SY.files[s.id] })) };
+    SY.indexId = await gdPutFile(token, SY.indexId, 'index.json', new Blob([JSON.stringify(index)], { type: 'application/json' }), 'application/json', SY.folderId);
+    SY.last = Date.now(); state.lastCloud = SY.last; saveMeta(); syncSave();
+  }catch(e){ SY.err = '同步失敗：' + (e.message || e) + '，稍後會再試'; syncSchedule(); }
+  finally{ SY.busy = false; syncInfo(); renderLibWarn(); }
+}
+async function syncEnable(on){
+  if(on && !state.gdClientId){ toast('先填 OAuth 用戶端 ID'); $('#syncToggle').setAttribute('aria-pressed', 'false'); return; }
+  SY.on = on;
+  if(on){
+    songs.forEach(s => { if(!SY.files[s.id] && !SY.dirty.includes(s.id)) SY.dirty.push(s.id); });
+    toast('已開啟自動同步，第一次會把 ' + SY.dirty.length + ' 首歌上傳，建議連 Wi-Fi');
+    try{ await gdAuth(!gdToken); syncRun(); }catch(e){ SY.err = '授權沒有完成'; }
+  }
+  syncSave(); syncInfo();
+}
+function syncInfo(){
+  const el = $('#syncInfo'); if(!el) return;
+  $('#syncToggle').setAttribute('aria-pressed', SY.on);
+  if(!SY.on){ el.textContent = '開啟後，每首歌改過都會自動上傳到雲端硬碟的「' + SYNC_DIR + '」資料夾。'; return; }
+  if(SY.busy) return;
+  const p = syncPending(), t = SY.last ? new Date(SY.last) : null;
+  el.textContent = (SY.err ? SY.err + '。' : '') + (p ? '有 ' + p + ' 首等待同步' + (tokenOK() ? '，馬上上傳。' : '，下次點歌曲庫畫面時會自動上傳。') : '全部都同步好了。') + (t ? '上次同步：' + (t.getMonth() + 1) + '/' + t.getDate() + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') : '');
+}
+// 從同步資料夾還原所有歌（資料被清掉時用）
+async function syncRestore(){
+  if(backupBusy) return false;
+  const token = await gdAuth(!gdToken);
+  const folder = await gdFindOrCreate(token, SYNC_DIR, null);
+  if(!folder) return false;
+  const idx = await gdFindOrCreate(token, 'index.json', null, folder);
+  if(!idx) return false;
+  const r = await fetch('https://www.googleapis.com/drive/v3/files/' + idx + '?alt=media', { headers: { Authorization: 'Bearer ' + token } });
+  if(!r.ok) return false;
+  const index = await r.json(), list = (index.songs || []).filter(s => !songs.some(x => x.id === s.id));
+  if(index.settings && !songs.length){ await kvSet('settings', { ...index.settings, gdClientId: state.gdClientId }); applySettings(await kvGet('settings')); }
+  let ok = 0;
+  for(let i = 0; i < list.length; i++){
+    toast('從雲端還原中 ' + (i + 1) + ' / ' + list.length + '：' + list[i].title);
+    try{
+      const res = await fetch('https://www.googleapis.com/drive/v3/files/' + list[i].file + '?alt=media', { headers: { Authorization: 'Bearer ' + token } });
+      if(!res.ok) continue;
+      await importBackup(new File([await res.blob()], 'song.zip', { type: 'application/zip' }), true);
+      ok++;
+    }catch(e){}
+  }
+  Object.assign(SY, { on: true, folderId: folder, indexId: idx, dirty: [], deleted: [], err: '' });
+  (index.songs || []).forEach(s => { SY.files[s.id] = s.file; });
+  syncSave(); syncInfo(); renderLibrary();
+  toast('從雲端救回 ' + ok + ' 首歌' + (ok < list.length ? '（' + (list.length - ok) + ' 首失敗）' : ''));
+  return true;
+}
 const GD_NAME = 'Harmonia 備份.zip';
 function gdSend(method, url, token, body, type, onProgress){
   return new Promise((res, rej) => {
@@ -4279,9 +4439,47 @@ $('#newSong').addEventListener('click', newSong);
 $('#exportAll').addEventListener('click', () => exportBackup());
 $('#gdId').addEventListener('change', e => { state.gdClientId = e.target.value.trim(); gdToken = null; saveMeta(); cloudInfo(); });
 $('#cloudUp').addEventListener('click', gdUpload);
+$('#syncToggle').addEventListener('click', () => syncEnable(!SY.on));
+// ---- 儲存空間管理 ----
+const valSize = v => !v ? 0 : v.bytes ? (v.bytes.byteLength || 0) : Array.isArray(v.ch) ? v.ch.reduce((a, c) => a + (c && c.byteLength || 0), 0) : 0;
+$('#sizeScan').addEventListener('click', async e => {
+  const btn = e.currentTarget; btn.disabled = true; const out = [];
+  try{
+    for(let i = 0; i < songs.length; i++){
+      const sg = songs[i]; $('#sizeInfo').textContent = '計算中… ' + (i + 1) + ' / ' + songs.length;
+      const doc = await kvGet('song:' + sg.id) || {}; let bytes = valSize(await kvGet('cover:' + sg.id));
+      for(const t of doc.tracks || []){ bytes += valSize(await kvGet('audio:' + t.id)) + valSize(await kvGet('orig:' + t.id)); }
+      out.push({ id: sg.id, title: sg.title || '未命名歌曲', n: (doc.tracks || []).length, bytes });
+      if(i % 5 === 4) await sleep(0);
+    }
+    out.sort((a, b) => b.bytes - a.bytes);
+    const total = out.reduce((a, x) => a + x.bytes, 0), max = out.length ? out[0].bytes : 1, MB = v => (v / 1048576).toFixed(1) + ' MB';
+    $('#sizeInfo').textContent = '歌曲合計 ' + MB(total) + '，由大到小排列：';
+    const ol = $('#sizeList'); ol.innerHTML = '';
+    out.forEach(x => {
+      const li = document.createElement('li');
+      li.innerHTML = '<div style="flex:1;min-width:0"><span></span><small></small><i></i></div><b></b>';
+      li.querySelector('span').textContent = x.title; li.querySelector('small').textContent = '　' + x.n + ' 軌';
+      li.querySelector('i').style.width = Math.max(2, x.bytes / max * 100) + '%'; li.querySelector('b').textContent = MB(x.bytes);
+      li.addEventListener('click', () => { closeSheet('#setSheet'); openSong(x.id, true); });
+      ol.appendChild(li);
+    });
+  }catch(err){ $('#sizeInfo').textContent = '計算失敗：' + (err.message || err); }
+  finally{ btn.disabled = false; }
+});
+$('#cacheClear').addEventListener('click', async () => {
+  const est = async () => { try{ return (await navigator.storage.estimate()).usage || 0; }catch(e){ return 0; } };
+  const before = await est();
+  for(const n of ['harmonia-ja-dict-v1', 'harmonia-piano-v1']){ try{ await caches.delete(n); }catch(e){} }
+  jaTok = null;
+  const freed = Math.max(0, before - await est());
+  toast('已清除快取' + (freed ? '，空出約 ' + (freed / 1048576).toFixed(1) + ' MB' : '') + '。日文字典和鋼琴音色下次用到時會重新下載');
+  storageInfo();
+});
+$('#persistBtn').addEventListener('click', askPersist);
 $('#rescueCloud').addEventListener('click', () => {
   if(!state.gdClientId){ $('#rescueIdRow').hidden = false; $('#rescueId').focus(); toast('先填用戶端 ID，填好再按一次'); return; }
-  gdRestore();
+  (async () => { try{ if(await syncRestore()) return; }catch(e){ toast('雲端還原失敗：' + (e.message || e)); return; } gdRestore(); })();
 });
 $('#rescueId').addEventListener('change', e => { const v = e.target.value.trim(); if(!v) return; state.gdClientId = v; gdToken = null; saveMeta(); if($('#gdId')) $('#gdId').value = v; toast('已記住用戶端 ID，再按「從雲端硬碟還原」'); });
 $('#cloudDown').addEventListener('click', gdRestore);
@@ -4350,7 +4548,7 @@ $('#rgHi').addEventListener('change', rangeChanged);
 $('#fitToggle').addEventListener('click', () => { rangeFilter = !rangeFilter; saveMeta(); renderLibrary(); });
 $('#wTick').addEventListener('click', e => { W.tick = !W.tick; e.currentTarget.setAttribute('aria-pressed', W.tick); toast(W.tick ? '輪到你唱時會有輕輕的拍子' : '已關閉拍子提示'); });
 $('#artistFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if(f && libArtist && libArtist !== '*') saveArtistImg(libArtist, f); });
-$('#setBtn').addEventListener('click', () => { storageInfo(); openSheet('#setSheet'); });
+$('#setBtn').addEventListener('click', () => { storageInfo(); syncInfo(); openSheet('#setSheet'); });
 $('#setClose').addEventListener('click', () => { closeSheet('#setSheet'); renderLibrary(); });
 $('#wGo').addEventListener('click', () => { if(W.ex){ wStopEx(); W.shown = null; W.sy = null; } else wStartEx(); });
 $('#songSearch').addEventListener('input', renderLibrary);
